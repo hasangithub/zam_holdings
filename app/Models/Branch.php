@@ -10,6 +10,7 @@ class Branch extends Model
 
     protected $fillable = [
         'name',
+        'code'
     ];
 
     public function users()
