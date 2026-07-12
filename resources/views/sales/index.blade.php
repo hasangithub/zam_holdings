@@ -5,6 +5,15 @@
 @section('content')
 
 <div class="card">
+    @if ($errors->any())
+    <div class="alert alert-danger">
+        <ul class="mb-0">
+            @foreach ($errors->all() as $error)
+                <li>{{ $error }}</li>
+            @endforeach
+        </ul>
+    </div>
+@endif
 
     <div class="card-header">
         <h3 class="card-title">Sales List</h3>
@@ -16,7 +25,7 @@
 
     <div class="card-body table-responsive">
 
-        <table class="table table-bordered table-hover table-sm">
+        <table id="salesTable" class="table table-bordered table-hover table-sm table-erp">
 
             <thead class="bg-light">
                 <tr>
@@ -24,9 +33,6 @@
                     <th>Customer</th>
                     <th>Date</th>
                     <th>Total</th>
-                    <th>Paid</th>
-                    <th>Balance</th>
-                    <th>Status</th>
                     <th width="200">Actions</th>
                 </tr>
             </thead>
@@ -52,30 +58,6 @@
                     </td>
 
                     <td>
-                        Rs {{ number_format($s->total_paid, 2) }}
-                    </td>
-
-                    <td>
-                        <span class="text-danger">
-                            Rs {{ number_format($s->balance_amount, 2) }}
-                        </span>
-                    </td>
-
-                    <td>
-
-                        @if($s->payment_status == 'paid')
-                        <span class="badge bg-success">Paid</span>
-
-                        @elseif($s->payment_status == 'partial')
-                        <span class="badge bg-warning">Partial</span>
-
-                        @else
-                        <span class="badge bg-danger">Unpaid</span>
-                        @endif
-
-                    </td>
-
-                    <td>
 
                         <a href="{{ route('sales.invoice',$s->id) }}" class="btn btn-info btn-xs">
                             Invoice
@@ -85,9 +67,23 @@
                             View
                         </a>
 
-                        <a href="{{ route('sales.edit',$s->id) }}" class="btn btn-warning btn-xs">
+                        @if($s->currency === 'USD')
+
+                        <a href="{{ route('export-sales.edit', $s->id) }}"
+                            class="btn btn-warning btn-sm">
+                            Export Edit
+                        </a>
+
+                        @else
+
+                        <a href="{{ route('sales.edit', $s->id) }}"
+                            class="btn btn-primary btn-sm">
                             Edit
                         </a>
+
+                        @endif
+
+
 
                         <form action="{{ route('sales.destroy',$s->id) }}" method="POST" style="display:inline;">
 
@@ -113,3 +109,18 @@
 </div>
 
 @endsection
+
+@push('scripts')
+<script>
+    $(document).ready(function() {
+        $('#salesTable').DataTable({
+            responsive: true,
+            pageLength: 10,
+            lengthChange: true,
+            autoWidth: false,
+            ordering: true,
+            searching: true
+        });
+    });
+</script>
+@endpush

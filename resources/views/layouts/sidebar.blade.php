@@ -18,7 +18,7 @@
         {{-- MENU --}}
         <nav class="mt-2">
 
-            <ul class="nav nav-pills nav-sidebar flex-column" data-widget="treeview" role="menu">
+            <ul class="nav nav-pills nav-sidebar flex-column text-sm" data-widget="treeview" role="menu">
 
                 {{-- DASHBOARD --}}
                 <li class="nav-item">
@@ -59,6 +59,13 @@
                     </a>
                 </li>
 
+                <li class="nav-item">
+                    <a href="/stock-summary" class="nav-link">
+                        <i class="nav-icon fas fa-users"></i>
+                        <p>Stock Summary</p>
+                    </a>
+                </li>
+
                 {{-- TRANSACTIONS --}}
                 <li class="nav-header">TRANSACTIONS</li>
 
@@ -69,28 +76,170 @@
                     </a>
                 </li>
 
+                <li class="nav-item has-treeview">
+                    <a href="#" class="nav-link">
+                        <i class="nav-icon fas fa-warehouse"></i>
+                        <p>
+                            Inventory
+                            <i class="right fas fa-angle-left"></i>
+                        </p>
+                    </a>
+
+                    <ul class="nav nav-treeview">
+
+                        <li class="nav-item">
+                            <a href="{{ route('purchase-inventories.index') }}" class="nav-link">
+                                <i class="far fa-circle nav-icon"></i>
+                                <p>Purchase Inventories</p>
+                            </a>
+                        </li>
+
+                        <li class="nav-item">
+                            <a href="{{ route('expenses.index') }}" class="nav-link">
+                                <i class="far fa-circle nav-icon"></i>
+                                <p>Expenses</p>
+                            </a>
+                        </li>
+
+                        <li class="nav-item">
+                            <a href="{{ route('expense-categories.index') }}" class="nav-link">
+                                <i class="far fa-circle nav-icon"></i>
+                                <p>Expense Categories</p>
+                            </a>
+                        </li>
+
+                        <li class="nav-item">
+                            <a href="{{ route('inventory.summary') }}" class="nav-link">
+                                <i class="far fa-circle nav-icon"></i>
+                                <p>Inventory Summary</p>
+                            </a>
+                        </li>
+
+                    </ul>
+                </li>
+
+                <li class="nav-item has-treeview">
+                    <a href="#" class="nav-link">
+                        <i class="nav-icon fas fa-warehouse"></i>
+                        <p>
+                            Sales
+                            <i class="right fas fa-angle-left"></i>
+                        </p>
+                    </a>
+
+                    <ul class="nav nav-treeview">
+
+                        <li class="nav-item">
+                            <a href="/sales" class="nav-link">
+                                <i class="nav-icon fas fa-cash-register"></i>
+                                <p>Sales</p>
+                            </a>
+                        </li>
+
+                        <li class="nav-item">
+                            <a href="/export-sales/create" class="nav-link">
+                                <i class="nav-icon fas fa-cash-register"></i>
+                                <p>Export Sales</p>
+                            </a>
+                        </li>
+                    </ul>
+                </li>
+                <li class="nav-item has-treeview">
+                    <a href="#" class="nav-link">
+                        <i class="nav-icon fas fa-warehouse"></i>
+                        <p>
+                            Shipment Plans
+                            <i class="right fas fa-angle-left"></i>
+                        </p>
+                    </a>
+
+                    <ul class="nav nav-treeview">
+
+                        <li class="nav-item">
+                            <a href="/shipment-plans" class="nav-link">
+                                <i class="nav-icon fas fa-cash-register"></i>
+                                <p>Shipment Plans</p>
+                            </a>
+                        </li>
+
+                        <li class="nav-item">
+                            <a href="/packings" class="nav-link">
+                                <i class="nav-icon fas fa-cash-register"></i>
+                                <p>Shipment Packing</p>
+                            </a>
+                        </li>
+                    </ul>
+                </li>
                 <li class="nav-item">
-                    <a href="/sales" class="nav-link">
-                        <i class="nav-icon fas fa-cash-register"></i>
-                        <p>Sales</p>
+                    <a href="/packing-usages" class="nav-link">
+                        <i class="nav-icon fas fa-chart-line"></i>
+                        <p>Packing</p>
                     </a>
                 </li>
 
                 {{-- REPORTS --}}
                 <li class="nav-header">REPORTS</li>
 
-                <li class="nav-item">
-                    <a href="/reports/sales" class="nav-link">
-                        <i class="nav-icon fas fa-chart-line"></i>
-                        <p>Sales Report</p>
+                <li class="nav-item has-treeview">
+                    <a href="#" class="nav-link">
+                        <i class="nav-icon fas fa-chart-bar"></i>
+                        <p>
+                            Reports
+                            <i class="right fas fa-angle-left"></i>
+                        </p>
                     </a>
+
+                    <ul class="nav nav-treeview">
+
+                        <li class="nav-item">
+                            <a href="" class="nav-link">
+                                <i class="far fa-circle nav-icon"></i>
+                                <p>Trial Balance</p>
+                            </a>
+                        </li>
+
+                        <li class="nav-item">
+                            <a href="{{ route('reports.item-profit-analysis') }}" class="nav-link">
+                                <i class="far fa-circle nav-icon"></i>
+                                <p>Item Profit Analysis</p>
+                            </a>
+                        </li>
+
+                        <li class="nav-item">
+                            <a href="" class="nav-link">
+                                <i class="far fa-circle nav-icon"></i>
+                                <p>Balance Sheet</p>
+                            </a>
+                        </li>
+
+                    </ul>
                 </li>
 
-                <li class="nav-item">
-                    <a href="/reports/purchases" class="nav-link">
+                <li class="nav-item has-treeview">
+                    <a href="#" class="nav-link">
                         <i class="nav-icon fas fa-chart-bar"></i>
-                        <p>Purchase Report</p>
+                        <p>
+                            Freight Management
+                            <i class="right fas fa-angle-left"></i>
+                        </p>
                     </a>
+
+                    <ul class="nav nav-treeview">
+
+                        <li class="nav-item">
+                            <a href="/freight-records" class="nav-link">
+                                <i class="far fa-circle nav-icon"></i>
+                                <p>Freight Records</p>
+                            </a>
+                        </li>
+
+                        <li class="nav-item">
+                            <a href="/landing-costs" class="nav-link">
+                                <i class="far fa-circle nav-icon"></i>
+                                <p>Freight Cost</p>
+                            </a>
+                        </li>
+                    </ul>
                 </li>
 
             </ul>

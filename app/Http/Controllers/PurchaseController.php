@@ -7,6 +7,8 @@ use App\Models\PurchaseItem;
 use App\Models\Supplier;
 use App\Models\Item;
 use Illuminate\Http\Request;
+use App\Accounting\Accounting;
+use App\Models\PurchasePayment;
 
 class PurchaseController extends Controller
 {
@@ -50,27 +52,72 @@ class PurchaseController extends Controller
 
         $purchase->update(['total' => $total]);
 
+        Accounting::postJournal([
+            'branch_id' => 1,
+            'date' => '2026-04-04',
+            'description' => 'Purchase Invoice ',
+
+            'entries' => [
+                [
+                    'ledger_id' => 1,
+                    'debit' => 1000,
+                    'credit' => 0,
+                ],
+                [
+                    'ledger_id' => 2,
+                    'debit' => 0,
+                    'credit' => 1000,
+                ],
+            ]
+        ]);
+
         return redirect()->route('purchases.index');
     }
 
     public function show($id)
     {
-        $purchase = Purchase::with([
-            'supplier',
-            'payments.creator'
-        ])->findOrFail($id);
+        $purchase = Purchase::with('supplier')->findOrFail($id);
 
-        return view('purchases.show', compact('purchase'));
+    $supplierId = $purchase->supplier_id;
+
+    $purchases = Purchase::where('supplier_id', $supplierId)->get();
+
+    $payments = PurchasePayment::where('supplier_id', $supplierId)->get();
+
+    $totalPurchase = $purchases->sum('total');
+    $totalPaid = $payments->sum('amount');
+
+    $balance = $totalPurchase - $totalPaid;
+
+    return view('purchases.show', compact(
+        'purchase',
+        'purchases',
+        'payments',
+        'totalPurchase',
+        'totalPaid',
+        'balance'
+    ));
     }
 
     public function invoice($id)
     {
-        $purchase = Purchase::with([
-            'supplier',
-            'payments.creator'
-        ])->findOrFail($id);
+        $purchase = Purchase::with('items', 'supplier')->findOrFail($id);
 
-        return view('purchases.invoice', compact('purchase'));
+    // supplier totals (ledger logic)
+    $supplierId = $purchase->supplier_id;
+
+    $totalPurchase = Purchase::where('supplier_id', $supplierId)->sum('total');
+
+    $totalPaid = PurchasePayment::where('supplier_id', $supplierId)->sum('amount');
+
+    $outstanding = $totalPurchase - $totalPaid;
+
+    return view('purchases.invoice', compact(
+        'purchase',
+        'totalPurchase',
+        'totalPaid',
+        'outstanding'
+    ));
     }
 
     public function edit($id)

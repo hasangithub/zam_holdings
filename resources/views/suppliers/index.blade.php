@@ -15,14 +15,14 @@
 
     <div class="card-body table-responsive">
 
-        <table class="table table-bordered table-hover table-sm">
+        <table class="table table-bordered table-hover table-sm table-erp">
             <thead>
                 <tr>
                     <th>#</th>
                     <th>Supplier Name</th>
                     <th>Phone</th>
                     <th>Email</th>
-                    <th width="150">Action</th>
+                    <th>Action</th>
                 </tr>
             </thead>
 
@@ -35,6 +35,10 @@
                     <td>{{ $s->email }}</td>
 
                     <td>
+                        <a href="{{ route('suppliers.statement', $s->id) }}"
+                            class="btn btn-info btn-xs">
+                            Statement
+                        </a>
                         <a href="{{ route('suppliers.edit',$s->id) }}" class="btn btn-warning btn-xs">
                             Edit
                         </a>

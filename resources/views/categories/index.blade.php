@@ -6,15 +6,15 @@
 
 <div class="card">
     <div class="card-header">
-    <h3 class="card-title">Categories</h3>
-    <a href="{{ route('categories.create') }}"
-           class="btn btn-primary btn-sm float-right">
+        <h3 class="card-title">Categories</h3>
+        <a href="{{ route('categories.create') }}"
+            class="btn btn-primary btn-sm float-right">
             + Add Category
         </a>
     </div>
 
     <div class="card-body table-responsive">
-        <table class="table table-bordered table-sm">
+        <table id="categoriesTable" class="table table-bordered table-sm table-erp">
             <thead>
                 <tr>
                     <th>#</th>
@@ -40,3 +40,18 @@
 </div>
 
 @endsection
+
+@push('scripts')
+<script>
+    $(document).ready(function() {
+        $('#categoriesTable').DataTable({
+            responsive: true,
+            pageLength: 10,
+            lengthChange: true,
+            autoWidth: false,
+            ordering: true,
+            searching: true
+        });
+    });
+</script>
+@endpush

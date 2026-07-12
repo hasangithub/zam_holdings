@@ -10,13 +10,45 @@ class Sale extends Model
     use HasFactory;
 
     protected $fillable = [
+        'branch_id',
         'invoice_id',
+        'airway_no',
+        'consignor',
+        'consignee_name',
+        'consignee_address',
+        'port_of_loading',
+        'country_of_origin',
+        'mode_of_payment',
+        'mode_of_shipping',
+        'flight_no',
         'customer_id',
         'sale_date',
         'total',
-        'paid_amount',
-        'balance_amount',
         'payment_status',
+        'currency',
+        'exchange_rate',
+        'total_foreign'
+    ];
+
+     public const CONSIGNORS = [
+        1 => 'Zam Holdings',
+        2 => 'ABC Exports',
+        3 => 'Fresh Foods Lanka',
+        4 => 'Global Traders',
+        5 => 'Hamas',
+    ];
+
+    public const MODEOFPAYMENTS = [
+        1 => 'C & F',
+    ];
+
+    public const PORTOFLOADING = [
+        1 => 'Colombo Airport, Sri Lanka',
+    ];
+
+    public const MODEOFSHIPPING = [
+        1 => 'Air',
+        2 => 'Sea',
     ];
 
     public function customer()
@@ -34,4 +66,3 @@ class Sale extends Model
         return $this->hasMany(SalesPayment::class);
     }
 }
-

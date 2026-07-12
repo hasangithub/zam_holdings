@@ -1,0 +1,29 @@
+.table-erp{
+    font-size:13px;
+}
+
+.table-erp th,
+.table-erp td{
+    padding:1px 3px !important;
+    vertical-align:middle !important;
+}
+
+.table-erp input.form-control,
+.table-erp select.form-control{
+    height:24px;
+    padding:2px 4px;
+    font-size:13px;
+}
+
+.table-erp .btn{
+    padding:2px 6px;
+    font-size:13px;
+}
+
+.card-body{
+    padding:.5rem;
+}
+
+.card-header{
+    padding:.4rem .75rem;
+}

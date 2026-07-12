@@ -13,7 +13,7 @@
     </div>
     <div class="card-body table-responsive">
 
-        <table class="table table-bordered table-sm">
+        <table id="purchasesTable" class="table table-bordered table-sm table-erp">
             <thead>
                 <tr>
                     <th>#</th>
@@ -51,3 +51,18 @@
 </div>
 
 @endsection
+
+@push('scripts')
+<script>
+    $(document).ready(function() {
+        $('#purchasesTable').DataTable({
+            responsive: true,
+            pageLength: 10,
+            lengthChange: true,
+            autoWidth: false,
+            ordering: true,
+            searching: true
+        });
+    });
+</script>
+@endpush

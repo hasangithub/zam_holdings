@@ -16,6 +16,8 @@ class SaleItem extends Model
         'base_price',
         'sale_price',
         'subtotal',
+        'sale_price_foreign',
+        'sub_total_foreign'
     ];
 
     public function item()
