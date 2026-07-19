@@ -123,8 +123,10 @@ Route::prefix('reports')->group(function () {
 
     Route::get('/item-profit-analysis', [ReportController::class, 'itemProfitAnalysis'])
         ->name('reports.item-profit-analysis');
+
     Route::get('/invoice-profit-analysis', [ReportController::class, 'invoiceProfitAnalysis'])
         ->name('reports.invoice-profit-analysis');
+        
     Route::post('/invoice-profit-analysis-save', [ReportController::class, 'invoiceProfitAnalysisStore'])
     ->name('reports.invoice-profit-analysis-save');
 

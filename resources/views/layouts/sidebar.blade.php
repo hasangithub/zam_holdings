@@ -239,6 +239,18 @@
                                 <p>Freight Cost</p>
                             </a>
                         </li>
+                        <li class="nav-item">
+                            <a href="/reports/branch-comparison" class="nav-link">
+                                <i class="far fa-circle nav-icon"></i>
+                                <p>Branch Comparison</p>
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a href="/reports/invoice-profit-analysis" class="nav-link">
+                                <i class="far fa-circle nav-icon"></i>
+                                <p>Invoice Profit Analysis</p>
+                            </a>
+                        </li>
                     </ul>
                 </li>
 
