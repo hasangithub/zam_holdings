@@ -29,7 +29,9 @@ class PurchaseInventoryController extends Controller
     public function create()
     {
         $suppliers = Supplier::orderBy('name')->get();
-        $items = Item::orderBy('name')->get();
+        $items = Item::where('item_type', 2)
+            ->orderBy('name')
+            ->get();
 
         return view('purchase_inventories.create', compact(
             'suppliers',
