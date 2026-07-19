@@ -28,7 +28,10 @@ class PurchaseController extends Controller
 
     public function store(Request $request)
     {
+        $branchId = auth()->user()->branch_id;
+
         $purchase = Purchase::create([
+            'branch_id' => $branchId,
             'supplier_id' => $request->supplier_id,
             'purchase_date' => now(),
             'total' => 0
@@ -53,7 +56,7 @@ class PurchaseController extends Controller
         $purchase->update(['total' => $total]);
 
         Accounting::postJournal([
-            'branch_id' => 1,
+            'branch_id' => $branchId,
             'date' => '2026-04-04',
             'description' => 'Purchase Invoice ',
 

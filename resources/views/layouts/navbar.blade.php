@@ -16,7 +16,7 @@
                 <span class="badge badge-info px-3 py-2" style="font-size: 13px;">
                     <i class="fas fa-building mr-1"></i>
 
-                    {{ optional(auth()->user())->name }}
+                    {{ optional(auth()->user())->name }} -  {{ auth()->user()->branch->name ?? 'No Branch' }}
                 </span>
             </a>
 

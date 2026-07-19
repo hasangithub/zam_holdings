@@ -42,6 +42,8 @@ class PurchaseInventoryController extends Controller
      */
     public function store(Request $request)
     {
+        $branchId = auth()->user()->branch_id;
+
         $request->validate([
             'supplier_id' => 'required',
             'purchase_date' => 'required|date',
@@ -50,9 +52,10 @@ class PurchaseInventoryController extends Controller
             'price.*' => 'required|numeric|min:0',
         ]);
 
-        DB::transaction(function () use ($request) {
+        DB::transaction(function () use ($request, $branchId) {
 
             $purchase = PurchaseInventory::create([
+                'branch_id' => $branchId,
                 'supplier_id' => $request->supplier_id,
                 'purchase_date' => $request->purchase_date,
                 'total' => $request->total,

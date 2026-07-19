@@ -135,8 +135,10 @@ class SaleController extends Controller
     public function storeExport(Request $request)
     {
         $customer = Customer::findOrFail($request->customer_id);
+        $branchId = auth()->user()->branch_id;
 
         $sale = Sale::create([
+            'branch_id'      => $branchId,
             'customer_id'    => $request->customer_id,
             'sale_date'      => now(),
             'currency'       => 'USD',
