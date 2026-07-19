@@ -39,6 +39,17 @@ class Item extends Model
             default => 'Unknown',
         };
     }
+
+     public static function getItemTypes()
+    {
+        return [
+            self::SALE_ITEM      => 'Sale Item',
+            self::PACKAGING_ITEM => 'Packaging Item',
+            self::RAW_MATERIAL   => 'Raw Material',
+            self::FINISHED_GOOD  => 'Finished Good',
+            self::SERVICE        => 'Service',
+        ];
+    }
 }
 
 

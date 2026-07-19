@@ -11,13 +11,15 @@ class ItemController extends Controller
     public function index()
     {
         $items = Item::with('category')->latest()->get();
+
         return view('items.index', compact('items'));
     }
 
     public function create()
     {
         $categories = Category::all();
-        return view('items.create', compact('categories'));
+        $itemTypes = Item::getItemTypes();
+        return view('items.create', compact('categories', 'itemTypes'));
     }
 
     public function store(Request $request)
