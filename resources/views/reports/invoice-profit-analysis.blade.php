@@ -183,45 +183,45 @@
 
                             <th width="220">Item</th>
 
-                            <th width="150">Qty</th>
+                            <th width="220">Qty</th>
 
-                            <th width="150">Sales Price ($)</th>
+                            <th width="220">Sales Price ($)</th>
 
-                            <th width="150">Market Price</th>
+                            <th width="220">Market Price</th>
 
-                            <th width="150">Avg Cost</th>
+                            <th width="220">Avg Cost</th>
 
-                            <th width="150">Sales Price <br> (LKR)</th>
+                            <th width="220">Sales Price <br> (LKR)</th>
 
-                            <th width="120">
+                            <th width="220">
                                 Sales Price
                                 <br>
                                 With Cost (LKR)
                             </th>
 
-                            <th width="120">
+                            <th width="220">
                                 Total Purchase
                                 <br>
                                 Amount
                             </th>
 
-                            <th width="120">
+                            <th width="220">
                                 Total Cost
                             </th>
 
-                            <th width="120">
+                            <th width="220">
                                 Total Sales
                                 <br>
                                 Amount (LKR)
                             </th>
 
-                            <th width="120">
+                            <th width="220">
                                 Total Sales
                                 <br>
                                 Amount ($)
                             </th>
 
-                            <th width="120">
+                            <th width="220">
                                 Profit /
                                 Loss
                             </th>
