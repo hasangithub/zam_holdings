@@ -55,24 +55,24 @@ class PurchaseController extends Controller
 
         $purchase->update(['total' => $total]);
 
-        Accounting::postJournal([
-            'branch_id' => $branchId,
-            'date' => '2026-04-04',
-            'description' => 'Purchase Invoice ',
+        // Accounting::postJournal([
+        //     'branch_id' => $branchId,
+        //     'date' => '2026-04-04',
+        //     'description' => 'Purchase Invoice ',
 
-            'entries' => [
-                [
-                    'ledger_id' => 1,
-                    'debit' => 1000,
-                    'credit' => 0,
-                ],
-                [
-                    'ledger_id' => 2,
-                    'debit' => 0,
-                    'credit' => 1000,
-                ],
-            ]
-        ]);
+        //     'entries' => [
+        //         [
+        //             'ledger_id' => 1,
+        //             'debit' => 1000,
+        //             'credit' => 0,
+        //         ],
+        //         [
+        //             'ledger_id' => 2,
+        //             'debit' => 0,
+        //             'credit' => 1000,
+        //         ],
+        //     ]
+        // ]);
 
         return redirect()->route('purchases.index');
     }
