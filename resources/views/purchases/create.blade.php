@@ -4,164 +4,306 @@
 
 @section('content')
 
-<div class="row">
+<div class="container-fluid">
 
-    <div class="col-md-9">
+    <div class="card">
 
-        <div class="card card-outline card-primary">
+        <div class="card-header bg-dark">
+            <h3 class="card-title text-white">
+                <i class="fas fa-shopping-cart mr-1"></i>
+                Create Purchase
+            </h3>
+        </div>
 
-            <div class="card-header">
-                <h3 class="card-title">
-                    <i class="fas fa-shopping-cart"></i>
-                    Create Purchase
-                </h3>
-            </div>
+        <form action="{{ route('purchases.store') }}" method="POST">
+
+            @csrf
 
             <div class="card-body">
 
-                <form method="POST" action="{{ route('purchases.store') }}">
-                    @csrf
+                {{-- PURCHASE INFORMATION --}}
+                <div class="row">
 
-                    <div class="form-group">
-                        <label>Supplier</label>
+                    <div class="col-md-6">
 
-                        <select name="supplier_id" class="form-control" required>
-                            <option value="">Select Supplier</option>
+                        <div class="form-group">
 
-                            @foreach($suppliers as $s)
-                                <option value="{{ $s->id }}">
-                                    {{ $s->name }}
+                            <label>
+                                Supplier
+                                <span class="text-danger">*</span>
+                            </label>
+
+                            <select
+                                name="supplier_id"
+                                class="form-control form-control-sm"
+                                required>
+
+                                <option value="">
+                                    Select Supplier
                                 </option>
-                            @endforeach
-                        </select>
+
+                                @foreach($suppliers as $supplier)
+
+                                    <option
+                                        value="{{ $supplier->id }}"
+                                        {{ old('supplier_id') == $supplier->id ? 'selected' : '' }}>
+
+                                        {{ $supplier->name }}
+
+                                    </option>
+
+                                @endforeach
+
+                            </select>
+
+                        </div>
+
                     </div>
 
-                    <div class="table-responsive">
 
-                        <table class="table table-bordered table-hover" id="purchaseTable">
+                    <div class="col-md-3">
 
-                            <thead class="thead-light">
+                        <div class="form-group">
 
-                                <tr>
-                                    <th>Item</th>
-                                    <th width="120">Qty</th>
-                                    <th width="150">Price</th>
-                                    <th width="150">Amount</th>
-                                    <th width="80">Action</th>
-                                </tr>
+                            <label>
+                                Purchase Date
+                                <span class="text-danger">*</span>
+                            </label>
 
-                            </thead>
+                            <input
+                                type="date"
+                                name="purchase_date"
+                                class="form-control form-control-sm"
+                                value="{{ old('purchase_date', date('Y-m-d')) }}"
+                                required>
 
-                            <tbody>
+                        </div>
 
-                                <tr>
+                    </div>
 
-                                    <td>
-                                        <select name="items[0][item_id]"
-                                                class="form-control"
-                                                required>
 
-                                            <option value="">
-                                                Select Item
+                    <div class="col-md-3">
+
+                        <div class="form-group">
+
+                            <label>
+                                Invoice No
+                            </label>
+
+                            <input
+                                type="text"
+                                name="invoice_no"
+                                class="form-control form-control-sm"
+                                value="{{ old('invoice_no') }}"
+                                placeholder="Supplier Invoice No">
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+
+                <hr>
+
+
+                {{-- ITEMS TABLE --}}
+                <div class="table-responsive">
+
+                    <table
+                        class="table table-bordered table-sm table-hover"
+                        id="purchaseTable">
+
+                        <thead class="bg-dark text-white">
+
+                            <tr>
+
+                                <th style="width:45%">
+                                    Item
+                                </th>
+
+                                <th style="width:15%">
+                                    Qty
+                                </th>
+
+                                <th style="width:20%">
+                                    Purchase Price
+                                </th>
+
+                                <th style="width:15%">
+                                    Subtotal
+                                </th>
+
+                                <th
+                                    style="width:5%"
+                                    class="text-center">
+
+                                    Action
+
+                                </th>
+
+                            </tr>
+
+                        </thead>
+
+
+                        <tbody>
+
+                            <tr>
+
+                                <td>
+
+                                    <select
+                                        name="items[0][item_id]"
+                                        class="form-control form-control-sm item-select"
+                                        required>
+
+                                        <option value="">
+                                            Select Item
+                                        </option>
+
+                                        @foreach($items as $item)
+
+                                            <option
+                                                value="{{ $item->id }}">
+
+                                                {{ $item->name }}
+
                                             </option>
 
-                                            @foreach($items as $item)
-                                                <option value="{{ $item->id }}">
-                                                    {{ $item->name }}
-                                                </option>
-                                            @endforeach
+                                        @endforeach
 
-                                        </select>
-                                    </td>
+                                    </select>
 
-                                    <td>
-                                        <input type="number"
-                                               step="0.01"
-                                               name="items[0][qty]"
-                                               class="form-control qty"
-                                               required>
-                                    </td>
+                                </td>
 
-                                    <td>
-                                        <input type="number"
-                                               step="0.01"
-                                               name="items[0][price]"
-                                               class="form-control price"
-                                               required>
-                                    </td>
 
-                                    <td>
-                                        <input type="text"
-                                               class="form-control amount bg-light"
-                                               value="0.00"
-                                               readonly>
-                                    </td>
+                                <td>
 
-                                    <td class="text-center">
-                                        <button type="button"
-                                                class="btn btn-danger btn-sm removeRow">
-                                            <i class="fas fa-trash"></i>
-                                        </button>
-                                    </td>
+                                    <input
+                                        type="number"
+                                        name="items[0][qty]"
+                                        class="form-control form-control-sm qty"
+                                        min="0.001"
+                                        step="0.001"
+                                        required>
 
-                                </tr>
+                                </td>
 
-                            </tbody>
 
-                        </table>
+                                <td>
+
+                                    <input
+                                        type="number"
+                                        name="items[0][price]"
+                                        class="form-control form-control-sm price"
+                                        min="0"
+                                        step="0.01"
+                                        required>
+
+                                </td>
+
+
+                                <td>
+
+                                    <input
+                                        type="text"
+                                        class="form-control form-control-sm subtotal"
+                                        readonly>
+
+                                </td>
+
+
+                                <td class="text-center">
+
+                                    <button
+                                        type="button"
+                                        class="btn btn-danger btn-sm removeRow">
+
+                                        <i class="fas fa-times"></i>
+
+                                    </button>
+
+                                </td>
+
+                            </tr>
+
+                        </tbody>
+
+                    </table>
+
+                </div>
+
+
+                {{-- ADD ITEM --}}
+                <button
+                    type="button"
+                    class="btn btn-primary btn-sm"
+                    id="addRow">
+
+                    <i class="fas fa-plus"></i>
+                    Add Item
+
+                </button>
+
+
+                <hr>
+
+
+                {{-- TOTAL --}}
+                <div class="row justify-content-end">
+
+                    <div class="col-md-4">
+
+                        <div class="form-group row">
+
+                            <label class="col-sm-5 col-form-label text-right">
+                                Total
+                            </label>
+
+                            <div class="col-sm-7">
+
+                                <input
+                                    type="text"
+                                    id="total"
+                                    class="form-control form-control-sm font-weight-bold"
+                                    readonly
+                                    value="0.00">
+
+                            </div>
+
+                        </div>
 
                     </div>
 
-                    <div class="mt-3">
-
-                        <button type="button"
-                                id="addRow"
-                                class="btn btn-primary">
-
-                            <i class="fas fa-plus"></i>
-                            Add Item
-
-                        </button>
-
-                        <button type="submit"
-                                class="btn btn-success float-right">
-
-                            <i class="fas fa-save"></i>
-                            Save Purchase
-
-                        </button>
-
-                    </div>
-
-                </form>
+                </div>
 
             </div>
 
-        </div>
 
-    </div>
+            {{-- ACTION BUTTONS --}}
+            <div class="card-footer">
 
-    <div class="col-md-3">
+                <button
+                    type="submit"
+                    class="btn btn-success">
 
-        <div class="card card-outline card-success">
+                    <i class="fas fa-save"></i>
+                    Save Purchase
 
-            <div class="card-header">
-                <h3 class="card-title">
-                    Purchase Summary
-                </h3>
+                </button>
+
+                <a
+                    href="{{ route('purchases.index') }}"
+                    class="btn btn-secondary">
+
+                    Cancel
+
+                </a>
+
             </div>
 
-            <div class="card-body">
-
-                <h5>Total Amount</h5>
-
-                <h2 class="text-success">
-                    Rs <span id="grandTotal">0.00</span>
-                </h2>
-
-            </div>
-
-        </div>
+        </form>
 
     </div>
 
@@ -169,121 +311,222 @@
 
 @endsection
 
+
 @push('scripts')
 
 <script>
-document.addEventListener('DOMContentLoaded', function () {
 
-    let i = 1;
+let rowIndex = 1;
 
-    function calculatePurchase() {
 
-        let grandTotal = 0;
+/*
+|--------------------------------------------------------------------------
+| Add Row
+|--------------------------------------------------------------------------
+*/
 
-        document.querySelectorAll('#purchaseTable tbody tr').forEach(function(row) {
-
-            let qty = parseFloat(row.querySelector('.qty')?.value || 0);
-            let price = parseFloat(row.querySelector('.price')?.value || 0);
-
-            let amount = qty * price;
-
-            row.querySelector('.amount').value = amount.toFixed(2);
-
-            grandTotal += amount;
-
-        });
-
-        document.getElementById('grandTotal').innerText =
-            grandTotal.toFixed(2);
-    }
-
-    document.getElementById('addRow').addEventListener('click', function () {
+document.getElementById('addRow')
+    .addEventListener('click', function () {
 
         let row = `
+
         <tr>
 
             <td>
-                <select name="items[${i}][item_id]"
-                        class="form-control"
-                        required>
+
+                <select
+                    name="items[${rowIndex}][item_id]"
+                    class="form-control form-control-sm item-select"
+                    required>
 
                     <option value="">
                         Select Item
                     </option>
 
                     @foreach($items as $item)
+
                         <option value="{{ $item->id }}">
                             {{ $item->name }}
                         </option>
+
                     @endforeach
 
                 </select>
+
             </td>
 
-            <td>
-                <input type="number"
-                       step="0.01"
-                       name="items[${i}][qty]"
-                       class="form-control qty"
-                       required>
-            </td>
 
             <td>
-                <input type="number"
-                       step="0.01"
-                       name="items[${i}][price]"
-                       class="form-control price"
-                       required>
+
+                <input
+                    type="number"
+                    name="items[${rowIndex}][qty]"
+                    class="form-control form-control-sm qty"
+                    min="0.001"
+                    step="0.001"
+                    required>
+
             </td>
 
+
             <td>
-                <input type="text"
-                       class="form-control amount bg-light"
-                       value="0.00"
-                       readonly>
+
+                <input
+                    type="number"
+                    name="items[${rowIndex}][price]"
+                    class="form-control form-control-sm price"
+                    min="0"
+                    step="0.01"
+                    required>
+
             </td>
+
+
+            <td>
+
+                <input
+                    type="text"
+                    class="form-control form-control-sm subtotal"
+                    readonly>
+
+            </td>
+
 
             <td class="text-center">
-                <button type="button"
-                        class="btn btn-danger btn-sm removeRow">
-                    <i class="fas fa-trash"></i>
+
+                <button
+                    type="button"
+                    class="btn btn-danger btn-sm removeRow">
+
+                    <i class="fas fa-times"></i>
+
                 </button>
+
             </td>
 
-        </tr>`;
+        </tr>
+
+        `;
 
         document.querySelector('#purchaseTable tbody')
             .insertAdjacentHTML('beforeend', row);
 
-        i++;
+        rowIndex++;
+
     });
 
-    document.addEventListener('click', function(e){
 
-        if(e.target.closest('.removeRow')){
+/*
+|--------------------------------------------------------------------------
+| Remove Row
+|--------------------------------------------------------------------------
+*/
 
-            let rows =
-                document.querySelectorAll('#purchaseTable tbody tr');
+document.addEventListener('click', function(e) {
 
-            if(rows.length > 1){
-                e.target.closest('tr').remove();
-            }
+    if (!e.target.closest('.removeRow')) {
+        return;
+    }
 
-            calculatePurchase();
-        }
-    });
+    let rows =
+        document.querySelectorAll(
+            '#purchaseTable tbody tr'
+        );
 
-    document.addEventListener('input', function(e){
+    if (rows.length <= 1) {
 
-        if(
-            e.target.classList.contains('qty') ||
-            e.target.classList.contains('price')
-        ){
-            calculatePurchase();
-        }
-    });
+        alert('At least one item is required.');
+
+        return;
+    }
+
+    e.target.closest('tr').remove();
+
+    calculateTotal();
 
 });
+
+
+/*
+|--------------------------------------------------------------------------
+| Calculate Row Subtotal
+|--------------------------------------------------------------------------
+*/
+
+document.addEventListener('input', function(e) {
+
+    if (
+        !e.target.classList.contains('qty') &&
+        !e.target.classList.contains('price')
+    ) {
+        return;
+    }
+
+    let row =
+        e.target.closest('tr');
+
+    calculateRow(row);
+
+    calculateTotal();
+
+});
+
+
+function calculateRow(row)
+{
+    let qty =
+        parseFloat(
+            row.querySelector('.qty').value
+        ) || 0;
+
+    let price =
+        parseFloat(
+            row.querySelector('.price').value
+        ) || 0;
+
+    let subtotal =
+        qty * price;
+
+    row.querySelector('.subtotal')
+        .value = subtotal.toFixed(2);
+}
+
+
+/*
+|--------------------------------------------------------------------------
+| Calculate Total
+|--------------------------------------------------------------------------
+*/
+
+function calculateTotal()
+{
+    let total = 0;
+
+    document
+        .querySelectorAll(
+            '#purchaseTable tbody tr'
+        )
+        .forEach(function(row) {
+
+            let qty =
+                parseFloat(
+                    row.querySelector('.qty').value
+                ) || 0;
+
+            let price =
+                parseFloat(
+                    row.querySelector('.price').value
+                ) || 0;
+
+            total += qty * price;
+
+        });
+
+
+    document.getElementById('total')
+        .value = total.toFixed(2);
+}
+
 </script>
 
 @endpush

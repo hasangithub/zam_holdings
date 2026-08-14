@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title','Create Purchase')
+@section('title','Edit Purchase')
 
 @section('content')
 
@@ -10,19 +10,53 @@
 
         <div class="card-header bg-dark">
             <h3 class="card-title text-white">
-                <i class="fas fa-shopping-cart mr-1"></i>
-                Create Purchase
+                <i class="fas fa-edit mr-1"></i>
+                Edit Purchase
             </h3>
         </div>
 
+
         <form
             method="POST"
-            action="{{ route('purchase-inventories.store') }}">
+            action="{{ route('purchase-inventories.update', $purchaseInventory->id) }}">
 
             @csrf
+            @method('PUT')
+
 
             <div class="card-body">
+                @if($errors->any())
 
+                <div class="alert alert-danger alert-dismissible fade show" role="alert">
+
+                    <strong>
+                        Please correct the following errors:
+                    </strong>
+
+                    <ul class="mb-0 mt-2">
+
+                        @foreach($errors->all() as $error)
+
+                        <li>
+                            {{ $error }}
+                        </li>
+
+                        @endforeach
+
+                    </ul>
+
+                    <button type="button"
+                        class="close"
+                        data-dismiss="alert"
+                        aria-label="Close">
+
+                        <span aria-hidden="true">&times;</span>
+
+                    </button>
+
+                </div>
+
+                @endif
                 {{-- PURCHASE INFORMATION --}}
                 <div class="row">
 
@@ -46,13 +80,13 @@
 
                                 @foreach($suppliers as $supplier)
 
-                                    <option
-                                        value="{{ $supplier->id }}"
-                                        {{ old('supplier_id') == $supplier->id ? 'selected' : '' }}>
+                                <option
+                                    value="{{ $supplier->id }}"
+                                    {{ old('supplier_id', $purchaseInventory->supplier_id) == $supplier->id ? 'selected' : '' }}>
 
-                                        {{ $supplier->name }}
+                                    {{ $supplier->name }}
 
-                                    </option>
+                                </option>
 
                                 @endforeach
 
@@ -76,7 +110,7 @@
                                 type="date"
                                 name="purchase_date"
                                 class="form-control form-control-sm"
-                                value="{{ old('purchase_date', date('Y-m-d')) }}"
+                                value="{{ old('purchase_date', $purchaseInventory->purchase_date) }}"
                                 required>
 
                         </div>
@@ -96,7 +130,7 @@
                                 type="text"
                                 name="invoice_no"
                                 class="form-control form-control-sm"
-                                value="{{ old('invoice_no') }}"
+                                value="{{ old('invoice_no', $purchaseInventory->invoice_no) }}"
                                 placeholder="Supplier Invoice No">
 
                         </div>
@@ -109,7 +143,7 @@
                 <hr>
 
 
-                {{-- ITEMS --}}
+                {{-- ITEMS TABLE --}}
                 <div class="table-responsive">
 
                     <table
@@ -136,8 +170,7 @@
                                     Subtotal
                                 </th>
 
-                                <th
-                                    style="width:5%"
+                                <th style="width:5%"
                                     class="text-center">
 
                                     Action
@@ -151,12 +184,17 @@
 
                         <tbody>
 
+                            @foreach($purchaseInventory->items as $index => $purchaseItem)
+                            <input
+                                type="hidden"
+                                name="items[{{ $index }}][id]"
+                                value="{{ $purchaseItem->id }}">
                             <tr>
 
                                 <td>
 
                                     <select
-                                        name="item_id[]"
+                                        name="items[{{ $index }}][item_id]"
                                         class="form-control form-control-sm"
                                         required>
 
@@ -166,12 +204,13 @@
 
                                         @foreach($items as $item)
 
-                                            <option
-                                                value="{{ $item->id }}">
+                                        <option
+                                            value="{{ $item->id }}"
+                                            {{ old("item_id.$index", $purchaseItem->item_id) == $item->id ? 'selected' : '' }}>
 
-                                                {{ $item->name }}
+                                            {{ $item->name }}
 
-                                            </option>
+                                        </option>
 
                                         @endforeach
 
@@ -184,11 +223,11 @@
 
                                     <input
                                         type="number"
-                                        name="qty[]"
+                                        name="items[{{ $index }}][qty]"
                                         class="form-control form-control-sm qty"
                                         min="0.001"
                                         step="0.001"
-                                        placeholder="0.000"
+                                        value="{{ old("qty.$index", $purchaseItem->qty) }}"
                                         required>
 
                                 </td>
@@ -198,11 +237,11 @@
 
                                     <input
                                         type="number"
-                                        name="price[]"
+                                        name="items[{{ $index }}][price]"
                                         class="form-control form-control-sm price"
                                         min="0"
                                         step="0.01"
-                                        placeholder="0.00"
+                                        value="{{ old("price.$index", $purchaseItem->price) }}"
                                         required>
 
                                 </td>
@@ -212,9 +251,8 @@
 
                                     <input
                                         type="text"
-                                        name="subtotal[]"
                                         class="form-control form-control-sm subtotal"
-                                        value="0.00"
+                                        value="{{ number_format($purchaseItem->qty * $purchaseItem->price, 2, '.', '') }}"
                                         readonly>
 
                                 </td>
@@ -233,6 +271,8 @@
                                 </td>
 
                             </tr>
+
+                            @endforeach
 
                         </tbody>
 
@@ -299,9 +339,10 @@
                     class="btn btn-success">
 
                     <i class="fas fa-save"></i>
-                    Save Purchase
+                    Update Purchase
 
                 </button>
+
 
                 <a
                     href="{{ route('purchase-inventories.index') }}"
@@ -325,8 +366,7 @@
 @push('scripts')
 
 <script>
-
-let itemOptions = `
+    let itemOptions = `
     <option value="">Select Item</option>
 
     @foreach($items as $item)
@@ -339,15 +379,15 @@ let itemOptions = `
 `;
 
 
-/*
-|--------------------------------------------------------------------------
-| Add Row
-|--------------------------------------------------------------------------
-*/
+    /*
+    |--------------------------------------------------------------------------
+    | Add Row
+    |--------------------------------------------------------------------------
+    */
 
-$('#addRow').click(function () {
+    $('#addRow').click(function() {
 
-    $('#itemsTable tbody').append(`
+        $('#itemsTable tbody').append(`
 
         <tr>
 
@@ -373,7 +413,6 @@ $('#addRow').click(function () {
                     class="form-control form-control-sm qty"
                     min="0.001"
                     step="0.001"
-                    placeholder="0.000"
                     required>
 
             </td>
@@ -387,7 +426,6 @@ $('#addRow').click(function () {
                     class="form-control form-control-sm price"
                     min="0"
                     step="0.01"
-                    placeholder="0.00"
                     required>
 
             </td>
@@ -397,7 +435,6 @@ $('#addRow').click(function () {
 
                 <input
                     type="text"
-                    name="subtotal[]"
                     class="form-control form-control-sm subtotal"
                     value="0.00"
                     readonly>
@@ -421,50 +458,60 @@ $('#addRow').click(function () {
 
     `);
 
-});
+    });
 
 
-/*
-|--------------------------------------------------------------------------
-| Remove Row
-|--------------------------------------------------------------------------
-*/
+    /*
+    |--------------------------------------------------------------------------
+    | Remove Row
+    |--------------------------------------------------------------------------
+    */
 
-$(document).on('click', '.removeRow', function () {
+    $(document).on('click', '.removeRow', function() {
 
-    let rows = $('#itemsTable tbody tr');
+        let rows =
+            $('#itemsTable tbody tr');
 
-    if (rows.length <= 1) {
+        if (rows.length <= 1) {
 
-        alert('At least one item is required.');
+            alert('At least one item is required.');
 
-        return;
+            return;
 
-    }
+        }
 
-    $(this)
-        .closest('tr')
-        .remove();
+        $(this)
+            .closest('tr')
+            .remove();
 
-    calculateTotal();
+        calculateTotal();
 
-});
+    });
 
 
-/*
-|--------------------------------------------------------------------------
-| Calculate Subtotal
-|--------------------------------------------------------------------------
-*/
+    /*
+    |--------------------------------------------------------------------------
+    | Calculate Subtotal
+    |--------------------------------------------------------------------------
+    */
 
-$(document).on(
-    'input',
-    '.qty, .price',
-    function () {
+    $(document).on(
+        'input',
+        '.qty, .price',
+        function() {
 
-        let row =
-            $(this).closest('tr');
+            let row =
+                $(this).closest('tr');
 
+            calculateRow(row);
+
+            calculateTotal();
+
+        }
+    );
+
+
+    function calculateRow(row) {
         let qty =
             parseFloat(
                 row.find('.qty').val()
@@ -480,34 +527,47 @@ $(document).on(
 
         row.find('.subtotal')
             .val(subtotal.toFixed(2));
+    }
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Calculate Total
+    |--------------------------------------------------------------------------
+    */
+
+    function calculateTotal() {
+        let total = 0;
+
+        $('.subtotal').each(function() {
+
+            total +=
+                parseFloat($(this).val()) || 0;
+
+        });
+
+        $('#total')
+            .val(total.toFixed(2));
+    }
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Initial Calculation
+    |--------------------------------------------------------------------------
+    */
+
+    $(document).ready(function() {
+
+        $('#itemsTable tbody tr').each(function() {
+
+            calculateRow($(this));
+
+        });
 
         calculateTotal();
 
-    }
-);
-
-
-/*
-|--------------------------------------------------------------------------
-| Calculate Total
-|--------------------------------------------------------------------------
-*/
-
-function calculateTotal()
-{
-    let total = 0;
-
-    $('.subtotal').each(function () {
-
-        total +=
-            parseFloat($(this).val()) || 0;
-
     });
-
-    $('#total')
-        .val(total.toFixed(2));
-}
-
 </script>
 
 @endpush

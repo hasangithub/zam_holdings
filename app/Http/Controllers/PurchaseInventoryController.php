@@ -8,6 +8,8 @@ use App\Models\PurchaseInventoryItem;
 use App\Models\Supplier;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
+
 
 class PurchaseInventoryController extends Controller
 {
@@ -95,17 +97,374 @@ class PurchaseInventoryController extends Controller
     /**
      * Show the form for editing the specified resource.
      */
-    public function edit(PurchaseInventory $purchaseInventory)
+    public function edit($id)
     {
-        //
+        $purchaseInventory = PurchaseInventory::with('items')
+            ->findOrFail($id);
+
+        $suppliers = Supplier::orderBy('name')->get();
+
+        $items = Item::orderBy('name')->get();
+
+        return view(
+            'purchase_inventories.edit',
+            compact(
+                'purchaseInventory',
+                'suppliers',
+                'items'
+            )
+        );
     }
 
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, PurchaseInventory $purchaseInventory)
+    public function update(Request $request, $id)
     {
-        //
+        try {
+
+            $request->validate([
+
+                'supplier_id' =>
+                'required|exists:suppliers,id',
+
+                'purchase_date' =>
+                'required|date',
+
+                'invoice_no' =>
+                'nullable|string|max:255',
+
+                'items' =>
+                'required|array|min:1',
+
+                'items.*.item_id' =>
+                'required|exists:items,id',
+
+                'items.*.qty' =>
+                'required|numeric|min:0.001',
+
+                'items.*.price' =>
+                'required|numeric|min:0',
+
+            ]);
+
+
+            DB::transaction(function () use ($request, $id) {
+
+                /*
+            |--------------------------------------------------------------------------
+            | Purchase Inventory
+            |--------------------------------------------------------------------------
+            */
+
+                $purchase =
+                    PurchaseInventory::lockForUpdate()
+                    ->with('items.item')
+                    ->findOrFail($id);
+
+
+                $total = 0;
+
+
+                /*
+            |--------------------------------------------------------------------------
+            | Existing Purchase Items
+            |--------------------------------------------------------------------------
+            */
+
+                $existingItems =
+                    $purchase->items->keyBy('id');
+
+
+                $submittedExistingIds = [];
+
+
+                /*
+            |--------------------------------------------------------------------------
+            | Process Submitted Items
+            |--------------------------------------------------------------------------
+            */
+
+                foreach ($request->items as $row) {
+
+                    $qty =
+                        (float) $row['qty'];
+
+                    $price =
+                        (float) $row['price'];
+
+                    $subtotal =
+                        $qty * $price;
+
+                    $total += $subtotal;
+
+
+                    /*
+                |--------------------------------------------------------------------------
+                | Existing Item
+                |--------------------------------------------------------------------------
+                */
+
+                    if (!empty($row['id'])) {
+
+                        $purchaseItem =
+                            $existingItems->get($row['id']);
+
+
+                        if (!$purchaseItem) {
+
+                            throw ValidationException::withMessages([
+
+                                'items' =>
+                                'Invalid purchase item selected.'
+
+                            ]);
+                        }
+
+
+                        $submittedExistingIds[] =
+                            $purchaseItem->id;
+
+
+                        /*
+                    |--------------------------------------------------------------------------
+                    | Calculate Already Used Quantity
+                    |--------------------------------------------------------------------------
+                    |
+                    | Original Qty - Remaining Qty
+                    |
+                    */
+
+                        $usedQty =
+                            (float) $purchaseItem->qty
+                            -
+                            (float) $purchaseItem->remaining_qty;
+
+
+                        /*
+                    |--------------------------------------------------------------------------
+                    | Calculate New Remaining Quantity
+                    |--------------------------------------------------------------------------
+                    */
+
+                        $newRemainingQty =
+                            $qty - $usedQty;
+
+
+                        /*
+                    |--------------------------------------------------------------------------
+                    | Cannot Reduce Below Already Used Quantity
+                    |--------------------------------------------------------------------------
+                    */
+
+                        if ($newRemainingQty < 0) {
+
+                            throw ValidationException::withMessages([
+
+                                'items' =>
+                                "Cannot reduce "
+                                    . $purchaseItem->item->name
+                                    . " below the quantity already used. "
+                                    . "Already used: "
+                                    . number_format(
+                                        $usedQty,
+                                        3
+                                    )
+
+                            ]);
+                        }
+
+
+                        /*
+                    |--------------------------------------------------------------------------
+                    | Update Existing Item
+                    |--------------------------------------------------------------------------
+                    */
+
+                        $purchaseItem->update([
+
+                            'item_id' =>
+                            $row['item_id'],
+
+                            'qty' =>
+                            $qty,
+
+                            'price' =>
+                            $price,
+
+                            'subtotal' =>
+                            $subtotal,
+
+                            'remaining_qty' =>
+                            $newRemainingQty,
+
+                        ]);
+                    }
+
+
+                    /*
+                |--------------------------------------------------------------------------
+                | New Item
+                |--------------------------------------------------------------------------
+                */ else {
+
+                        PurchaseInventoryItem::create([
+
+                            'purchase_id' =>
+                            $purchase->id,
+
+                            'item_id' =>
+                            $row['item_id'],
+
+                            'qty' =>
+                            $qty,
+
+                            'remaining_qty' =>
+                            $qty,
+
+                            'price' =>
+                            $price,
+
+                            'subtotal' =>
+                            $subtotal,
+
+                        ]);
+                    }
+                }
+
+
+                /*
+            |--------------------------------------------------------------------------
+            | Removed Existing Items
+            |--------------------------------------------------------------------------
+            */
+
+                foreach ($existingItems as $existingItem) {
+
+                    if (
+                        !in_array(
+                            $existingItem->id,
+                            $submittedExistingIds
+                        )
+                    ) {
+
+                        /*
+                    |--------------------------------------------------------------------------
+                    | Calculate Already Used Quantity
+                    |--------------------------------------------------------------------------
+                    */
+
+                        $usedQty =
+                            (float) $existingItem->qty
+                            -
+                            (float) $existingItem->remaining_qty;
+
+
+                        /*
+                    |--------------------------------------------------------------------------
+                    | Cannot Remove Used Item
+                    |--------------------------------------------------------------------------
+                    */
+
+                        if ($usedQty > 0) {
+
+                            throw ValidationException::withMessages([
+
+                                'items' =>
+                                "Cannot remove "
+                                    . $existingItem->item->name
+                                    . ". "
+                                    . number_format(
+                                        $usedQty,
+                                        3
+                                    )
+                                    . " quantity has already been used."
+
+                            ]);
+                        }
+
+
+                        /*
+                    |--------------------------------------------------------------------------
+                    | Safe to Delete
+                    |--------------------------------------------------------------------------
+                    */
+
+                        $existingItem->delete();
+                    }
+                }
+
+
+                /*
+            |--------------------------------------------------------------------------
+            | Update Purchase Inventory Header
+            |--------------------------------------------------------------------------
+            */
+
+                $purchase->update([
+
+                    'supplier_id' =>
+                    $request->supplier_id,
+
+                    'purchase_date' =>
+                    $request->purchase_date,
+
+                    'invoice_no' =>
+                    $request->invoice_no,
+
+                    'total' =>
+                    $total,
+
+                ]);
+            });
+
+
+            /*
+        |--------------------------------------------------------------------------
+        | Success
+        |--------------------------------------------------------------------------
+        */
+
+            return redirect()
+                ->route('purchase-inventories.index')
+                ->with(
+                    'success',
+                    'Purchase updated successfully.'
+                );
+        } catch (ValidationException $e) {
+
+            throw $e;
+        } catch (\Throwable $e) {
+
+            \Log::error(
+                'Purchase inventory update failed',
+                [
+                    'purchase_id' =>
+                    $id,
+
+                    'user_id' =>
+                    auth()->id(),
+
+                    'error' =>
+                    $e->getMessage(),
+
+                    'file' =>
+                    $e->getFile(),
+
+                    'line' =>
+                    $e->getLine(),
+
+                ]
+            );
+
+
+            return back()
+                ->withInput()
+                ->with(
+                    'error',
+                    'Unable to update the purchase. Please try again.'
+                );
+        }
     }
 
     /**

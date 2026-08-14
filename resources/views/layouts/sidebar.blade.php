@@ -255,6 +255,132 @@
                     </a>
                 </li>
 
+                <li class="nav-item has-treeview
+    {{ request()->routeIs('accounting.*') ? 'menu-open' : '' }}">
+
+                    <a href="#"
+                        class="nav-link
+       {{ request()->routeIs('accounting.*') ? 'active' : '' }}">
+
+                        <i class="nav-icon fas fa-calculator"></i>
+
+                        <p>
+                            Accounting
+                            <i class="right fas fa-angle-left"></i>
+                        </p>
+
+                    </a>
+
+
+                    <ul class="nav nav-treeview">
+
+
+                        {{-- Chart of Accounts --}}
+
+
+                        <li class="nav-item">
+
+                            <a href="{{ route('accounting.chart-of-accounts.index') }}"
+                                class="nav-link
+                   {{ request()->routeIs('accounting.chart-of-accounts.*') ? 'active' : '' }}">
+
+                                <i class="far fa-circle nav-icon"></i>
+
+                                <p>
+                                    Chart of Accounts
+                                </p>
+
+                            </a>
+
+                        </li>
+
+
+
+
+                        {{-- Account Groups --}}
+
+                        <li class="nav-item">
+
+                            <a href="{{ route('accounting.account-groups.index') }}"
+                                class="nav-link
+                   {{ request()->routeIs('accounting.account-groups.*') ? 'active' : '' }}">
+
+                                <i class="far fa-circle nav-icon"></i>
+
+                                <p>
+                                    Account Groups
+                                </p>
+
+                            </a>
+
+                        </li>
+
+
+
+
+                        {{-- Ledgers --}}
+
+
+                        <li class="nav-item">
+
+                            <a href="{{ route('accounting.ledgers.index') }}"
+                                class="nav-link
+                   {{ request()->routeIs('accounting.ledgers.*') ? 'active' : '' }}">
+
+                                <i class="far fa-circle nav-icon"></i>
+
+                                <p>
+                                    Ledgers
+                                </p>
+
+                            </a>
+
+                        </li>
+
+
+
+
+                        {{-- Sub Ledgers --}}
+
+                        <li class="nav-item">
+
+                            <a href="{{ route('accounting.sub-ledgers.index') }}"
+                                class="nav-link
+                   {{ request()->routeIs('accounting.sub-ledgers.*') ? 'active' : '' }}">
+
+                                <i class="far fa-circle nav-icon"></i>
+
+                                <p>
+                                    Sub Ledgers
+                                </p>
+
+                            </a>
+
+                        </li>
+
+
+
+
+                    </ul>
+
+                </li>
+
+                <li class="nav-item">
+
+                    <a href="{{ route('accounting.journal-entries.index') }}"
+                        class="nav-link
+       {{ request()->routeIs('accounting.journal-entries.*') ? 'active' : '' }}">
+
+                        <i class="nav-icon fas fa-book"></i>
+
+                        <p>
+                            Journal Entries
+                        </p>
+
+                    </a>
+
+                </li>
+
             </ul>
 
         </nav>

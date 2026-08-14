@@ -139,3 +139,113 @@ Route::prefix('reports')->group(function () {
 
 Route::resource('freight-records', FreightRecordController::class);
 Route::resource('/landing-costs', LandingCostController::class);
+
+
+use App\Http\Controllers\ChartOfAccountController;
+use App\Http\Controllers\AccountGroupController;
+use App\Http\Controllers\LedgerController;
+use App\Http\Controllers\SubLedgerController;
+
+Route::middleware(['auth'])->prefix('accounting')->name('accounting.')->group(function () {
+
+    /*
+    |--------------------------------------------------------------------------
+    | Chart of Accounts
+    |--------------------------------------------------------------------------
+    */
+
+    Route::get(
+        'chart-of-accounts',
+        [ChartOfAccountController::class, 'index']
+    )->name('chart-of-accounts.index');
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Account Groups
+    |--------------------------------------------------------------------------
+    */
+
+    Route::resource(
+        'account-groups',
+        AccountGroupController::class
+    )->except(['show']);
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Ledgers
+    |--------------------------------------------------------------------------
+    */
+
+    Route::resource(
+        'ledgers',
+        LedgerController::class
+    )->except(['show']);
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Sub Ledgers
+    |--------------------------------------------------------------------------
+    */
+
+    Route::resource(
+        'sub-ledgers',
+        SubLedgerController::class
+    )->except(['show']);
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | AJAX
+    |--------------------------------------------------------------------------
+    */
+
+    Route::get(
+        'ledgers/by-account-group/{accountGroup}',
+        [LedgerController::class, 'byAccountGroup']
+    )->name('ledgers.by-account-group');
+});
+
+use App\Http\Controllers\JournalEntryController;
+
+Route::middleware(['auth'])
+    ->prefix('accounting')
+    ->name('accounting.')
+    ->group(function () {
+
+        /*
+        |--------------------------------------------------------------------------
+        | Journal Entries
+        |--------------------------------------------------------------------------
+        */
+
+        Route::resource(
+            'journal-entries',
+            JournalEntryController::class
+        )->except(['show']);
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Journal Entry AJAX
+        |--------------------------------------------------------------------------
+        */
+
+        Route::get(
+            'journal-entries/account-groups/{accountType}',
+            [JournalEntryController::class, 'accountGroups']
+        )->name('journal-entries.account-groups');
+
+        Route::get(
+            'journal-entries/ledgers/{accountGroup}',
+            [JournalEntryController::class, 'ledgers']
+        )->name('journal-entries.ledgers');
+
+        Route::get(
+            'journal-entries/sub-ledgers/{ledger}',
+            [JournalEntryController::class, 'subLedgers']
+        )->name('journal-entries.sub-ledgers');
+
+    });
