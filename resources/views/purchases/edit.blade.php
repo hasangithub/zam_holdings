@@ -149,6 +149,10 @@
                             @foreach($purchase->items as $index => $purchaseItem)
 
                                 <tr>
+                                     <input
+                                type="hidden"
+                                name="items[{{ $index }}][id]"
+                                value="{{ $purchaseItem->id }}">
 
                                     <td>
 
