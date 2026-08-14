@@ -213,7 +213,7 @@ class PurchaseController extends Controller
                     */
 
                         $usedQty =
-                            (float) $purchaseItem->qty
+                            (float) $purchaseItem->qty 
                             -
                             (float) $purchaseItem->remaining_qty;
 
