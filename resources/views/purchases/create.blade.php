@@ -6,6 +6,38 @@
 
 <div class="container-fluid">
 
+    @if($errors->any())
+
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+
+        <strong>
+            Please correct the following errors:
+        </strong>
+
+        <ul class="mb-0 mt-2">
+
+            @foreach($errors->all() as $error)
+
+            <li>
+                {{ $error }}
+            </li>
+
+            @endforeach
+
+        </ul>
+
+        <button type="button"
+            class="close"
+            data-dismiss="alert"
+            aria-label="Close">
+
+            <span aria-hidden="true">&times;</span>
+
+        </button>
+
+    </div>
+
+    @endif
     <div class="card">
 
         <div class="card-header bg-dark">
@@ -44,13 +76,13 @@
 
                                 @foreach($suppliers as $supplier)
 
-                                    <option
-                                        value="{{ $supplier->id }}"
-                                        {{ old('supplier_id') == $supplier->id ? 'selected' : '' }}>
+                                <option
+                                    value="{{ $supplier->id }}"
+                                    {{ old('supplier_id') == $supplier->id ? 'selected' : '' }}>
 
-                                        {{ $supplier->name }}
+                                    {{ $supplier->name }}
 
-                                    </option>
+                                </option>
 
                                 @endforeach
 
@@ -78,35 +110,9 @@
                                 required>
 
                         </div>
-
                     </div>
-
-
-                    <div class="col-md-3">
-
-                        <div class="form-group">
-
-                            <label>
-                                Invoice No
-                            </label>
-
-                            <input
-                                type="text"
-                                name="invoice_no"
-                                class="form-control form-control-sm"
-                                value="{{ old('invoice_no') }}"
-                                placeholder="Supplier Invoice No">
-
-                        </div>
-
-                    </div>
-
                 </div>
-
-
                 <hr>
-
-
                 {{-- ITEMS TABLE --}}
                 <div class="table-responsive">
 
@@ -164,12 +170,12 @@
 
                                         @foreach($items as $item)
 
-                                            <option
-                                                value="{{ $item->id }}">
+                                        <option
+                                            value="{{ $item->id }}">
 
-                                                {{ $item->name }}
+                                            {{ $item->name }}
 
-                                            </option>
+                                        </option>
 
                                         @endforeach
 
@@ -311,12 +317,28 @@
 
 @endsection
 
-
 @push('scripts')
 
 <script>
 
 let rowIndex = 1;
+
+
+/*
+|--------------------------------------------------------------------------
+| Item Options
+|--------------------------------------------------------------------------
+*/
+
+const itemOptions = `
+    <option value="">Select Item</option>
+
+    @foreach($items as $item)
+        <option value="{{ $item->id }}">
+            {{ addslashes($item->name) }}
+        </option>
+    @endforeach
+`;
 
 
 /*
@@ -339,17 +361,7 @@ document.getElementById('addRow')
                     class="form-control form-control-sm item-select"
                     required>
 
-                    <option value="">
-                        Select Item
-                    </option>
-
-                    @foreach($items as $item)
-
-                        <option value="{{ $item->id }}">
-                            {{ $item->name }}
-                        </option>
-
-                    @endforeach
+                    ${itemOptions}
 
                 </select>
 
@@ -408,8 +420,11 @@ document.getElementById('addRow')
 
         `;
 
-        document.querySelector('#purchaseTable tbody')
+
+        document
+            .querySelector('#purchaseTable tbody')
             .insertAdjacentHTML('beforeend', row);
+
 
         rowIndex++;
 
@@ -424,14 +439,18 @@ document.getElementById('addRow')
 
 document.addEventListener('click', function(e) {
 
-    if (!e.target.closest('.removeRow')) {
+    const button = e.target.closest('.removeRow');
+
+    if (!button) {
         return;
     }
 
-    let rows =
+
+    const rows =
         document.querySelectorAll(
             '#purchaseTable tbody tr'
         );
+
 
     if (rows.length <= 1) {
 
@@ -440,7 +459,8 @@ document.addEventListener('click', function(e) {
         return;
     }
 
-    e.target.closest('tr').remove();
+
+    button.closest('tr').remove();
 
     calculateTotal();
 
@@ -449,7 +469,7 @@ document.addEventListener('click', function(e) {
 
 /*
 |--------------------------------------------------------------------------
-| Calculate Row Subtotal
+| Calculate Row
 |--------------------------------------------------------------------------
 */
 
@@ -462,8 +482,10 @@ document.addEventListener('input', function(e) {
         return;
     }
 
-    let row =
+
+    const row =
         e.target.closest('tr');
+
 
     calculateRow(row);
 
@@ -474,21 +496,24 @@ document.addEventListener('input', function(e) {
 
 function calculateRow(row)
 {
-    let qty =
+    const qty =
         parseFloat(
             row.querySelector('.qty').value
         ) || 0;
 
-    let price =
+
+    const price =
         parseFloat(
             row.querySelector('.price').value
         ) || 0;
 
-    let subtotal =
+
+    const subtotal =
         qty * price;
 
-    row.querySelector('.subtotal')
-        .value = subtotal.toFixed(2);
+
+    row.querySelector('.subtotal').value =
+        subtotal.toFixed(2);
 }
 
 
@@ -502,29 +527,32 @@ function calculateTotal()
 {
     let total = 0;
 
+
     document
         .querySelectorAll(
             '#purchaseTable tbody tr'
         )
         .forEach(function(row) {
 
-            let qty =
+            const qty =
                 parseFloat(
                     row.querySelector('.qty').value
                 ) || 0;
 
-            let price =
+
+            const price =
                 parseFloat(
                     row.querySelector('.price').value
                 ) || 0;
+
 
             total += qty * price;
 
         });
 
 
-    document.getElementById('total')
-        .value = total.toFixed(2);
+    document.getElementById('total').value =
+        total.toFixed(2);
 }
 
 </script>

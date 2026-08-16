@@ -12,6 +12,9 @@ class StockController extends Controller
                 item_id,
                 SUM(remaining_qty) as stock_qty
             ')
+            ->whereHas('item', function ($query) {
+                $query->where('item_type', 1);
+            })
             ->with('item')
             ->groupBy('item_id')
             ->orderBy('item_id')

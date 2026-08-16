@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Accounting\Accounting;
 use App\Models\Expense;
 use App\Models\ExpenseCategory;
 use App\Models\ExpenseDetail;
@@ -9,6 +10,7 @@ use App\Models\Item;
 use App\Models\PurchaseInventoryItem;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class ExpenseController extends Controller
 {
@@ -32,7 +34,7 @@ class ExpenseController extends Controller
      */
     public function create()
     {
-        $categories = ExpenseCategory::with('ledger')->get();
+        $categories = ExpenseCategory::where('type', 'fixed')->with('ledger')->get();
         $items = Item::where('item_type', 2)->get();
 
         return view('expenses.create', compact('categories', 'items'));
@@ -44,87 +46,87 @@ class ExpenseController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'expense_category_id' => 'required',
-            'expense_date' => 'required|date',
+            'expense_category_id' => ['required','exists:expense_categories,id',],
+            'expense_date' => ['required','date',],
+            'amount' => ['required','numeric','gt:0',],
+            'remarks' => ['nullable','string','max:1000',
+            ],
         ]);
 
+        try {
 
+            DB::transaction(function () use ($request) {
 
-        DB::transaction(function () use ($request) {
+                $branchId = auth()->user()->branch_id;
 
-            $category = ExpenseCategory::findOrFail($request->expense_category_id);
+                $category = ExpenseCategory::lockForUpdate()->findOrFail($request->expense_category_id);
 
-            $expense = Expense::create([
-                'expense_category_id' => $category->id,
-                'expense_date' => $request->expense_date,
-                'total_amount' => $request->amount ?? 0,
-                'remarks' => $request->remarks,
-            ]);
+                if ($category->type !== 'fixed') {
 
-            // FIXED EXPENSE
-            if ($category->type == 'fixed') {
+                    throw ValidationException::withMessages([
 
-                ExpenseDetail::create([
-                    'expense_id' => $expense->id,
-                    'amount' => $request->amount,
-                    'description' => $request->description,
+                        'expense_category_id' =>
+                        'Selected category is not a fixed operational expense.',
+
+                    ]);
+                }
+
+                $amount = (float) $request->amount;
+
+                if ($amount <= 0) {
+                    throw ValidationException::withMessages(['amount' => 'Expense amount must be greater than zero.', ]);
+                }
+
+                $expense = Expense::create([
+                    'branch_id' => $branchId,
+                    'expense_category_id' => $category->id,
+                    'expense_date' => $request->expense_date,
+                    'total_amount' => $amount,
+                    'remarks' => $request->remarks,
                 ]);
 
-                // JOURNAL (example)
-                // Dr Expense Ledger
-                // Cr Cash/Bank
-            }
+                Accounting::postJournal([
+                    'branch_id' => $branchId,
+                    'date' => $expense->expense_date,
+                    'description' => 'Operational Expense #' . $expense->id . ' - ' . $category->name,
 
-            // PACKAGING EXPENSE
-            if ($category->type == 'packaging') {
+                    'entries' => [
 
-                foreach ($request->item_id as $key => $itemId) {
+                        [
+                            'ledger_id' => $category->ledger_id,
+                            'sub_ledger_id' => null,
+                            'debit' => $amount,
+                            'credit' => 0,
+                        ],
 
-                    $qty = $request->qty[$key] ?? 0;
-                    $cost = $request->cost[$key] ?? 0;
+                        [
+                            'ledger_id' => 1,
+                            'sub_ledger_id' => null,
+                            'debit' => 0,
+                            'credit' => $amount,
+                        ],
 
-                    if ($qty <= 0) continue;
+                    ],
 
-                    ExpenseDetail::create([
-                        'expense_id' => $expense->id,
-                        'item_id' => $itemId,
-                        'qty' => $qty,
-                        'amount' => $qty * $cost,
-                    ]);
+                ]);
+            });
 
-                    // Reduce stock (recommended via stock table)
-                    $item = Item::find($itemId);
-                    $purchaseItem = PurchaseInventoryItem::where('item_id', $itemId)
-                        ->where('remaining_qty', '>', 0)
-                        ->orderBy('id') // FIFO simple
-                        ->first();
 
-                    if ($purchaseItem) {
+            return redirect()
+                ->route('expenses.index') ->with('success','Expense created successfully.');
+        } catch (ValidationException $e) {
+            return back()
+                ->withErrors($e->errors())
+                ->withInput();
+        } catch (\Throwable $e) {
 
-                        if ($purchaseItem->remaining_qty >= $qty) {
-
-                            $purchaseItem->remaining_qty -= $qty;
-                            $purchaseItem->save();
-                        } else {
-
-                            $qtyRemaining = $qty - $purchaseItem->remaining_qty;
-
-                            $purchaseItem->remaining_qty = 0;
-                            $purchaseItem->save();
-
-                            // you can continue next batch if needed (FIFO)
-                        }
-                    }
-
-                    // JOURNAL
-                    // Dr Packaging Expense
-                    // Cr Item Inventory Ledger
-                }
-            }
-        });
-
-        return redirect()->route('expenses.index')
-            ->with('success', 'Expense created successfully');
+            return back()
+                ->withInput()
+                ->with(
+                    'error',
+                    'Unable to create expense.'
+                );
+        }
     }
 
     /**

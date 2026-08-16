@@ -21,11 +21,43 @@
 
                 <div class="card-body">
 
+                    @if($errors->any())
+
+                    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+
+                        <strong>
+                            Please correct the following errors:
+                        </strong>
+
+                        <ul class="mb-0 mt-2">
+
+                            @foreach($errors->all() as $error)
+
+                            <li>
+                                {{ $error }}
+                            </li>
+
+                            @endforeach
+
+                        </ul>
+
+                        <button type="button"
+                            class="close"
+                            data-dismiss="alert"
+                            aria-label="Close">
+
+                            <span aria-hidden="true">&times;</span>
+
+                        </button>
+
+                    </div>
+
+                    @endif
+
                     <form method="POST" action="{{ route('packing-usages.store') }}"> @csrf {{-- SUMMARY CARDS --}}
-                        
                         <div class="row mb-3">
                             <div class="col-md-5"> <label>Date</label> <input type="date" name="expense_date" value="{{ date('Y-m-d') }}" class="form-control" required> </div>
-                        </div> 
+                        </div>
                         <div class="table-responsive">
                             <table class="table table-bordered table-hover" id="expenseTable">
                                 <thead class="bg-light">

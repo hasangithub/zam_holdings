@@ -219,14 +219,14 @@ class SaleController extends Controller
                         ],
 
                         [
-                            'ledger_id' => 9, // Sales
+                            'ledger_id' => 6, // Sales
                             'sub_ledger_id' => null,
                             'debit' => 0,
                             'credit' => $total,
                         ],
 
                         [
-                            'ledger_id' => 16, // COGS ledger
+                            'ledger_id' => 8, // COGS ledger
                             'sub_ledger_id' => null,
                             'debit' => $costOfGoodsSold,
                             'credit' => 0,
@@ -235,7 +235,7 @@ class SaleController extends Controller
                         // Inventory
                         [
                             'ledger_id' => 4, // Inventory ledger
-                            'sub_ledger_id' => 9, // Inventory subledger
+                            'sub_ledger_id' => 1, // Inventory subledger
                             'debit' => 0,
                             'credit' => $costOfGoodsSold,
                         ],
@@ -557,11 +557,9 @@ class SaleController extends Controller
                     */
 
                         [
-                            'ledger_id' =>
-                            3, // Accounts Receivable
+                            'ledger_id' => 3, // Accounts Receivable
 
-                            'sub_ledger_id' =>
-                            $customer->receivable_sub_ledger_id,
+                            'sub_ledger_id' => $customer->receivable_sub_ledger_id,
 
                             'debit' =>
                             $totalLkr,
@@ -578,7 +576,7 @@ class SaleController extends Controller
 
                         [
                             'ledger_id' =>
-                            10, // Sales Revenue
+                            7, // Sales Revenue
 
                             'sub_ledger_id' =>
                             null,
@@ -598,7 +596,7 @@ class SaleController extends Controller
 
                         [
                             'ledger_id' =>
-                            17, // Cost of Goods Sold
+                            9, // Cost of Goods Sold
 
                             'sub_ledger_id' =>
                             null,
@@ -621,7 +619,7 @@ class SaleController extends Controller
                             4, // Inventory
 
                             'sub_ledger_id' =>
-                            9, // Inventory sub-ledger
+                            1, // Inventory sub-ledger
 
                             'debit' =>
                             0,

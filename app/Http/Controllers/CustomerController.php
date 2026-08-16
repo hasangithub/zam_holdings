@@ -50,7 +50,7 @@ class CustomerController extends Controller
 
             $subLedger = SubLedger::create([
 
-                'ledger_id' => 7,
+                'ledger_id' => 3,
                 'name'      => $customer->name,
             ]);
 
@@ -163,7 +163,7 @@ class CustomerController extends Controller
                     'note' => $request->note,
                 ]);
 
-                if ($request->method === 'cash') {
+                if ($request->method === 'Cash') {
                     $paymentLedgerId = 1;
                     $paymentSubLedgerId = null;
                 } else {

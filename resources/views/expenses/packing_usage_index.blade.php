@@ -27,7 +27,6 @@
                 <tr>
                     <th>#</th>
                     <th>Date</th>
-                    <th>Category</th>
                     <th>Type</th>
                     <th>Total</th>
                     <th width="180">Action</th>
@@ -45,13 +44,8 @@
                         <td>
                             {{ \Carbon\Carbon::parse($expense->expense_date)->format('d-m-Y') }}
                         </td>
-
                         <td>
-                            {{ $expense->category->name ?? '' }}
-                        </td>
-
-                        <td>
-                            @if($expense->category->type == 'fixed')
+                            @if($expense->expense_category_id !== null)
                                 <span class="badge badge-info">Fixed</span>
                             @else
                                 <span class="badge badge-warning">Packaging</span>

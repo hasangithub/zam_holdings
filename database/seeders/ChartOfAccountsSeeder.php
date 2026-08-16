@@ -51,11 +51,6 @@ class ChartOfAccountsSeeder extends Seeder
             'name' => 'Sales'
         ]);
 
-        $otherIncome = AccountGroup::firstOrCreate([
-            'account_type_id' => $income->id,
-            'name' => 'Other Income'
-        ]);
-
         // EXPENSES
         $cogs = AccountGroup::firstOrCreate([
             'account_type_id' => $expenses->id,
@@ -81,7 +76,7 @@ class ChartOfAccountsSeeder extends Seeder
 
         $bank = Ledger::firstOrCreate([
             'account_group_id' => $currentAssets->id,
-            'name' => 'Bank Accounts'
+            'name' => 'Bank'
         ]);
 
         // RECEIVABLES
@@ -96,26 +91,10 @@ class ChartOfAccountsSeeder extends Seeder
             'name' => 'Inventory'
         ]);
 
-        // FIXED ASSETS
-        $vehicles = Ledger::firstOrCreate([
-            'account_group_id' => $fixedAssets->id,
-            'name' => 'Vehicles'
-        ]);
-
-        $machinery = Ledger::firstOrCreate([
-            'account_group_id' => $fixedAssets->id,
-            'name' => 'Machinery'
-        ]);
-
         // LIABILITY
         $ap = Ledger::firstOrCreate([
             'account_group_id' => $currentLiab->id,
             'name' => 'Accounts Payable'
-        ]);
-
-        $salaryPayable = Ledger::firstOrCreate([
-            'account_group_id' => $currentLiab->id,
-            'name' => 'Salaries Payable'
         ]);
 
         // INCOME
@@ -131,45 +110,33 @@ class ChartOfAccountsSeeder extends Seeder
 
         // EXPENSES
         $salaryExpense = Ledger::firstOrCreate([
-            'account_group_id' => $operating->id,
-            'name' => 'Salaries'
+            'account_group_id' => $cogs->id,
+            'name' => 'Local'
         ]);
 
         $electricity = Ledger::firstOrCreate([
-            'account_group_id' => $operating->id,
-            'name' => 'Electricity'
+            'account_group_id' => $cogs->id,
+            'name' => 'Export'
         ]);
 
         $fuel = Ledger::firstOrCreate([
-            'account_group_id' => $operating->id,
-            'name' => 'Fuel'
+            'account_group_id' => $cogs->id,
+            'name' => 'Freight Charges'
         ]);
 
         $rent = Ledger::firstOrCreate([
-            'account_group_id' => $operating->id,
-            'name' => 'Rent'
+            'account_group_id' => $cogs->id,
+            'name' => ' Packing Material'
         ]);
 
-        /*
-        =========================
-        SUB LEDGERS
-        =========================
-        */
+    SubLedger::firstOrCreate([
+            'ledger_id' => $inventory->id,
+            'name' => 'Trading Goods Inventory'
+        ]);
 
-        // CASH
-        SubLedger::firstOrCreate(['ledger_id' => $cash->id, 'name' => 'Head Office Cash']);
-        SubLedger::firstOrCreate(['ledger_id' => $cash->id, 'name' => 'Branch Cash']);
-
-        // BANK
-        SubLedger::firstOrCreate(['ledger_id' => $bank->id, 'name' => 'HNB Bank']);
-        SubLedger::firstOrCreate(['ledger_id' => $bank->id, 'name' => 'Commercial Bank']);
-
-        // RECEIVABLES (CUSTOMERS)
-        SubLedger::firstOrCreate(['ledger_id' => $ar->id, 'name' => 'Customer A']);
-        SubLedger::firstOrCreate(['ledger_id' => $ar->id, 'name' => 'Customer B']);
-
-        // PAYABLES (SUPPLIERS)
-        SubLedger::firstOrCreate(['ledger_id' => $ap->id, 'name' => 'Supplier A']);
-        SubLedger::firstOrCreate(['ledger_id' => $ap->id, 'name' => 'Supplier B']);
+  SubLedger::firstOrCreate([
+            'ledger_id' => $inventory->id,
+            'name' => 'Packing Material Inventory'
+        ]);
     }
 }

@@ -52,7 +52,7 @@ class SupplierController extends Controller
 
             $subLedger = SubLedger::create([
 
-                'ledger_id' => 7,
+                'ledger_id' => 5,
                 'name'      => $supplier->name,
             ]);
 
@@ -274,7 +274,7 @@ class SupplierController extends Controller
                     'note' => $request->note,
                 ]);
 
-                if ($request->method === 'cash') {
+                if ($request->method === 'Cash') {
                     $paymentLedgerId = 1;
                     $paymentSubLedgerId = null;
                 } else {
@@ -289,7 +289,7 @@ class SupplierController extends Controller
 
                     'entries' => [
                         [
-                            'ledger_id' => 7,
+                            'ledger_id' => 5,
                             'sub_ledger_id' => $supplier->liability_sub_ledger_id,
                             'debit' => $amount,
                             'credit' => 0,
@@ -359,7 +359,7 @@ class SupplierController extends Controller
 
                     'entries' => [
                         [
-                            'ledger_id' => 7,
+                            'ledger_id' => 5,
                             'sub_ledger_id' => $supplier->liability_sub_ledger_id,
                             'debit' => $amount,
                             'credit' => 0,

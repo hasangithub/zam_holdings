@@ -255,7 +255,7 @@ class PurchaseInventoryController extends Controller
                         4,
 
                         'sub_ledger_id' =>
-                        12,
+                        2,
 
                         'debit' =>
                         $total,
@@ -272,20 +272,15 @@ class PurchaseInventoryController extends Controller
 
                     [
                         'ledger_id' =>
-                        7,
+                        5,
 
-                        'sub_ledger_id' =>
-                        $supplier->liability_sub_ledger_id,
+                        'sub_ledger_id' => $supplier->liability_sub_ledger_id,
 
                         'debit' =>
                         0,
 
                         'credit' =>
                         $total,
-
-                        'description' =>
-                        'Supplier payable',
-
                     ],
 
                 ],

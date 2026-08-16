@@ -24,7 +24,7 @@ class PurchaseController extends Controller
     {
         return view('purchases.create', [
             'suppliers' => Supplier::all(),
-            'items' => Item::all()
+            'items' => Item::where('item_type', 1)->get()
         ]);
     }
 
@@ -36,10 +36,22 @@ class PurchaseController extends Controller
             $request->supplier_id
         );
 
+        if (!$supplier->liability_sub_ledger_id) {
+
+                throw ValidationException::withMessages([
+
+                    'supplier_id' =>
+                        'This supplier does not have a liability subledger. '
+                        . 'Please configure the supplier accounting account first.',
+
+                ]);
+            }
+
+
         $purchase = Purchase::create([
             'branch_id' => $branchId,
             'supplier_id' => $request->supplier_id,
-            'purchase_date' => now(),
+            'purchase_date' => $request->purchase_date,
             'total' => 0
         ]);
 
@@ -63,18 +75,18 @@ class PurchaseController extends Controller
 
         Accounting::postJournal([
             'branch_id' => $branchId,
-            'date' => '2026-04-04',
+            'date' => $request->purchase_date,
             'description' => 'Purchase Invoice',
 
             'entries' => [
                 [
                     'ledger_id' => 4,
-                    'sub_ledger_id' => 9,
+                    'sub_ledger_id' => 1,
                     'debit' => $total,
                     'credit' => 0,
                 ],
                 [
-                    'ledger_id' => 7,
+                    'ledger_id' => 5,
                     'sub_ledger_id' =>  $supplier->liability_sub_ledger_id,
                     'debit' => 0,
                     'credit' => $total,

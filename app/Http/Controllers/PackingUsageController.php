@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Accounting\Accounting;
 use App\Models\Expense;
 use App\Models\ExpenseCategory;
 use App\Models\ExpenseDetail;
@@ -9,6 +10,7 @@ use App\Models\Item;
 use App\Models\PurchaseInventoryItem;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class PackingUsageController extends Controller
 {
@@ -17,10 +19,7 @@ class PackingUsageController extends Controller
      */
     public function index()
     {
-        $expenses = Expense::with('category')
-            ->whereHas('category', function ($q) {
-                $q->where('type', 'packaging');
-            })
+        $expenses = Expense::whereNull('expense_category_id')
             ->latest()
             ->get();
 
@@ -32,7 +31,7 @@ class PackingUsageController extends Controller
      */
     public function create()
     {
-        $categories = ExpenseCategory::with('ledger')->get();
+        $categories = ExpenseCategory::where('type', 'packaging')->with('ledger')->get();
         $items = Item::where('item_type', 2)->get();
 
         return view('expenses.packing_usage_create', compact('categories', 'items'));
@@ -43,76 +42,154 @@ class PackingUsageController extends Controller
      */
     public function store(Request $request)
     {
-
         $request->validate([
             'expense_date' => 'required|date',
+            'items' => 'required|array|min:1',
+            'items.*.item_id' =>
+            'required|exists:items,id',
+            'items.*.qty' =>
+            'required|numeric|gt:0',
         ]);
 
-        DB::transaction(function () use ($request) {
+        try {
 
-            $expense = Expense::create([
-                'expense_category_id' => 2,
-                'expense_date' => $request->expense_date,
-                'total_amount' => 0,
-                'remarks' => $request->remarks,
-            ]);
+            DB::transaction(function () use ($request) {
 
-            $totalAmount = 0;
+                $branchId = auth()->user()->branch_id;
 
-            foreach ($request->items as $row) {
-
-                $itemId = $row['item_id'];
-                $qty    = $row['qty'] ?? 0;
-                $cost   = $row['price'] ?? 0;
-
-                $lineAmount = $qty * $cost;
-                $totalAmount += $lineAmount;
-
-                if ($qty <= 0) continue;
-
-                ExpenseDetail::create([
-                    'expense_id' => $expense->id,
-                    'item_id' => $itemId,
-                    'qty' => $qty,
-                    'amount' => $lineAmount,
+                $expense = Expense::create([
+                    'branch_id' => $branchId,
+                    'expense_category_id' => null,
+                    'expense_date' => $request->expense_date,
+                    'total_amount' => 0,
+                    'remarks' => $request->remarks,
                 ]);
 
-                // Reduce stock (recommended via stock table)
-                $item = Item::find($itemId);
-                $purchaseItem = PurchaseInventoryItem::where('item_id', $itemId)
-                    ->where('remaining_qty', '>', 0)
-                    ->orderBy('id') // FIFO simple
-                    ->first();
+                $totalAmount = 0;
 
-                if ($purchaseItem) {
+                foreach ($request->items as $row) {
 
-                    if ($purchaseItem->remaining_qty >= $qty) {
+                    $itemId = (int) $row['item_id'];
+                    $qtyRequired = (float) $row['qty'];
+                    $remainingToDeduct = $qtyRequired;
 
-                        $purchaseItem->remaining_qty -= $qty;
-                        $purchaseItem->save();
-                    } else {
+                    $batches = PurchaseInventoryItem::where('item_id', $itemId)->where('remaining_qty','>',0)->orderBy('id')->lockForUpdate()->get();
 
-                        $qtyRemaining = $qty - $purchaseItem->remaining_qty;
+                    $availableQty =
+                        $batches->sum(
+                            fn($batch) =>
+                            (float) $batch->remaining_qty
+                        );
 
-                        $purchaseItem->remaining_qty = 0;
-                        $purchaseItem->save();
+                    if ($availableQty < $qtyRequired) {
 
-                        // you can continue next batch if needed (FIFO)
+                        throw ValidationException::withMessages([
+
+                            'items' =>
+                            "Not enough packing material stock "
+                                . "for item ID {$itemId}. "
+                                . "Available: "
+                                . number_format(
+                                    $availableQty,
+                                    3
+                                )
+                                . ", Required: "
+                                . number_format(
+                                    $qtyRequired,
+                                    3
+                                ),
+
+                        ]);
                     }
+
+                    $lineAmount = 0;
+
+                    foreach ($batches as $batch) {
+
+                        if ($remainingToDeduct <= 0) {
+                            break;
+                        }
+
+                        $batchQty = (float) $batch->remaining_qty;
+                        $batchCost = (float) $batch->price;
+
+                        $deductQty = min( $batchQty, $remainingToDeduct);
+
+                        $lineAmount += $deductQty * $batchCost;
+
+                        $batch->remaining_qty = $batchQty - $deductQty;
+                        $batch->save();
+
+                        $remainingToDeduct -= $deductQty;
+                    }
+
+                    if ($remainingToDeduct > 0) {
+
+                        throw new \RuntimeException(
+                            'Stock deduction failed.'
+                        );
+                    }
+
+                    ExpenseDetail::create([
+                        'expense_id' => $expense->id,
+                        'item_id' => $itemId,
+                        'qty' => $qtyRequired,
+                        'amount' => $lineAmount,
+                    ]);
+
+                    $totalAmount += $lineAmount;
                 }
 
-                // JOURNAL
-                // Dr Packaging Expense
-                // Cr Item Inventory Ledger
-            }
+                $expense->update(['total_amount' => $totalAmount]);
 
-            $expense->update([
-                'total_amount' => $totalAmount
-            ]);
-        });
+                Accounting::postJournal([
 
-        return redirect()->route('packing-usages.index')
-            ->with('success', 'Packing Usages created successfully');
+                    'branch_id' => $branchId,
+                    'date' => $expense->expense_date,
+                    'description' => 'Packing Material Usage #' . $expense->id,
+
+                    'entries' => [
+
+                        [
+                            'ledger_id' => 11, // COGS
+                            'sub_ledger_id' => null, // Packing Material Cost
+                            'debit' => $totalAmount,
+                            'credit' => 0,
+                        ],
+
+                        [
+                            'ledger_id' => 4, // Inventory
+                            'sub_ledger_id' => 2, // Packing Material Inventory
+                            'debit' => 0,
+                            'credit' => $totalAmount,
+                        ],
+
+                    ],
+
+                ]);
+            });
+
+
+            return redirect()
+                ->route('packing-usages.index')
+                ->with(
+                    'success',
+                    'Packing Usage created successfully.'
+                );
+        } catch (ValidationException $e) {
+
+            return back()
+                ->withErrors($e->errors())
+                ->withInput();
+        } catch (\Throwable $e) {
+
+            return back()
+                ->withInput()
+                ->with(
+                    'error',
+                    'Unable to create packing usage.'
+                );
+        }
     }
 
     /**

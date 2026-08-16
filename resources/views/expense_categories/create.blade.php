@@ -17,6 +17,39 @@
                 </h3>
             </div>
 
+            @if($errors->any())
+
+            <div class="alert alert-danger alert-dismissible fade show" role="alert">
+
+                <strong>
+                    Please correct the following errors:
+                </strong>
+
+                <ul class="mb-0 mt-2">
+
+                    @foreach($errors->all() as $error)
+
+                    <li>
+                        {{ $error }}
+                    </li>
+
+                    @endforeach
+
+                </ul>
+
+                <button type="button"
+                    class="close"
+                    data-dismiss="alert"
+                    aria-label="Close">
+
+                    <span aria-hidden="true">&times;</span>
+
+                </button>
+
+            </div>
+
+            @endif
+
             <form method="POST" action="{{ route('expense-categories.store') }}">
                 @csrf
 
@@ -43,23 +76,6 @@
                         @enderror
 
                     </div>
-
-                    <div class="form-group">
-                        <label>Type</label>
-
-                        <select name="type" class="form-control">
-
-                            <option value="fixed" selected>
-                                Fixed
-                            </option>
-
-                            <option value="Packing">
-                                Packing
-                            </option>
-
-                        </select>
-                    </div>
-
                 </div>
 
                 <div class="card-footer">
