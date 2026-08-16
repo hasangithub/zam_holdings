@@ -17,6 +17,7 @@ class Customer extends Model
         'consignee_address',
         'customer_code',
         'phone',
+        'receivable_sub_ledger_id',
     ];
 }
 

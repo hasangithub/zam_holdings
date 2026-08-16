@@ -65,6 +65,39 @@
 
         <div class="card-body p-0">
 
+            @if($errors->any())
+
+            <div class="alert alert-danger alert-dismissible fade show" role="alert">
+
+                <strong>
+                    Please correct the following errors:
+                </strong>
+
+                <ul class="mb-0 mt-2">
+
+                    @foreach($errors->all() as $error)
+
+                    <li>
+                        {{ $error }}
+                    </li>
+
+                    @endforeach
+
+                </ul>
+
+                <button type="button"
+                    class="close"
+                    data-dismiss="alert"
+                    aria-label="Close">
+
+                    <span aria-hidden="true">&times;</span>
+
+                </button>
+
+            </div>
+
+            @endif
+
             <div class="table-responsive">
 
                 <table class="table table-bordered mb-0 table-sm">
@@ -88,9 +121,9 @@
                             <td>{{ $row['module'] }}</td>
                             <td>
                                 @if($row['type'] == 'Purchase')
-                                    <span class="badge badge-danger">Purchase</span>
+                                <span class="badge badge-danger">Purchase</span>
                                 @else
-                                    <span class="badge badge-success">Payment</span>
+                                <span class="badge badge-success">Payment</span>
                                 @endif
                             </td>
 
@@ -152,7 +185,7 @@
                     <div class="form-group">
                         <label>Date</label>
                         <input type="date" name="payment_date" class="form-control"
-                               value="{{ date('Y-m-d') }}">
+                            value="{{ date('Y-m-d') }}">
                     </div>
 
                     <div class="form-group">
@@ -214,7 +247,7 @@
                     <div class="form-group">
                         <label>Date</label>
                         <input type="date" name="payment_date" class="form-control"
-                               value="{{ date('Y-m-d') }}">
+                            value="{{ date('Y-m-d') }}">
                     </div>
 
                     <div class="form-group">

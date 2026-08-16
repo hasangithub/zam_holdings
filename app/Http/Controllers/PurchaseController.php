@@ -32,6 +32,10 @@ class PurchaseController extends Controller
     {
         $branchId = auth()->user()->branch_id;
 
+        $supplier = Supplier::findOrFail(
+            $request->supplier_id
+        );
+
         $purchase = Purchase::create([
             'branch_id' => $branchId,
             'supplier_id' => $request->supplier_id,
@@ -55,26 +59,28 @@ class PurchaseController extends Controller
             ]);
         }
 
-        $purchase->update(['total' => $total]);
+        $purchase->update(['total' => $total, 'balance_amount' => $total]);
 
-        // Accounting::postJournal([
-        //     'branch_id' => $branchId,
-        //     'date' => '2026-04-04',
-        //     'description' => 'Purchase Invoice ',
+        Accounting::postJournal([
+            'branch_id' => $branchId,
+            'date' => '2026-04-04',
+            'description' => 'Purchase Invoice',
 
-        //     'entries' => [
-        //         [
-        //             'ledger_id' => 1,
-        //             'debit' => 1000,
-        //             'credit' => 0,
-        //         ],
-        //         [
-        //             'ledger_id' => 2,
-        //             'debit' => 0,
-        //             'credit' => 1000,
-        //         ],
-        //     ]
-        // ]);
+            'entries' => [
+                [
+                    'ledger_id' => 4,
+                    'sub_ledger_id' => 9,
+                    'debit' => $total,
+                    'credit' => 0,
+                ],
+                [
+                    'ledger_id' => 7,
+                    'sub_ledger_id' =>  $supplier->liability_sub_ledger_id,
+                    'debit' => 0,
+                    'credit' => $total,
+                ],
+            ]
+        ]);
 
         return redirect()->route('purchases.index');
     }
@@ -155,7 +161,7 @@ class PurchaseController extends Controller
                 'required|numeric|min:0',
             ]);
 
-       
+
 
 
             DB::transaction(function () use ($request, $id) {
@@ -213,7 +219,7 @@ class PurchaseController extends Controller
                     */
 
                         $usedQty =
-                            (float) $purchaseItem->qty 
+                            (float) $purchaseItem->qty
                             -
                             (float) $purchaseItem->remaining_qty;
 

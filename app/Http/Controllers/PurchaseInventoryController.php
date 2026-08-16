@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Accounting\Accounting;
 use App\Models\Item;
 use App\Models\PurchaseInventory;
 use App\Models\PurchaseInventoryItem;
@@ -48,42 +49,257 @@ class PurchaseInventoryController extends Controller
     {
         $branchId = auth()->user()->branch_id;
 
+        /*
+    |--------------------------------------------------------------------------
+    | Validation
+    |--------------------------------------------------------------------------
+    */
+
         $request->validate([
-            'supplier_id' => 'required',
-            'purchase_date' => 'required|date',
-            'item_id.*' => 'required',
-            'qty.*' => 'required|numeric|min:1',
-            'price.*' => 'required|numeric|min:0',
+
+            'supplier_id' =>
+            'required|exists:suppliers,id',
+
+            'purchase_date' =>
+            'required|date',
+
+            'item_id' =>
+            'required|array|min:1',
+
+            'item_id.*' =>
+            'required|exists:items,id',
+
+            'qty' =>
+            'required|array|min:1',
+
+            'qty.*' =>
+            'required|numeric|min:0.001',
+
+            'price' =>
+            'required|array|min:1',
+
+            'price.*' =>
+            'required|numeric|min:0',
+
         ]);
+
+
+        /*
+    |--------------------------------------------------------------------------
+    | Transaction
+    |--------------------------------------------------------------------------
+    */
 
         DB::transaction(function () use ($request, $branchId) {
 
+            /*
+        |--------------------------------------------------------------------------
+        | Supplier
+        |--------------------------------------------------------------------------
+        */
+
+            $supplier = Supplier::lockForUpdate()
+                ->findOrFail($request->supplier_id);
+
+
+            /*
+        |--------------------------------------------------------------------------
+        | Supplier Must Have Liability Sub Ledger
+        |--------------------------------------------------------------------------
+        */
+
+            if (!$supplier->liability_sub_ledger_id) {
+
+                throw new \Exception(
+                    'Supplier does not have a liability sub ledger.'
+                );
+            }
+
+
+            /*
+        |--------------------------------------------------------------------------
+        | Create Purchase Inventory Header
+        |--------------------------------------------------------------------------
+        */
+
             $purchase = PurchaseInventory::create([
-                'branch_id' => $branchId,
-                'supplier_id' => $request->supplier_id,
-                'purchase_date' => $request->purchase_date,
-                'total' => $request->total,
-                'paid_amount' => $request->paid_amount ?? 0,
-                'balance_amount' => $request->total - ($request->paid_amount ?? 0),
-                'payment_status' => $request->balance_amount <= 0 ? 'paid' : 'partial',
+
+                'branch_id' =>
+                $branchId,
+
+                'supplier_id' =>
+                $supplier->id,
+
+                'purchase_date' =>
+                $request->purchase_date,
+
+                'total' =>
+                0,
+
+                'paid_amount' =>
+                0,
+
+                'balance_amount' =>
+                0,
+
+                'payment_status' =>
+                'unpaid',
+
             ]);
+
+
+            $total = 0;
+
+
+            /*
+        |--------------------------------------------------------------------------
+        | Create Purchase Items
+        |--------------------------------------------------------------------------
+        */
 
             foreach ($request->item_id as $key => $itemId) {
 
+                $qty =
+                    (float) $request->qty[$key];
+
+                $price =
+                    (float) $request->price[$key];
+
+                $subtotal =
+                    $qty * $price;
+
+                $total += $subtotal;
+
+
                 PurchaseInventoryItem::create([
-                    'purchase_inventory_id' => $purchase->id,
-                    'item_id' => $itemId,
-                    'qty' => $request->qty[$key],
-                    'remaining_qty' => $request->qty[$key],
-                    'price' => $request->price[$key],
-                    'subtotal' => $request->subtotal[$key],
+
+                    'purchase_inventory_id' =>
+                    $purchase->id,
+
+                    'item_id' =>
+                    $itemId,
+
+                    'qty' =>
+                    $qty,
+
+                    /*
+                |--------------------------------------------------------------------------
+                | Initially entire quantity is available
+                |--------------------------------------------------------------------------
+                */
+
+                    'remaining_qty' =>
+                    $qty,
+
+                    'price' =>
+                    $price,
+
+                    'subtotal' =>
+                    $subtotal,
+
                 ]);
             }
+
+
+            /*
+        |--------------------------------------------------------------------------
+        | Update Purchase Totals
+        |--------------------------------------------------------------------------
+        */
+
+            $purchase->update([
+
+                'total' =>
+                $total,
+
+                'paid_amount' =>
+                0,
+
+                'balance_amount' =>
+                $total,
+
+                'payment_status' =>
+                $total > 0
+                    ? 'unpaid'
+                    : 'paid',
+
+            ]);
+
+
+            /*
+        |--------------------------------------------------------------------------
+        | Accounting
+        |--------------------------------------------------------------------------
+        */
+
+            Accounting::postJournal([
+
+                'branch_id' =>
+                $branchId,
+
+                'date' =>
+                $request->purchase_date,
+
+                'description' => 'Purchase Packing Material - '. $supplier->name,
+
+                'entries' => [
+
+                    /*
+                |--------------------------------------------------------------------------
+                | DEBIT Inventory
+                |--------------------------------------------------------------------------
+                */
+
+                    [
+                        'ledger_id' =>
+                        4,
+
+                        'sub_ledger_id' =>
+                        12,
+
+                        'debit' =>
+                        $total,
+
+                        'credit' =>
+                        0,
+                    ],
+
+                    /*
+                |--------------------------------------------------------------------------
+                | CREDIT Supplier Payable
+                |--------------------------------------------------------------------------
+                */
+
+                    [
+                        'ledger_id' =>
+                        7,
+
+                        'sub_ledger_id' =>
+                        $supplier->liability_sub_ledger_id,
+
+                        'debit' =>
+                        0,
+
+                        'credit' =>
+                        $total,
+
+                        'description' =>
+                        'Supplier payable',
+
+                    ],
+
+                ],
+
+            ]);
         });
+
 
         return redirect()
             ->route('purchase-inventories.index')
-            ->with('success', 'Purchase saved successfully');
+            ->with(
+                'success',
+                'Purchase saved successfully'
+            );
     }
 
     /**

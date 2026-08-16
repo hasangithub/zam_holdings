@@ -14,6 +14,14 @@ class Supplier extends Model
         'company_name',
         'phone',
         'address',
+        'liability_sub_ledger_id'
     ];
-}
 
+    public function liabilitySubLedger()
+    {
+        return $this->belongsTo(
+            SubLedger::class,
+            'liability_sub_ledger_id'
+        );
+    }
+}

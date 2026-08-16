@@ -10,9 +10,6 @@ class PurchaseInventory extends Model
         'supplier_id',
         'purchase_date',
         'total',
-        'paid_amount',
-        'balance_amount',
-        'payment_status',
     ];
     
     public function supplier()

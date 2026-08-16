@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Accounting\Accounting;
 use App\Models\Sale;
 use App\Models\SaleItem;
 use App\Models\Customer;
@@ -9,6 +10,7 @@ use App\Models\Item;
 use App\Models\PurchaseItem;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class SaleController extends Controller
 {
@@ -50,7 +52,7 @@ class SaleController extends Controller
 
     public function createExport()
     {
-        $customers = Customer::all();
+        $customers = Customer::where('customer_type', 'export')->get();
 
         $stocks = DB::table('purchase_items')
             ->join('items', 'items.id', '=', 'purchase_items.item_id')
@@ -70,164 +72,602 @@ class SaleController extends Controller
 
     public function store(Request $request)
     {
-        $customer = Customer::findOrFail($request->customer_id);
+        $request->validate([
+            'customer_id' => 'required|exists:customers,id',
 
-        $sale = Sale::create([
-            'customer_id' => $request->customer_id,
-            'sale_date' => now(),
-            'currency'       => 'LKR',
-            'exchange_rate'  => 1,
-            'total'          => 0,
-            'total_foreign'  => 0,
-            'invoice_id' =>  $this->generateInvoiceId($customer->name),
+            'items' => 'required|array|min:1',
+
+            'items.*.group_key' => 'required',
+            'items.*.qty' => 'required|numeric|gt:0',
+            'items.*.sale_price' => 'nullable|numeric|min:0',
         ]);
 
-        $total = 0;
-       
-        foreach ($request->items as $row) {
+        try {
 
-            list($item_id, $price) = explode('|', $row['group_key']);
+            $sale = DB::transaction(function () use ($request) {
 
-            $qtyNeeded = $row['qty'];
+                $customer = Customer::lockForUpdate()->findOrFail($request->customer_id);
 
-            $batches = PurchaseItem::where('item_id', $item_id)
-                ->where('price', $price)
-                ->where('remaining_qty', '>', 0)
-                ->orderBy('id') // FIFO
-                ->get();
+                $sale = Sale::create([
+                    'customer_id' => $customer->id,
+                    'sale_date' => now(),
+                    'currency' => 'LKR',
+                    'exchange_rate' => 1,
+                    'total' => 0,
+                    'total_foreign' => 0,
+                    'invoice_id' =>
+                    $this->generateInvoiceId(
+                        $customer->name
+                    ),
+                ]);
 
-            // dd($batches);
+                $total = 0;
+                $costOfGoodsSold = 0;
 
-            foreach ($batches as $batch) {
-                if ($qtyNeeded <= 0) break;
+                foreach ($request->items as $row) {
 
-                $deduct = min($batch->remaining_qty, $qtyNeeded);
-                $batch->decrement('remaining_qty', $deduct);
-                $qtyNeeded -= $deduct;
-            }
+                    [$itemId, $price] = explode('|', $row['group_key']);
 
-            if ($qtyNeeded > 0) {
-                return back()->with('error', 'Not enough stock for item');
-            }
+                    $itemId = (int) $itemId;
+                    $price = (float) $price;
+                    $qtyNeeded = (float) $row['qty'];
 
-            $salePrice = $row['sale_price'] ?? $price;
-            $subtotal = $row['qty'] * $salePrice;
+                    $batches = PurchaseItem::where('item_id', $itemId)->where('price', $price)->where('remaining_qty', '>', 0)
+                        ->orderBy('id')
+                        ->lockForUpdate()
+                        ->get();
 
-            SaleItem::create([
-                'sale_id' => $sale->id,
-                'item_id' => $item_id,
-                'qty' => $row['qty'],
-                'sale_price' => $salePrice,
-                'base_price' => $price,
-                'subtotal' => $subtotal,
-                'sale_price_foreign' => 0,
-                'sub_total_foreign'  => 0,
-            ]);
+                    $availableQty = $batches->sum(
+                        fn($batch) =>
+                        (float) $batch->remaining_qty
+                    );
 
-            $total += $subtotal;
+
+                    if ($availableQty < $qtyNeeded) {
+
+                        throw ValidationException::withMessages([
+
+                            'items' =>
+                            "Not enough stock for item ID {$itemId}. "
+                                . "Available: "
+                                . number_format(
+                                    $availableQty,
+                                    3
+                                )
+                                . ", Required: "
+                                . number_format(
+                                    $qtyNeeded,
+                                    3
+                                ),
+
+                        ]);
+                    }
+                    $remainingToDeduct = $qtyNeeded;
+
+                    foreach ($batches as $batch) {
+
+                        if ($remainingToDeduct <= 0) {
+                            break;
+                        }
+
+
+                        $deduct = min(
+                            (float) $batch->remaining_qty,
+                            $remainingToDeduct
+                        );
+
+                        $costOfGoodsSold += $deduct * (float) $batch->price;
+
+                        $batch->decrement(
+                            'remaining_qty',
+                            $deduct
+                        );
+
+
+                        $remainingToDeduct -= $deduct;
+                    }
+
+                    $salePrice =
+                        isset($row['sale_price'])
+                        ? (float) $row['sale_price']
+                        : $price;
+
+
+                    $subtotal =
+                        $qtyNeeded * $salePrice;
+
+                    SaleItem::create([
+
+                        'sale_id' => $sale->id,
+                        'item_id' => $itemId,
+                        'qty' => $qtyNeeded,
+                        'sale_price' => $salePrice,
+                        'base_price' => $price,
+                        'subtotal' => $subtotal,
+                        'sale_price_foreign' => 0,
+                        'sub_total_foreign' => 0,
+                    ]);
+
+                    $total += $subtotal;
+                }
+
+                $sale->update([
+                    'total' => $total,
+                    'total_foreign' => 0,
+                ]);
+
+                Accounting::postJournal([
+
+                    'branch_id' => auth()->user()->branch_id,
+                    'date' => $sale->sale_date,
+                    'description' =>
+                    'Credit Sale - Invoice ' . $sale->invoice_id,
+
+                    'entries' => [
+
+                        /*
+                    |--------------------------------------------------------------------------
+                    | Customer Receivable
+                    |--------------------------------------------------------------------------
+                    */
+
+                        [
+                            'ledger_id' => 3, // Accounts Receivable
+                            'sub_ledger_id' => $customer->receivable_sub_ledger_id,
+                            'debit' => $total,
+                            'credit' => 0,
+                        ],
+
+                        [
+                            'ledger_id' => 9, // Sales
+                            'sub_ledger_id' => null,
+                            'debit' => 0,
+                            'credit' => $total,
+                        ],
+
+                        [
+                            'ledger_id' => 16, // COGS ledger
+                            'sub_ledger_id' => null,
+                            'debit' => $costOfGoodsSold,
+                            'credit' => 0,
+                        ],
+
+                        // Inventory
+                        [
+                            'ledger_id' => 4, // Inventory ledger
+                            'sub_ledger_id' => 9, // Inventory subledger
+                            'debit' => 0,
+                            'credit' => $costOfGoodsSold,
+                        ],
+                    ],
+
+                ]);
+
+                return $sale;
+            });
+
+
+            return redirect()->route('sales.index')->with('success', 'Sale created successfully.');
+        } catch (ValidationException $e) {
+
+            return back()
+                ->withErrors($e->errors())
+                ->withInput();
+        } catch (\Throwable $e) {
+
+            return back()->withInput()->with('error', 'Unable to create sale. Please try again.');
         }
-
-        $sale->update(['total' => $total, 'balance_amount' => $total, 'total_foreign'  => 0]);
-
-        return redirect()->route('sales.index');
     }
 
     public function storeExport(Request $request)
     {
-        $customer = Customer::findOrFail($request->customer_id);
-        $branchId = auth()->user()->branch_id;
+        $request->validate([
+            'customer_id' => 'required|exists:customers,id',
+            'exchange_rate' => 'required|numeric|gt:0',
 
-        $sale = Sale::create([
-            'branch_id'      => $branchId,
-            'customer_id'    => $request->customer_id,
-            'sale_date'      => now(),
-            'currency'       => 'USD',
-            'exchange_rate'  => $request->exchange_rate,
-            'total'          => 0,
-            'total_foreign'  => 0,
-            'total_paid'     => 0,
-            'balance_amount' => 0,
-            'invoice_id'     => $this->generateInvoiceId($customer->customer_code),
-            'consignor'      => $request->consignor,
-            'consignee_name'    => $request->port_of_loading,
-            'consignee_address' => $request->port_of_loading,
-            'port_of_loading'   => $request->port_of_loading,
-            'country_of_orgin'  => $request->country_of_orgin,
-            'mode_of_payment'   => $request->mode_of_payment,
-            'mode_of_shipping'  => $request->mode_of_shipping,
-            'flight_no'          => $request->flight_no,
+            'items' => 'required|array|min:1',
+
+            'items.*.group_key' => 'required',
+            'items.*.qty' => 'required|numeric|gt:0',
+            'items.*.sale_price_foreign' =>
+            'required|numeric|min:0',
         ]);
 
-        $totalLkr = 0;
-        $totalUsd = 0;
+        try {
 
-        foreach ($request->items as $row) {
+            $sale = DB::transaction(function () use ($request) {
 
-            list($item_id, $price, $stock) = explode('|', $row['group_key']);
+                $branchId = auth()->user()->branch_id;
 
-            $qtyNeeded = $row['qty'];
+                $customer = Customer::lockForUpdate()->findOrFail($request->customer_id);
 
-            // =========================
-            // STOCK DEDUCTION (UNCHANGED)
-            // =========================
-            $batches = PurchaseItem::where('item_id', $item_id)
-                ->where('price', $price)
-                ->where('remaining_qty', '>', 0)
-                ->orderBy('id')
-                ->get();
+                $exchangeRate = (float) $request->exchange_rate;
 
-            foreach ($batches as $batch) {
+                $sale = Sale::create([
 
-                if ($qtyNeeded <= 0) break;
+                    'branch_id' =>
+                    $branchId,
 
-                $deduct = min($batch->remaining_qty, $qtyNeeded);
+                    'customer_id' =>
+                    $customer->id,
 
-                $batch->decrement('remaining_qty', $deduct);
+                    'sale_date' =>
+                    now(),
 
-                $qtyNeeded -= $deduct;
-            }
+                    'currency' =>
+                    'USD',
 
-            if ($qtyNeeded > 0) {
-                return back()->with('error', 'Not enough stock for item');
-            }
+                    'exchange_rate' =>
+                    $exchangeRate,
 
-            // =========================
-            // EXPORT PRICING (USD)
-            // =========================
-            $salePriceUsd = $row['sale_price_foreign'];
+                    'total' =>
+                    0,
 
-            $subtotalUsd = $row['qty'] * $salePriceUsd;
-            $subtotalLkr = $subtotalUsd * $sale->exchange_rate;
+                    'total_foreign' =>
+                    0,
 
-            SaleItem::create([
-                'sale_id' => $sale->id,
-                'item_id' => $item_id,
+                    'invoice_id' =>
+                    $this->generateInvoiceId(
+                        $customer->customer_code
+                    ),
 
-                'qty' => $row['qty'],
+                    'consignor' =>
+                    $request->consignor,
 
-                // LKR base reference (same as local system)
-                'base_price' => $price,
+                    'consignee_name' =>
+                    $request->consignee_name,
 
-                // USD values
-                'sale_price_foreign' => $salePriceUsd,
-                'sub_total_foreign'  => $subtotalUsd,
+                    'consignee_address' =>
+                    $request->consignee_address,
 
-                // LKR converted values
-                'sale_price' => $salePriceUsd * $sale->exchange_rate,
-                'subtotal'   => $subtotalLkr,
-            ]);
+                    'port_of_loading' =>
+                    $request->port_of_loading,
 
-            $totalUsd += $subtotalUsd;
-            $totalLkr += $subtotalLkr;
+                    'country_of_orgin' =>
+                    $request->country_of_orgin,
+
+                    'mode_of_payment' =>
+                    $request->mode_of_payment,
+
+                    'mode_of_shipping' =>
+                    $request->mode_of_shipping,
+
+                    'flight_no' =>
+                    $request->flight_no,
+
+                ]);
+
+
+                $totalUsd = 0;
+                $totalLkr = 0;
+                $totalCogs = 0;
+
+                foreach ($request->items as $row) {
+
+                    [$itemId, $price, $stock] =
+                        explode('|', $row['group_key']);
+
+
+                    $itemId = (int) $itemId;
+
+                    $quantity = (float) $row['qty'];
+
+                    $remainingToDeduct = $quantity;
+
+                    $batches = PurchaseItem::where(
+                        'item_id',
+                        $itemId
+                    )
+                        ->where(
+                            'remaining_qty',
+                            '>',
+                            0
+                        )
+                        ->orderBy('id')
+                        ->lockForUpdate()
+                        ->get();
+
+
+                    $availableQty = $batches->sum(
+                        fn($batch) =>
+                        (float) $batch->remaining_qty
+                    );
+
+
+                    if ($availableQty < $quantity) {
+
+                        throw ValidationException::withMessages([
+
+                            'items' =>
+                            "Not enough stock for item ID "
+                                . $itemId
+                                . ". Available: "
+                                . number_format(
+                                    $availableQty,
+                                    3
+                                )
+                                . ", Required: "
+                                . number_format(
+                                    $quantity,
+                                    3
+                                ),
+
+                        ]);
+                    }
+
+
+                    /*
+                |--------------------------------------------------------------------------
+                | FIFO Deduction + COGS
+                |--------------------------------------------------------------------------
+                */
+
+                    foreach ($batches as $batch) {
+
+                        if ($remainingToDeduct <= 0) {
+                            break;
+                        }
+
+
+                        $deduct = min(
+                            (float) $batch->remaining_qty,
+                            $remainingToDeduct
+                        );
+
+
+                        /*
+                    |--------------------------------------------------------------------------
+                    | COGS
+                    |--------------------------------------------------------------------------
+                    */
+
+                        $totalCogs +=
+                            $deduct *
+                            (float) $batch->price;
+
+
+                        /*
+                    |--------------------------------------------------------------------------
+                    | Reduce Stock
+                    |--------------------------------------------------------------------------
+                    */
+
+                        $batch->decrement(
+                            'remaining_qty',
+                            $deduct
+                        );
+
+
+                        $remainingToDeduct -= $deduct;
+                    }
+
+
+                    /*
+                |--------------------------------------------------------------------------
+                | USD Selling Price
+                |--------------------------------------------------------------------------
+                */
+
+                    $salePriceUsd =
+                        (float) $row['sale_price_foreign'];
+
+
+                    $subtotalUsd =
+                        $quantity *
+                        $salePriceUsd;
+
+
+                    /*
+                |--------------------------------------------------------------------------
+                | Convert USD → LKR
+                |--------------------------------------------------------------------------
+                */
+
+                    $subtotalLkr =
+                        $subtotalUsd *
+                        $exchangeRate;
+
+
+                    /*
+                |--------------------------------------------------------------------------
+                | Create Sale Item
+                |--------------------------------------------------------------------------
+                */
+
+                    SaleItem::create([
+
+                        'sale_id' =>
+                        $sale->id,
+
+                        'item_id' =>
+                        $itemId,
+
+                        'qty' =>
+                        $quantity,
+
+                        'base_price' =>
+                        $price,
+
+                        'sale_price_foreign' =>
+                        $salePriceUsd,
+
+                        'sub_total_foreign' =>
+                        $subtotalUsd,
+
+                        'sale_price' =>
+                        $salePriceUsd *
+                            $exchangeRate,
+
+                        'subtotal' =>
+                        $subtotalLkr,
+
+                    ]);
+
+
+                    $totalUsd += $subtotalUsd;
+
+                    $totalLkr += $subtotalLkr;
+                }
+
+
+                /*
+            |--------------------------------------------------------------------------
+            | Update Sale Totals
+            |--------------------------------------------------------------------------
+            */
+
+                $sale->update([
+
+                    'total_foreign' =>
+                    $totalUsd,
+
+                    'total' =>
+                    $totalLkr,
+
+                ]);
+
+
+                /*
+            |--------------------------------------------------------------------------
+            | Export Sale Accounting
+            |--------------------------------------------------------------------------
+            |
+            | Accounting is maintained in LKR.
+            |
+            */
+
+                Accounting::postJournal([
+
+                    'branch_id' =>
+                    $branchId,
+
+                    'date' =>
+                    $sale->sale_date,
+
+                    'description' =>
+                    'Export Sale - Invoice '
+                        . $sale->invoice_id,
+
+                    'entries' => [
+
+                        /*
+                    |--------------------------------------------------------------------------
+                    | Customer Receivable
+                    |--------------------------------------------------------------------------
+                    */
+
+                        [
+                            'ledger_id' =>
+                            3, // Accounts Receivable
+
+                            'sub_ledger_id' =>
+                            $customer->receivable_sub_ledger_id,
+
+                            'debit' =>
+                            $totalLkr,
+
+                            'credit' =>
+                            0,
+                        ],
+
+                        /*
+                    |--------------------------------------------------------------------------
+                    | Sales Revenue
+                    |--------------------------------------------------------------------------
+                    */
+
+                        [
+                            'ledger_id' =>
+                            10, // Sales Revenue
+
+                            'sub_ledger_id' =>
+                            null,
+
+                            'debit' =>
+                            0,
+
+                            'credit' =>
+                            $totalLkr,
+                        ],
+
+                        /*
+                    |--------------------------------------------------------------------------
+                    | COGS
+                    |--------------------------------------------------------------------------
+                    */
+
+                        [
+                            'ledger_id' =>
+                            17, // Cost of Goods Sold
+
+                            'sub_ledger_id' =>
+                            null,
+
+                            'debit' =>
+                            $totalCogs,
+
+                            'credit' =>
+                            0,
+                        ],
+
+                        /*
+                    |--------------------------------------------------------------------------
+                    | Inventory
+                    |--------------------------------------------------------------------------
+                    */
+
+                        [
+                            'ledger_id' =>
+                            4, // Inventory
+
+                            'sub_ledger_id' =>
+                            9, // Inventory sub-ledger
+
+                            'debit' =>
+                            0,
+
+                            'credit' =>
+                            $totalCogs,
+                        ],
+
+                    ],
+
+                ]);
+
+
+                return $sale;
+            });
+
+
+            return redirect()
+                ->route('export-sales.index')
+                ->with(
+                    'success',
+                    'Export sale created successfully.'
+                );
+        } catch (ValidationException $e) {
+
+            return back()
+                ->withErrors($e->errors())
+                ->withInput();
+        } catch (\Throwable $e) {
+
+            \Log::error(
+                'Export sale creation failed',
+                [
+                    'user_id' => auth()->id(),
+                    'error' => $e->getMessage(),
+                ]
+            );
+
+
+            return back()
+                ->withInput()
+                ->with(
+                    'error',
+                    'Unable to create export sale.'
+                );
         }
-
-        $sale->update([
-            'total_foreign'  => $totalUsd,
-            'total'          => $totalLkr,
-            'balance_amount' => $totalLkr,
-        ]);
-
-        return redirect()->route('export-sales.index');
     }
 
     public function show(int $id)
@@ -258,7 +698,7 @@ class SaleController extends Controller
 
     public function invoiceExport($id)
     {
-              $sale = Sale::with(['items.item'])->findOrFail($id);
+        $sale = Sale::with(['items.item'])->findOrFail($id);
 
         $groupedItems = $sale->items
             ->groupBy('item_id')

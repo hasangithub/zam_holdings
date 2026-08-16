@@ -93,6 +93,27 @@
                                 <p>Purchase Inventories</p>
                             </a>
                         </li>
+                        
+                        <li class="nav-item">
+                            <a href="{{ route('inventory.summary') }}" class="nav-link">
+                                <i class="far fa-circle nav-icon"></i>
+                                <p>Inventory Summary</p>
+                            </a>
+                        </li>
+
+                    </ul>
+                </li>
+
+                <li class="nav-item has-treeview">
+                    <a href="#" class="nav-link">
+                        <i class="nav-icon fas fa-warehouse"></i>
+                        <p>
+                            Expense
+                            <i class="right fas fa-angle-left"></i>
+                        </p>
+                    </a>
+
+                    <ul class="nav nav-treeview">
 
                         <li class="nav-item">
                             <a href="{{ route('expenses.index') }}" class="nav-link">
@@ -107,14 +128,6 @@
                                 <p>Expense Categories</p>
                             </a>
                         </li>
-
-                        <li class="nav-item">
-                            <a href="{{ route('inventory.summary') }}" class="nav-link">
-                                <i class="far fa-circle nav-icon"></i>
-                                <p>Inventory Summary</p>
-                            </a>
-                        </li>
-
                     </ul>
                 </li>
 

@@ -10,8 +10,7 @@ class Accounting
 {
     public static function postJournal(array $data)
     {
-        return DB::transaction(function () use ($data) {
-
+       
             // Create Journal Header
             $journal = JournalEntry::create([
                 'branch_id'    => $data['branch_id'],
@@ -33,6 +32,5 @@ class Accounting
             }
 
             return $journal;
-        });
     }
 }

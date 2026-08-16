@@ -4,41 +4,6 @@
 
 @section('content')
 
-<section class="content-header">
-
-    <div class="container-fluid">
-
-        <div class="row">
-
-            <div class="col-sm-6">
-
-                <h1>Journal Entries</h1>
-
-            </div>
-
-            <div class="col-sm-6">
-
-                <ol class="breadcrumb float-sm-right">
-
-                    <li class="breadcrumb-item">
-                        Accounting
-                    </li>
-
-                    <li class="breadcrumb-item active">
-                        Journal Entries
-                    </li>
-
-                </ol>
-
-            </div>
-
-        </div>
-
-    </div>
-
-</section>
-
-
 <section class="content">
 
 <div class="container-fluid">
@@ -75,7 +40,7 @@
 
         <div class="card-body table-responsive p-0">
 
-            <table class="table table-bordered table-hover">
+            <table class="table table-bordered table-hover table-erp">
 
                 <thead>
 
@@ -109,7 +74,7 @@
                             </td>
 
                             <td>
-                                {{ $entry->reference_no ?? '-' }}
+                                {{ $entry->description ?? '-' }}
                             </td>
 
                             <td>

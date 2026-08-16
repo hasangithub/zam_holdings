@@ -96,7 +96,7 @@ Route::get('/export-sales', [SaleController::class, 'indexExport'])
 Route::get('/customers/{customer}/statement', [CustomerController::class, 'statement'])
     ->name('customers.statement');
 
-Route::post('/customers/payment', [CustomerController::class, 'storePayment'])
+Route::post('/customers/{id}/payment', [CustomerController::class, 'storePayment'])
     ->name('customers.payment.store');
 
 Route::get('/suppliers/{id}/statement', [SupplierController::class, 'statement'])

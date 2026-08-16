@@ -5,7 +5,7 @@
     <div class="modal-dialog">
 
         <form method="POST"
-              action="{{ route('customers.payment.store') }}">
+              action="{{ route('customers.payment.store', $customer->id) }}">
 
             @csrf
 

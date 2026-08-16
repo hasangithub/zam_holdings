@@ -2,12 +2,16 @@
 
 namespace App\Http\Controllers;
 
+use App\Accounting\Accounting;
 use App\Models\Purchase;
 use App\Models\PurchaseInventory;
 use App\Models\PurchaseInventoryPayment;
 use App\Models\PurchasePayment;
+use App\Models\SubLedger;
 use App\Models\Supplier;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class SupplierController extends Controller
 {
@@ -24,8 +28,56 @@ class SupplierController extends Controller
 
     public function store(Request $request)
     {
-        Supplier::create($request->all());
-        return redirect()->route('suppliers.index');
+        $request->validate([
+            'name' => 'required|string|max:255',
+        ]);
+
+
+        DB::transaction(function () use ($request) {
+
+            /*
+        |--------------------------------------------------------------------------
+        | Create Supplier
+        |--------------------------------------------------------------------------
+        */
+
+            $supplier = Supplier::create($request->all());
+
+
+            /*
+        |--------------------------------------------------------------------------
+        | Create Liability Sub Ledger
+        |--------------------------------------------------------------------------
+        */
+
+            $subLedger = SubLedger::create([
+
+                'ledger_id' => 7,
+                'name'      => $supplier->name,
+            ]);
+
+
+            /*
+        |--------------------------------------------------------------------------
+        | Attach Sub Ledger to Supplier
+        |--------------------------------------------------------------------------
+        */
+
+            $supplier->update([
+
+                'liability_sub_ledger_id' =>
+                $subLedger->id,
+
+            ]);
+        });
+
+
+        return redirect()
+            ->route('suppliers.index')
+            ->with(
+                'success',
+                'Supplier created successfully.'
+            );
     }
 
     public function edit($id)
@@ -194,27 +246,140 @@ class SupplierController extends Controller
 
     public function storePayment(Request $request, $id)
     {
-        PurchasePayment::create([
-            'supplier_id' => $id,
-            'amount' => $request->amount,
-            'payment_date' => $request->payment_date,
-            'method' => $request->method,
-            'note' => $request->note,
+        $request->validate([
+            'amount' => ['required', 'numeric', 'gt:0',],
+            'payment_date' => ['required', 'date',],
+            'method' => ['required', 'in:Cash,Bank,Cheque',],
+            'note' => ['nullable', 'string', 'max:1000',],
         ]);
 
-        return back()->with('success', 'Payment added successfully');
+        try {
+
+            DB::transaction(function () use ($request, $id) {
+
+                $supplier = Supplier::lockForUpdate()->findOrFail($id);
+                $amount = (float) $request->amount;
+                $branchId = auth()->user()->branch_id;
+
+                if (!$supplier->liability_sub_ledger_id) {
+                    throw ValidationException::withMessages(['amount' => 'This supplier does not have a liability sub-ledger.']);
+                }
+
+                $payment = PurchasePayment::create([
+
+                    'supplier_id' => $supplier->id,
+                    'amount' => $request->amount,
+                    'payment_date' => $request->payment_date,
+                    'method' => $request->method,
+                    'note' => $request->note,
+                ]);
+
+                if ($request->method === 'cash') {
+                    $paymentLedgerId = 1;
+                    $paymentSubLedgerId = null;
+                } else {
+                    $paymentLedgerId = 2;
+                    $paymentSubLedgerId = null;
+                }
+
+                Accounting::postJournal([
+                    'branch_id' => $branchId,
+                    'date' => $request->payment_date,
+                    'description' => 'Payment for purchase - ' . $supplier->name,
+
+                    'entries' => [
+                        [
+                            'ledger_id' => 7,
+                            'sub_ledger_id' => $supplier->liability_sub_ledger_id,
+                            'debit' => $amount,
+                            'credit' => 0,
+                        ],
+                        [
+                            'ledger_id' => $paymentLedgerId,
+                            'sub_ledger_id' =>  $paymentSubLedgerId,
+                            'debit' => 0,
+                            'credit' => $amount,
+                        ],
+                    ]
+                ]);
+            });
+
+
+            return back()->with('success', 'Payment added successfully.');
+        } catch (ValidationException $e) {
+            throw $e;
+        } catch (\Throwable $e) {
+            return back()->withInput()->with('error', 'Unable to process the payment.');
+        }
     }
 
     public function storeInventoryPayment(Request $request, $id)
     {
-        PurchaseInventoryPayment::create([
-            'supplier_id' => $id,
-            'amount' => $request->amount,
-            'payment_date' => $request->payment_date,
-            'method' => $request->method,
-            'note' => $request->note,
+        $request->validate([
+            'amount' => ['required', 'numeric', 'gt:0',],
+            'payment_date' => ['required', 'date',],
+            'method' => ['required', 'in:Cash,Bank,Cheque',],
+            'note' => ['nullable', 'string', 'max:1000',],
         ]);
 
-        return back()->with('success', 'Payment added successfully');
+        try {
+
+            DB::transaction(function () use ($request, $id) {
+
+                $supplier = Supplier::lockForUpdate()->findOrFail($id);
+                $amount = (float) $request->amount;
+                $branchId = auth()->user()->branch_id;
+
+                if (!$supplier->liability_sub_ledger_id) {
+                    throw ValidationException::withMessages(['amount' => 'This supplier does not have a liability sub-ledger.']);
+                }
+
+                $payment = PurchaseInventoryPayment::create([
+
+                    'supplier_id' => $supplier->id,
+                    'amount' => $request->amount,
+                    'payment_date' => $request->payment_date,
+                    'method' => $request->method,
+                    'note' => $request->note,
+                ]);
+
+
+                if ($request->method === 'cash') {
+                    $paymentLedgerId = 1;
+                    $paymentSubLedgerId = null;
+                } else {
+                    $paymentLedgerId = 2;
+                    $paymentSubLedgerId = null;
+                }
+
+                Accounting::postJournal([
+                    'branch_id' => $branchId,
+                    'date' => $request->payment_date,
+                    'description' => 'Payment for purchase - ' . $supplier->name,
+
+                    'entries' => [
+                        [
+                            'ledger_id' => 7,
+                            'sub_ledger_id' => $supplier->liability_sub_ledger_id,
+                            'debit' => $amount,
+                            'credit' => 0,
+                        ],
+                        [
+                            'ledger_id' => $paymentLedgerId,
+                            'sub_ledger_id' =>  $paymentSubLedgerId,
+                            'debit' => 0,
+                            'credit' => $amount,
+                        ],
+                    ]
+                ]);
+            });
+
+
+            return back()->with('success', 'Payment added successfully.');
+        } catch (ValidationException $e) {
+            throw $e;
+        } catch (\Throwable $e) {
+            return back()->withInput()->with('error', 'Unable to process the payment.');
+        }
     }
 }
