@@ -1029,92 +1029,149 @@ class SaleController extends Controller
         return view('sales.show', compact('sale'));
     }
 
-public function invoice($id)
-{
-    $sale = Sale::with(['items.item', 'customer'])
-        ->findOrFail($id);
+    public function invoice($id)
+    {
+        $sale = Sale::with(['items.item', 'customer'])
+            ->findOrFail($id);
 
-    /*
+        /*
     |--------------------------------------------------------------------------
     | Previous Sales
     |--------------------------------------------------------------------------
+    | Sales made before the current invoice
     */
 
-    $previousSalesTotal = Sale::where('customer_id', $sale->customer_id)
-        ->where('id', '<', $sale->id)
-        ->sum('total');
+        $previousSalesTotal = Sale::where('customer_id', $sale->customer_id)
+            ->where('id', '<', $sale->id)
+            ->sum('total');
 
 
-    /*
+        /*
     |--------------------------------------------------------------------------
     | Previous Payments
     |--------------------------------------------------------------------------
+    | Customer payments made before the current invoice
+    |--------------------------------------------------------------------------
     */
 
-    $previousPaymentsTotal = SalesPayment::where(
-        'customer_id',
-        $sale->customer_id
-    )
-        ->where('id', '<', function ($query) use ($sale) {
-            $query->selectRaw('COALESCE(MAX(id), 0)')
-                ->from('sales_payments')
-                ->where('customer_id', $sale->customer_id);
-        })
-        ->sum('amount');
+        $previousPaymentsTotal = SalesPayment::where('customer_id', $sale->customer_id)
+            ->where('created_at', '<=', $sale->created_at)
+            ->where('id', '<', function ($query) use ($sale) {
+                $query->selectRaw('COALESCE(MAX(id), 0)')
+                    ->from('sales_payments')
+                    ->where('customer_id', $sale->customer_id)
+                    ->where('created_at', '<=', $sale->created_at);
+            })
+            ->sum('amount');
 
 
-    /*
+        /*
     |--------------------------------------------------------------------------
     | Previous Outstanding
     |--------------------------------------------------------------------------
     */
 
-    $previousOutstanding =
-        $previousSalesTotal - $previousPaymentsTotal;
+        $previousOutstanding = max(
+            0,
+            $previousSalesTotal - $previousPaymentsTotal
+        );
 
 
-    /*
+        /*
+    |--------------------------------------------------------------------------
+    | Current Invoice
+    |--------------------------------------------------------------------------
+    */
+
+        $currentInvoice = $sale->total;
+
+
+        /*
+    |--------------------------------------------------------------------------
+    | All Customer Payments Up To Current Invoice
+    |--------------------------------------------------------------------------
+    */
+
+        $paymentsUpToCurrent = SalesPayment::where(
+            'customer_id',
+            $sale->customer_id
+        )
+            ->where('created_at', '<=', $sale->created_at)
+            ->sum('amount');
+
+
+        /*
+    |--------------------------------------------------------------------------
+    | Payment Applied To Current Invoice
+    |--------------------------------------------------------------------------
+    |
+    | First payments settle previous outstanding.
+    | Remaining payment is applied to current invoice.
+    |
+    */
+
+        $paymentAfterPreviousOutstanding = max(
+            0,
+            $paymentsUpToCurrent - $previousOutstanding
+        );
+
+        $currentPayment = min(
+            $currentInvoice,
+            $paymentAfterPreviousOutstanding
+        );
+
+
+        /*
+    |--------------------------------------------------------------------------
+    | Current Balance
+    |--------------------------------------------------------------------------
+    */
+
+        $currentBalance = max(
+            0,
+            $currentInvoice - $currentPayment
+        );
+
+
+        /*
+    |--------------------------------------------------------------------------
+    | Total Payable
+    |--------------------------------------------------------------------------
+    */
+
+        $totalPayable = $previousOutstanding + $currentInvoice;
+
+
+        /*
     |--------------------------------------------------------------------------
     | Group Same Items
     |--------------------------------------------------------------------------
     */
 
-    $groupedItems = $sale->items
-        ->groupBy('item_id')
-        ->map(function ($rows) {
+        $groupedItems = $sale->items
+            ->groupBy('item_id')
+            ->map(function ($rows) {
 
-            return (object) [
-                'item' => $rows->first()->item,
-                'qty' => $rows->sum('qty'),
-                'sale_price' => $rows->first()->sale_price,
-                'subtotal' => $rows->sum('subtotal'),
-            ];
-
-        })
-        ->values();
-
-
-    /*
-    |--------------------------------------------------------------------------
-    | Current Invoice + Previous Outstanding
-    |--------------------------------------------------------------------------
-    */
-
-    $currentInvoice = $sale->total;
-
-    $totalPayable =
-        $previousOutstanding +
-        $currentInvoice;
+                return (object) [
+                    'item'       => $rows->first()->item,
+                    'qty'        => $rows->sum('qty'),
+                    'sale_price' => $rows->first()->sale_price,
+                    'subtotal'   => $rows->sum('subtotal'),
+                ];
+            })
+            ->values();
 
 
-    return view('sales.invoice', compact(
-        'sale',
-        'groupedItems',
-        'previousOutstanding',
-        'currentInvoice',
-        'totalPayable'
-    ));
-}
+        return view('sales.invoice', compact(
+            'sale',
+            'groupedItems',
+            'previousOutstanding',
+            'currentInvoice',
+            'currentPayment',
+            'currentBalance',
+            'totalPayable'
+        ));
+    }
 
     public function invoiceExport($id)
     {

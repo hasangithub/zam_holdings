@@ -5,7 +5,6 @@
 @section('content')
 
 <style>
-
     body {
         background: #f4f6f9;
     }
@@ -15,7 +14,7 @@
         margin: 20px auto;
         background: #fff;
         padding: 40px;
-        box-shadow: 0 2px 12px rgba(0,0,0,.08);
+        box-shadow: 0 2px 12px rgba(0, 0, 0, .08);
     }
 
     .company-logo {
@@ -172,7 +171,6 @@
             margin: 12mm;
         }
     }
-
 </style>
 
 
@@ -362,66 +360,66 @@
 
             @forelse($groupedItems as $key => $item)
 
-                <tr>
+            <tr>
 
-                    <td class="text-center">
-                        {{ $key + 1 }}
-                    </td>
+                <td class="text-center">
+                    {{ $key + 1 }}
+                </td>
 
-                    <td>
-                        {{ $item->item->code ?? '-' }}
-                    </td>
+                <td>
+                    {{ $item->item->code ?? '-' }}
+                </td>
 
-                    <td>
+                <td>
 
-                        <strong>
-                            {{ $item->item->name ?? '-' }}
-                        </strong>
+                    <strong>
+                        {{ $item->item->name ?? '-' }}
+                    </strong>
 
-                    </td>
+                </td>
 
-                    <td class="text-right">
+                <td class="text-right">
 
-                        {{ number_format(
+                    {{ number_format(
                             $item->qty,
                             2
                         ) }}
 
-                    </td>
+                </td>
 
-                    <td class="text-right">
+                <td class="text-right">
 
-                        {{ number_format(
+                    {{ number_format(
                             $item->sale_price,
                             2
                         ) }}
 
-                    </td>
+                </td>
 
-                    <td class="text-right">
+                <td class="text-right">
 
-                        {{ number_format(
+                    {{ number_format(
                             $item->subtotal,
                             2
                         ) }}
 
-                    </td>
+                </td>
 
-                </tr>
+            </tr>
 
             @empty
 
-                <tr>
+            <tr>
 
-                    <td
-                        colspan="6"
-                        class="text-center text-muted">
+                <td
+                    colspan="6"
+                    class="text-center text-muted">
 
-                        No items found.
+                    No items found.
 
-                    </td>
+                </td>
 
-                </tr>
+            </tr>
 
             @endforelse
 
@@ -434,104 +432,46 @@
     {{-- SUMMARY --}}
     {{-- ========================================================= --}}
 
-    <table class="summary-table">
+    <div class="invoice-summary">
 
-        <tr>
+        <div class="d-flex justify-content-between">
+            <span>Previous Outstanding</span>
+            <strong>
+                {{ number_format($previousOutstanding, 2) }}
+            </strong>
+        </div>
 
-            <td class="summary-label text-right">
-                Total
-            </td>
+        <div class="d-flex justify-content-between">
+            <span>Current Invoice</span>
+            <strong>
+                {{ number_format($currentInvoice, 2) }}
+            </strong>
+        </div>
 
-            <td class="text-right">
+        <hr>
 
-                {{ number_format(
-                    $sale->total,
-                    2
-                ) }}
+        <div class="d-flex justify-content-between">
+            <strong>Total Payable</strong>
+            <strong>
+                {{ number_format($totalPayable, 2) }}
+            </strong>
+        </div>
 
-            </td>
+        <div class="d-flex justify-content-between text-success">
+            <span>Payment Received</span>
+            <strong>
+                {{ number_format($currentPayment, 2) }}
+            </strong>
+        </div>
 
-        </tr>
+        <div class="d-flex justify-content-between">
+            <strong>Balance Due</strong>
+            <strong>
+                {{ number_format($previousOutstanding + $currentBalance, 2) }}
+            </strong>
+        </div>
 
-
-        <tr>
-
-            <td class="summary-label text-right">
-                Previous Outstanding
-            </td>
-
-            <td class="text-right">
-
-                {{ number_format(
-                    $previousOutstanding ?? 0,
-                    2
-                ) }}
-
-            </td>
-
-        </tr>
-
-
-        <tr>
-
-            <td class="summary-label text-right">
-                Grand Total
-            </td>
-
-            <td class="text-right">
-
-                {{ number_format(
-                    $sale->total +
-                    ($previousOutstanding ?? 0),
-                    2
-                ) }}
-
-            </td>
-
-        </tr>
-
-
-        <tr>
-
-            <td class="summary-label text-right">
-                Total Paid
-            </td>
-
-            <td class="text-right">
-
-                {{ number_format(
-                    $sale->total_paid ?? 0,
-                    2
-                ) }}
-
-            </td>
-
-        </tr>
-
-
-        <tr class="grand-total">
-
-            <td class="text-right">
-                TOTAL PAYABLE
-            </td>
-
-            <td class="text-right">
-
-                {{ number_format(
-                    (
-                        $sale->total +
-                        ($previousOutstanding ?? 0)
-                    )
-                    -
-                    ($sale->total_paid ?? 0),
-                    2
-                ) }}
-
-            </td>
-
-        </tr>
-
-    </table>
+    </div>
 
 
     {{-- ========================================================= --}}
