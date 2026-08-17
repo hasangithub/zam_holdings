@@ -32,7 +32,7 @@ class SaleController extends Controller
     // CREATE
     public function create()
     {
-        $customers = Customer::all();
+        $customers = Customer::where('customer_type', 'local')->get();
 
         /*
     |--------------------------------------------------------------------------
