@@ -21,6 +21,39 @@
 
                 <div class="card-body">
 
+                    @if($errors->any())
+
+                    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+
+                        <strong>
+                            Please correct the following errors:
+                        </strong>
+
+                        <ul class="mb-0 mt-2">
+
+                            @foreach($errors->all() as $error)
+
+                            <li>
+                                {{ $error }}
+                            </li>
+
+                            @endforeach
+
+                        </ul>
+
+                        <button type="button"
+                            class="close"
+                            data-dismiss="alert"
+                            aria-label="Close">
+
+                            <span aria-hidden="true">&times;</span>
+
+                        </button>
+
+                    </div>
+
+                    @endif
+
                     <form method="POST" action="{{ route('export-sales.store') }}">
                         @csrf
 
@@ -357,7 +390,7 @@
                 .insertAdjacentHTML('beforeend', row);
 
             updateItemOptions();
-            calculateLocalPOS();
+            // calculateLocalPOS();
 
             i++;
         });
@@ -381,7 +414,7 @@
                 }
 
                 updateItemOptions();
-                calculateLocalPOS();
+                //calculateLocalPOS();
             }
 
         });
