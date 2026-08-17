@@ -6,7 +6,10 @@
 
 <div class="card">
     <div class="card-header">
-        <h3>Export Sales (USD)</h3>
+        <h3  class="card-title">Export Sales (USD)</h3>
+        <a href="{{ route('export-sales.create') }}" class="btn btn-primary btn-sm float-right">
+            + New Sale
+        </a>
     </div>
 
     <div class="card-body">

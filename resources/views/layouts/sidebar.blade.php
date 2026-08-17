@@ -145,12 +145,12 @@
                         <li class="nav-item">
                             <a href="/sales" class="nav-link">
                                 <i class="nav-icon fas fa-cash-register"></i>
-                                <p>Sales</p>
+                                <p>Local Sales</p>
                             </a>
                         </li>
 
                         <li class="nav-item">
-                            <a href="/export-sales/create" class="nav-link">
+                            <a href="/export-sales/" class="nav-link">
                                 <i class="nav-icon fas fa-cash-register"></i>
                                 <p>Export Sales</p>
                             </a>
