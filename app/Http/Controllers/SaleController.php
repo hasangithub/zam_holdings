@@ -1049,21 +1049,30 @@ class SaleController extends Controller
 
     public function invoiceExport($id)
     {
-        $sale = Sale::with(['items.item'])->findOrFail($id);
+        $sale = Sale::with([
+            'customer',
+            'items.item'
+        ])->findOrFail($id);
 
         $groupedItems = $sale->items
             ->groupBy('item_id')
             ->map(function ($rows) {
-                return (object)[
-                    'item' => $rows->first()->item,
+
+                $first = $rows->first();
+
+                return (object) [
+                    'item' => $first->item,
                     'qty' => $rows->sum('qty'),
-                    'sale_price' => $rows->first()->sale_price,
-                    'subtotal' => $rows->sum('subtotal'),
+                    'sale_price_foreign' => $rows->sum('sub_total_foreign') / max($rows->sum('qty'), 1),
+                    'sub_total_foreign' => $rows->sum('sub_total_foreign'),
                 ];
             })
             ->values();
 
-        return view('sales.export_invoice', compact('sale', 'groupedItems'));
+        return view(
+            'sales.export_invoice',
+            compact('sale', 'groupedItems')
+        );
     }
 
     // EDIT
