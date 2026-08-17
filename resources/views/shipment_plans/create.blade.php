@@ -16,7 +16,7 @@
 
             <form method="POST" action="{{ route('shipment-plans.store') }}">
                 @csrf
-               
+
                 <input type="hidden" name="step" value="1">
                 <div class="form-group">
 
@@ -25,7 +25,7 @@
                     <select name="selected_items[]" class="tom-select" multiple>
 
                         @foreach($items as $item)
-                        <option value="{{ $item->id }}">
+                        <option value="{{ $item->id }}" data-search="{{ $item->name }} {{ $item->item_code }} {{ $item->category->name ?? '' }}">
                             {{ $item->name }}
                         </option>
                         @endforeach
@@ -55,12 +55,16 @@
 <script>
     document.addEventListener('DOMContentLoaded', function() {
 
-        new TomSelect(".tom-select", {
+        new TomSelect('.tom-select', {
             plugins: ['remove_button'],
-            create: false,
-            placeholder: "Type and select items..."
-        });
 
+            searchField: [
+                'text',
+                'search'
+            ],
+
+            placeholder: 'Select items...'
+        });
     });
 </script>
 @endpush
