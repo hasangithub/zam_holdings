@@ -8,6 +8,7 @@ use App\Models\SaleItem;
 use App\Models\Customer;
 use App\Models\Item;
 use App\Models\PurchaseItem;
+use App\Models\SalesPayment;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -1028,36 +1029,92 @@ class SaleController extends Controller
         return view('sales.show', compact('sale'));
     }
 
-    public function invoice($id)
-    {
-        $sale = Sale::with([
-            'customer',
-            'items.item'
-        ])->findOrFail($id);
+public function invoice($id)
+{
+    $sale = Sale::with(['items.item', 'customer'])
+        ->findOrFail($id);
 
-        $groupedItems = $sale->items
-            ->groupBy('item_id')
-            ->map(function ($rows) {
+    /*
+    |--------------------------------------------------------------------------
+    | Previous Sales
+    |--------------------------------------------------------------------------
+    */
 
-                $qty = $rows->sum('qty');
-                $subtotal = $rows->sum('subtotal');
+    $previousSalesTotal = Sale::where('customer_id', $sale->customer_id)
+        ->where('id', '<', $sale->id)
+        ->sum('total');
 
-                return (object) [
-                    'item' => $rows->first()->item,
-                    'qty' => $qty,
-                    'sale_price' => $qty > 0
-                        ? $subtotal / $qty
-                        : 0,
-                    'subtotal' => $subtotal,
-                ];
-            })
-            ->values();
 
-        return view(
-            'sales.invoice',
-            compact('sale', 'groupedItems')
-        );
-    }
+    /*
+    |--------------------------------------------------------------------------
+    | Previous Payments
+    |--------------------------------------------------------------------------
+    */
+
+    $previousPaymentsTotal = SalesPayment::where(
+        'customer_id',
+        $sale->customer_id
+    )
+        ->where('id', '<', function ($query) use ($sale) {
+            $query->selectRaw('COALESCE(MAX(id), 0)')
+                ->from('sales_payments')
+                ->where('customer_id', $sale->customer_id);
+        })
+        ->sum('amount');
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Previous Outstanding
+    |--------------------------------------------------------------------------
+    */
+
+    $previousOutstanding =
+        $previousSalesTotal - $previousPaymentsTotal;
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Group Same Items
+    |--------------------------------------------------------------------------
+    */
+
+    $groupedItems = $sale->items
+        ->groupBy('item_id')
+        ->map(function ($rows) {
+
+            return (object) [
+                'item' => $rows->first()->item,
+                'qty' => $rows->sum('qty'),
+                'sale_price' => $rows->first()->sale_price,
+                'subtotal' => $rows->sum('subtotal'),
+            ];
+
+        })
+        ->values();
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Current Invoice + Previous Outstanding
+    |--------------------------------------------------------------------------
+    */
+
+    $currentInvoice = $sale->total;
+
+    $totalPayable =
+        $previousOutstanding +
+        $currentInvoice;
+
+
+    return view('sales.invoice', compact(
+        'sale',
+        'groupedItems',
+        'previousOutstanding',
+        'currentInvoice',
+        'totalPayable'
+    ));
+}
 
     public function invoiceExport($id)
     {
