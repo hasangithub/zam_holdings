@@ -1038,7 +1038,6 @@ class SaleController extends Controller
     |--------------------------------------------------------------------------
     | Previous Sales
     |--------------------------------------------------------------------------
-    | Sales made before the current invoice
     */
 
         $previousSalesTotal = Sale::where('customer_id', $sale->customer_id)
@@ -1048,21 +1047,30 @@ class SaleController extends Controller
 
         /*
     |--------------------------------------------------------------------------
-    | Previous Payments
-    |--------------------------------------------------------------------------
-    | Customer payments made before the current invoice
+    | All Customer Payments
     |--------------------------------------------------------------------------
     */
 
-        $previousPaymentsTotal = SalesPayment::where('customer_id', $sale->customer_id)
-            ->where('created_at', '<=', $sale->created_at)
-            ->where('id', '<', function ($query) use ($sale) {
-                $query->selectRaw('COALESCE(MAX(id), 0)')
-                    ->from('sales_payments')
-                    ->where('customer_id', $sale->customer_id)
-                    ->where('created_at', '<=', $sale->created_at);
-            })
-            ->sum('amount');
+        $customerPayments = SalesPayment::where(
+            'customer_id',
+            $sale->customer_id
+        )->sum('amount');
+
+
+        /*
+    |--------------------------------------------------------------------------
+    | Previous Payments
+    |--------------------------------------------------------------------------
+    |
+    | Payments are customer-level, so payments are considered against
+    | previous outstanding first.
+    |
+    */
+
+        $previousPaymentsTotal = min(
+            $customerPayments,
+            $previousSalesTotal
+        );
 
 
         /*
@@ -1088,36 +1096,18 @@ class SaleController extends Controller
 
         /*
     |--------------------------------------------------------------------------
-    | All Customer Payments Up To Current Invoice
+    | Payment Available For Current Invoice
     |--------------------------------------------------------------------------
     */
 
-        $paymentsUpToCurrent = SalesPayment::where(
-            'customer_id',
-            $sale->customer_id
-        )
-            ->where('created_at', '<=', $sale->created_at)
-            ->sum('amount');
-
-
-        /*
-    |--------------------------------------------------------------------------
-    | Payment Applied To Current Invoice
-    |--------------------------------------------------------------------------
-    |
-    | First payments settle previous outstanding.
-    | Remaining payment is applied to current invoice.
-    |
-    */
-
-        $paymentAfterPreviousOutstanding = max(
+        $currentPayment = max(
             0,
-            $paymentsUpToCurrent - $previousOutstanding
+            $customerPayments - $previousSalesTotal
         );
 
         $currentPayment = min(
-            $currentInvoice,
-            $paymentAfterPreviousOutstanding
+            $currentPayment,
+            $currentInvoice
         );
 
 
@@ -1139,7 +1129,9 @@ class SaleController extends Controller
     |--------------------------------------------------------------------------
     */
 
-        $totalPayable = $previousOutstanding + $currentInvoice;
+        $totalPayable =
+            $previousOutstanding +
+            $currentInvoice;
 
 
         /*
