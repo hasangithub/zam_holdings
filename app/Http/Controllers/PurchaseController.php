@@ -38,14 +38,14 @@ class PurchaseController extends Controller
 
         if (!$supplier->liability_sub_ledger_id) {
 
-                throw ValidationException::withMessages([
+            throw ValidationException::withMessages([
 
-                    'supplier_id' =>
-                        'This supplier does not have a liability subledger. '
-                        . 'Please configure the supplier accounting account first.',
+                'supplier_id' =>
+                'This supplier does not have a liability subledger. '
+                    . 'Please configure the supplier accounting account first.',
 
-                ]);
-            }
+            ]);
+        }
 
 
         $purchase = Purchase::create([
@@ -124,22 +124,110 @@ class PurchaseController extends Controller
 
     public function invoice($id)
     {
-        $purchase = Purchase::with('items', 'supplier')->findOrFail($id);
+        $purchase = Purchase::with(['items.item', 'supplier'])
+            ->findOrFail($id);
 
-        // supplier totals (ledger logic)
         $supplierId = $purchase->supplier_id;
 
-        $totalPurchase = Purchase::where('supplier_id', $supplierId)->sum('total');
+        /*
+    |--------------------------------------------------------------------------
+    | Previous Purchases
+    |--------------------------------------------------------------------------
+    */
 
-        $totalPaid = PurchasePayment::where('supplier_id', $supplierId)->sum('amount');
+        $previousPurchasesTotal = Purchase::where('supplier_id', $supplierId)
+            ->where('id', '<', $purchase->id)
+            ->sum('total');
 
-        $outstanding = $totalPurchase - $totalPaid;
+
+        /*
+    |--------------------------------------------------------------------------
+    | All Supplier Payments
+    |--------------------------------------------------------------------------
+    */
+
+        $totalSupplierPaid = PurchasePayment::where(
+            'supplier_id',
+            $supplierId
+        )->sum('amount');
+
+
+        /*
+    |--------------------------------------------------------------------------
+    | Previous Outstanding
+    |--------------------------------------------------------------------------
+    |
+    | Previous purchases are settled first by supplier payments.
+    |
+    */
+
+        $previousPaid = min(
+            $totalSupplierPaid,
+            $previousPurchasesTotal
+        );
+
+        $previousOutstanding = max(
+            0,
+            $previousPurchasesTotal - $previousPaid
+        );
+
+
+        /*
+    |--------------------------------------------------------------------------
+    | Current Purchase
+    |--------------------------------------------------------------------------
+    */
+
+        $currentPurchase = $purchase->total;
+
+
+        /*
+    |--------------------------------------------------------------------------
+    | Payment Available For Current Purchase
+    |--------------------------------------------------------------------------
+    */
+
+        $currentPaid = max(
+            0,
+            $totalSupplierPaid - $previousPurchasesTotal
+        );
+
+        $currentPaid = min(
+            $currentPaid,
+            $currentPurchase
+        );
+
+
+        /*
+    |--------------------------------------------------------------------------
+    | Current Outstanding
+    |--------------------------------------------------------------------------
+    */
+
+        $currentOutstanding = max(
+            0,
+            $currentPurchase - $currentPaid
+        );
+
+
+        /*
+    |--------------------------------------------------------------------------
+    | Total Payable
+    |--------------------------------------------------------------------------
+    */
+
+        $totalPayable =
+            $previousOutstanding +
+            $currentPurchase;
+
 
         return view('purchases.invoice', compact(
             'purchase',
-            'totalPurchase',
-            'totalPaid',
-            'outstanding'
+            'previousOutstanding',
+            'currentPurchase',
+            'currentPaid',
+            'currentOutstanding',
+            'totalPayable'
         ));
     }
 
