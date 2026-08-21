@@ -26,7 +26,7 @@
         background: #fff;
         padding: 35px;
         border: 1px solid #ddd;
-        box-shadow: 0 2px 10px rgba(0,0,0,.08);
+        box-shadow: 0 2px 10px rgba(0, 0, 0, .08);
     }
 
     .invoice-title {
@@ -191,9 +191,9 @@
 
                 @if(!empty($purchase->supplier->phone))
 
-                    <div class="text-muted small">
-                        {{ $purchase->supplier->phone }}
-                    </div>
+                <div class="text-muted small">
+                    {{ $purchase->supplier->phone }}
+                </div>
 
                 @endif
 
@@ -225,33 +225,33 @@
 
                 @foreach($purchase->items as $key => $item)
 
-                    <tr>
+                <tr>
 
-                        <td>
-                            {{ $key + 1 }}
-                        </td>
+                    <td>
+                        {{ $key + 1 }}
+                    </td>
 
-                        <td>
-                            {{ $item->item->code ?? '-' }}
-                        </td>
+                    <td>
+                        {{ $item->item->code ?? '-' }}
+                    </td>
 
-                        <td>
-                            {{ $item->item->name ?? '-' }}
-                        </td>
+                    <td>
+                        {{ $item->item->name ?? '-' }}
+                    </td>
 
-                        <td class="text-end">
-                            {{ number_format($item->qty, 2) }}
-                        </td>
+                    <td class="text-right">
+                        {{ number_format($item->qty, 2) }}
+                    </td>
 
-                        <td class="text-end">
-                            {{ number_format($item->price, 2) }}
-                        </td>
+                    <td class="text-right">
+                        {{ number_format($item->price, 2) }}
+                    </td>
 
-                        <td class="text-end">
-                            {{ number_format($item->subtotal, 2) }}
-                        </td>
+                    <td class="text-right">
+                        {{ number_format($item->subtotal, 2) }}
+                    </td>
 
-                    </tr>
+                </tr>
 
                 @endforeach
 
@@ -273,7 +273,7 @@
                     Previous Outstanding
                 </th>
 
-                <td class="text-end">
+                <td class="text-right">
                     {{ number_format($previousOutstanding, 2) }}
                 </td>
 
@@ -287,7 +287,7 @@
                     Current Purchase
                 </th>
 
-                <td class="text-end">
+                <td class="text-right">
                     {{ number_format($currentPurchase, 2) }}
                 </td>
 
@@ -301,7 +301,7 @@
                     Total Payable
                 </th>
 
-                <td class="text-end">
+                <td class="text-right">
                     {{ number_format($totalPayable, 2) }}
                 </td>
 
@@ -315,7 +315,7 @@
                     Payment Made
                 </th>
 
-                <td class="text-end">
+                <td class="text-right">
                     {{ number_format($currentPaid, 2) }}
                 </td>
 
@@ -329,14 +329,12 @@
                     Outstanding Payable
                 </th>
 
-                <td class="text-end">
+                <td class="text-right">
 
-                    <span class="balance-due">
-                        {{ number_format(
+                    {{ number_format(
                             $previousOutstanding + $currentOutstanding,
                             2
                         ) }}
-                    </span>
 
                 </td>
 
