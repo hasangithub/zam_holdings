@@ -232,7 +232,7 @@
                     </td>
 
                     <td>
-                        {{ $item->item->code ?? '-' }}
+                        {{ $item->item->item_code ?? '-' }}
                     </td>
 
                     <td>
