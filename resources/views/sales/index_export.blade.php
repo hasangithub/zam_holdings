@@ -32,7 +32,7 @@
                 @foreach($sales as $sale)
                 <tr>
                     <td>{{ $sale->invoice_id }}</td>
-                    <td>{{ $sale->freightService->name }}</td>
+                    <td>{{ \App\Models\Sale::CONSIGNORS[$sale->consignor] ?? '-' }}</td>
                     <td>{{ $sale->customer->name ?? '' }}</td>
 
                     <td>{{ $sale->total_foreign }}</td>

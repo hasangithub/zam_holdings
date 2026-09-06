@@ -104,9 +104,10 @@
                                 <select name="consignor" class="form-control form-control-sm">
                                     <option value="">Select Consignor</option>
 
-                                    @foreach($freightServices as $freightService)
-                                    <option value="{{ $freightService->id }}">
-                                        {{ $freightService->name }}
+                                    @foreach(\App\Models\Sale::CONSIGNORS as $id => $name)
+                                    <option value="{{ $id }}"
+                                        {{ old('consignor') == $id ? 'selected' : '' }}>
+                                        {{ $name }}
                                     </option>
                                     @endforeach
                                 </select>
