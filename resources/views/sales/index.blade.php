@@ -33,6 +33,7 @@
                     <th>Customer</th>
                     <th>Date</th>
                     <th>Total</th>
+                    <th>Status</th>
                     <th width="200">Actions</th>
                 </tr>
             </thead>
@@ -55,6 +56,15 @@
 
                     <td>
                         Rs {{ number_format($s->total, 2) }}
+                    </td>
+                    <td>
+                        @if($s->status === 'posted')
+                            <span class="badge badge-success">Posted</span>
+                        @elseif($s->status === 'pending')
+                            <span class="badge badge-warning">Pending</span>
+                        @elseif($s->status === 'cancelled')
+                            <span class="badge badge-danger">Cancelled</span>
+                        @endif
                     </td>
 
                     <td>
@@ -84,7 +94,7 @@
                         @endif
 
 
-
+                        @if($s->status !== 'cancelled')
                         <form action="{{ route('sales.destroy', $s->id) }}"
                             method="POST"
                             class="d-inline"
@@ -96,7 +106,7 @@
                                 <i class="fas fa-ban"></i> Cancel
                             </button>
                         </form>
-
+                        @endif
                     </td>
                 </tr>
                 @endforeach

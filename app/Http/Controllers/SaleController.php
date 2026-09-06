@@ -2171,6 +2171,10 @@ class SaleController extends Controller
                 }
 
                 $this->reverseSaleJournal($sale);
+
+                $sale->update([
+                    'status' => 'cancelled',
+                ]);
             });
 
 
