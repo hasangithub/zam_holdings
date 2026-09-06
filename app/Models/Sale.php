@@ -27,10 +27,11 @@ class Sale extends Model
         'payment_status',
         'currency',
         'exchange_rate',
-        'total_foreign'
+        'total_foreign',
+        'status'
     ];
 
-     public const CONSIGNORS = [
+    public const CONSIGNORS = [
         1 => 'Zam Holdings',
         2 => 'ABC Exports',
         3 => 'Fresh Foods Lanka',
@@ -64,5 +65,20 @@ class Sale extends Model
     public function payments()
     {
         return $this->hasMany(SalesPayment::class);
+    }
+
+    public function freightService()
+    {
+        return $this->belongsTo(FreightService::class, 'consignor', 'id');
+    }
+
+    public function freights()
+    {
+        return $this->hasMany(Freight::class);
+    }
+
+    public function profitLoss()
+    {
+        return $this->hasOne(SalesProfitLoss::class);
     }
 }

@@ -6,6 +6,7 @@ use App\Models\AccountGroup;
 use App\Models\AccountType;
 use App\Models\ExpenseCategory;
 use App\Models\Ledger;
+use App\Models\SubLedger;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -47,20 +48,10 @@ class ExpenseCategoryController extends Controller
 
             DB::transaction(function () use ($request) {
 
-                $expenseType = AccountType::where(
-                    'name',
-                    'Expenses'
-                )->firstOrFail();
+                $expenseType = AccountType::where('name', 'Expenses')->firstOrFail();
 
-                $operatingExpenses = AccountGroup::where(
-                    'account_type_id',
-                    $expenseType->id
-                )
-                    ->where(
-                        'name',
-                        'Operating Expenses'
-                    )
-                    ->first();
+                $operatingExpenses = AccountGroup::where('account_type_id', $expenseType->id)
+                    ->where('name', 'Operating Expenses')->first();
 
 
                 if (!$operatingExpenses) {
@@ -68,6 +59,23 @@ class ExpenseCategoryController extends Controller
                     throw ValidationException::withMessages([
                         'name' =>
                         'Operating Expenses account group was not found.',
+                    ]);
+                }
+
+                 $liabilityType = AccountType::where('name', 'Liability')->firstOrFail();
+
+                $currentLiability = AccountGroup::where('account_type_id', $liabilityType->id)
+                    ->where('name', 'Current Liabilities')->first();
+
+                $accruedExpense = Ledger::where('name', 'Accrued Expense')
+                    ->where('account_group_id', $currentLiability->id)->first();
+
+
+                if (!$currentLiability) {
+
+                    throw ValidationException::withMessages([
+                        'name' =>
+                        'Current Liabilities account group was not found.',
                     ]);
                 }
 
@@ -83,6 +91,11 @@ class ExpenseCategoryController extends Controller
                     'name' => $request->name,
                 ]);
 
+                $currentLiabilitySubLedger = SubLedger::create([
+                    'ledger_id' => $accruedExpense->id,
+                    'name' => $request->name,
+                ]);
+
 
                 /*
             |--------------------------------------------------------------------------
@@ -95,6 +108,7 @@ class ExpenseCategoryController extends Controller
                     'name' => $request->name,
                     'type' => 'fixed',
                     'ledger_id' => $ledger->id,
+                    'accrued_expense_sub_ledger_id' => $currentLiabilitySubLedger->id,
                     'is_active' => true,
                 ]);
             });

@@ -3,31 +3,32 @@
 @section('title','Edit Expense')
 
 @section('content')
-
 <div class="container-fluid">
 
-    <div class="row">
+    <div class="card card-primary card-outline">
 
-        <div class="col-md-12">
+        <div class="card-header py-2">
+            <h3 class="card-title">
+                <i class="fas fa-edit mr-1"></i> Edit Expense
+            </h3>
+        </div>
 
-            <div class="card card-warning card-outline">
+        <form method="POST" action="{{ route('expenses.update', $expense->id) }}">
+            @csrf
+            @method('PUT')
 
-                <div class="card-header">
-                    <h3 class="card-title">
-                        <i class="fas fa-edit"></i> Edit Expense
-                    </h3>
-                </div>
+            <div class="card-body py-3">
 
-                <div class="card-body">
+                <div class="row">
 
-                    <form method="POST" action="{{ route('expenses.update', $expense->id) }}">
-                        @csrf
-                        @method('PUT')
+                    <div class="col-md-4">
+                        <div class="form-group mb-2">
+                            <label class="mb-1">Expense Category</label>
 
-                        {{-- CATEGORY --}}
-                        <div class="form-group">
-                            <label>Expense Category</label>
-                            <select name="expense_category_id" class="form-control" required>
+                            <select name="expense_category_id"
+                                    class="form-control"
+                                    required>
+
                                 <option value="">Select Category</option>
 
                                 @foreach($categories as $c)
@@ -39,53 +40,135 @@
 
                             </select>
                         </div>
+                    </div>
 
-                        {{-- DATE --}}
-                        <div class="form-group">
-                            <label>Date</label>
+                    <div class="col-md-2">
+                        <div class="form-group mb-2">
+                            <label class="mb-1">Date</label>
+
                             <input type="date"
                                    name="expense_date"
                                    value="{{ $expense->expense_date }}"
                                    class="form-control"
                                    required>
                         </div>
+                    </div>
 
-                        {{-- AMOUNT --}}
-                        <div class="form-group">
-                            <label>Amount</label>
+                    <div class="col-md-3">
+                        <div class="form-group mb-2">
+                            <label class="mb-1">Amount</label>
+
                             <input type="number"
-                                   step="0.01"
                                    name="amount"
-                                   value="{{ $expense->total_amount }}"
-                                   class="form-control">
+                                   value="{{ $expense->amount }}"
+                                   step="0.01"
+                                   min="0.01"
+                                   class="form-control"
+                                   required>
                         </div>
+                    </div>
 
-                        {{-- NOTE --}}
-                        <div class="form-group">
-                            <label>Note</label>
-                            <textarea name="note" class="form-control">{{ $expense->remarks }}</textarea>
+                    <div class="col-md-3">
+                        <div class="form-group mb-2">
+                            <label class="mb-1">Payment Status</label>
+
+                            <select name="payment_status"
+                                    id="payment_status"
+                                    class="form-control"
+                                    required>
+
+                                <option value="paid"
+                                    {{ $expense->payment_status == 'paid' ? 'selected' : '' }}>
+                                    Paid
+                                </option>
+
+                                <option value="unpaid"
+                                    {{ $expense->payment_status == 'unpaid' ? 'selected' : '' }}>
+                                    Unpaid / Accrued
+                                </option>
+
+                            </select>
                         </div>
+                    </div>
 
-                        <div class="mt-3">
-                            <button type="submit" class="btn btn-primary">
-                                Update Expense
-                            </button>
+                </div>
 
-                            <a href="{{ route('expenses.index') }}" class="btn btn-secondary">
-                                Cancel
-                            </a>
-                        </div>
+                {{-- Cash / Bank Account --}}
+                <div class="form-group mb-2"
+                     id="cash_bank_box"
+                     style="{{ $expense->payment_status == 'paid' ? '' : 'display:none;' }}">
 
-                    </form>
+                    <label class="mb-1">Cash / Bank Account</label>
 
+                    <select name="payment_sub_ledger_id"
+                            id="payment_sub_ledger_id"
+                            class="form-control">
+
+                        <option value="">Select Cash / Bank Account</option>
+
+                        @foreach($cashBankSubLedgers as $subLedger)
+                            <option value="{{ $subLedger->id }}"
+                                {{ $expense->payment_sub_ledger_id == $subLedger->id ? 'selected' : '' }}>
+                                {{ $subLedger->name }}
+                            </option>
+                        @endforeach
+
+                    </select>
+                </div>
+
+                <div class="form-group mb-0">
+                    <label class="mb-1">Note</label>
+
+                    <textarea name="remarks"
+                              class="form-control"
+                              rows="2"
+                              placeholder="Optional">{{ $expense->remarks }}</textarea>
                 </div>
 
             </div>
 
-        </div>
+            <div class="card-footer py-2">
+
+                <button type="submit" class="btn btn-success">
+                    <i class="fas fa-save mr-1"></i> Update Expense
+                </button>
+
+                <a href="{{ route('expenses.index') }}"
+                   class="btn btn-secondary">
+                    Cancel
+                </a>
+
+            </div>
+
+        </form>
 
     </div>
 
 </div>
-
 @endsection
+
+@push('scripts')
+<script>
+$(function () {
+
+    function updatePaymentBox() {
+
+        let status = $('#payment_status').val();
+
+        $('#cash_bank_box').hide();
+        $('#payment_sub_ledger_id').prop('required', false);
+
+        if (status === 'paid') {
+            $('#cash_bank_box').show();
+            $('#payment_sub_ledger_id').prop('required', true);
+        }
+    }
+
+    $('#payment_status').on('change', updatePaymentBox);
+
+    updatePaymentBox();
+
+});
+</script>
+@endpush
+

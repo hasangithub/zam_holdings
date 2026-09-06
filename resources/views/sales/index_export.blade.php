@@ -3,7 +3,7 @@
 @section('title','Export Sales')
 
 @section('content')
-
+@include('partials.alerts')
 <div class="card">
     <div class="card-header">
         <h3  class="card-title">Export Sales (USD)</h3>
@@ -32,7 +32,7 @@
                 @foreach($sales as $sale)
                 <tr>
                     <td>{{ $sale->invoice_id }}</td>
-                    <td>{{ \App\Models\Sale::CONSIGNORS[$sale->consignor] ?? '-' }}</td>
+                    <td>{{ $sale->freightService->name }}</td>
                     <td>{{ $sale->customer->name ?? '' }}</td>
 
                     <td>{{ $sale->total_foreign }}</td>
@@ -42,13 +42,24 @@
 
                     <td>
                         <a href="{{ route('export-sales.edit',$sale->id) }}"
-                            class="btn btn-warning btn-sm">
-                            Export Edit
+                            class="btn btn-primary btn-sm">
+                             Edit
                         </a>
                         <a href="{{ route('export-sales.invoice', $sale->id) }}"
                             class="btn btn-warning btn-sm">
-                            Export Invoice
+                             Invoice
                         </a>
+                         <form action="{{ route('export-sales.destroy', $sale->id) }}"
+                            method="POST"
+                            class="d-inline"
+                            onsubmit="return confirm('Are you sure you want to cancel this sale? This will reverse the journal entries and restore inventory.');">
+                            @csrf
+                            @method('DELETE')
+
+                            <button type="submit" class="btn btn-sm btn-danger">
+                                <i class="fas fa-ban"></i> Cancel
+                            </button>
+                        </form>
                     </td>
                 </tr>
                 @endforeach

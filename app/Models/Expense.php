@@ -9,9 +9,12 @@ class Expense extends Model
     protected $fillable = [
         'branch_id',
         'expense_category_id',
+        'payment_sub_ledger_id',
         'expense_date',
         'total_amount',
-        'remarks'
+        'is_paid',
+        'remarks',
+        'status'
     ];
 
     public function category()
@@ -22,5 +25,10 @@ class Expense extends Model
     public function details()
     {
         return $this->hasMany(ExpenseDetail::class);
+    }
+
+    public function paymentSubLedger()
+    {
+        return $this->belongsTo(SubLedger::class, 'payment_sub_ledger_id');
     }
 }

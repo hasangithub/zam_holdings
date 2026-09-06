@@ -30,6 +30,7 @@ class SupplierController extends Controller
     {
         $request->validate([
             'name' => 'required|string|max:255',
+            'supplier_type' => 'required|in:Trading Goods,Packing Material,Others',
         ]);
 
 
@@ -41,7 +42,9 @@ class SupplierController extends Controller
         |--------------------------------------------------------------------------
         */
 
-            $supplier = Supplier::create($request->all());
+            $supplier = Supplier::create($request->all() + [
+                'branch_id' => auth()->user()->branch_id,
+            ]);
 
 
             /*

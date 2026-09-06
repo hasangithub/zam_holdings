@@ -9,11 +9,11 @@
     <div class="alert alert-danger">
         <ul class="mb-0">
             @foreach ($errors->all() as $error)
-                <li>{{ $error }}</li>
+            <li>{{ $error }}</li>
             @endforeach
         </ul>
     </div>
-@endif
+    @endif
 
     <div class="card-header">
         <h3 class="card-title">Sales List</h3>
@@ -85,15 +85,16 @@
 
 
 
-                        <form action="{{ route('sales.destroy',$s->id) }}" method="POST" style="display:inline;">
-
+                        <form action="{{ route('sales.destroy', $s->id) }}"
+                            method="POST"
+                            class="d-inline"
+                            onsubmit="return confirm('Are you sure you want to cancel this sale? This will reverse the journal entries and restore inventory.');">
                             @csrf
                             @method('DELETE')
 
-                            <button class="btn btn-danger btn-xs" onclick="return confirm('Delete this sale?')">
-                                Delete
+                            <button type="submit" class="btn btn-sm btn-danger">
+                                <i class="fas fa-ban"></i> Cancel
                             </button>
-
                         </form>
 
                     </td>

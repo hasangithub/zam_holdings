@@ -3,7 +3,33 @@
 @section('title','Purchases')
 
 @section('content')
+    @if($errors->any())
 
+    <div class="alert alert-danger alert-dismissible fade show">
+
+        <strong>
+            Please correct the following errors:
+        </strong>
+
+        <ul class="mb-0 mt-2">
+
+            @foreach($errors->all() as $error)
+            <li>{{ $error }}</li>
+            @endforeach
+
+        </ul>
+
+        <button type="button"
+            class="close"
+            data-dismiss="alert">
+
+            <span>&times;</span>
+
+        </button>
+
+    </div>
+
+    @endif
 <div class="card">
     <div class="card-header">
     <h3 class="card-title">Purchases List</h3>
@@ -38,7 +64,7 @@
 
                         <form method="POST" action="{{ route('purchases.destroy',$p->id) }}" style="display:inline;">
                             @csrf @method('DELETE')
-                            <button class="btn btn-danger btn-xs">Delete</button>
+                            <button class="btn btn-warning btn-xs">Cancel</button>
                         </form>
                     </td>
                 </tr>

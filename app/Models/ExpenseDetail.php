@@ -13,7 +13,7 @@ class ExpenseDetail extends Model
         'amount',
         'description'
     ];
-     	 	 	 	 	
+
     public function expense()
     {
         return $this->belongsTo(Expense::class);
@@ -22,5 +22,10 @@ class ExpenseDetail extends Model
     public function item()
     {
         return $this->belongsTo(Item::class);
+    }
+
+    public function fifos()
+    {
+        return $this->hasMany(ExpenseDetailFifo::class);
     }
 }

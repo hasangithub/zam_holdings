@@ -31,7 +31,7 @@ class PurchaseInventoryController extends Controller
      */
     public function create()
     {
-        $suppliers = Supplier::orderBy('name')->get();
+        $suppliers = Supplier::orderBy('name')->where('supplier_type', 'Packing Material')->get();
         $items = Item::where('item_type', 2)
             ->orderBy('name')
             ->get();
@@ -362,6 +362,8 @@ class PurchaseInventoryController extends Controller
 
             DB::transaction(function () use ($request, $id) {
 
+             $branchId = auth()->user()->branch_id;
+
                 /*
             |--------------------------------------------------------------------------
             | Purchase Inventory
@@ -372,6 +374,14 @@ class PurchaseInventoryController extends Controller
                     PurchaseInventory::lockForUpdate()
                     ->with('items.item')
                     ->findOrFail($id);
+
+                 $supplier = Supplier::lockForUpdate()->findOrFail($request->supplier_id);
+
+                if (!$supplier->liability_sub_ledger_id) {
+                    throw ValidationException::withMessages([
+                        'supplier_id' => 'This supplier does not have a liability subledger. Please configure the supplier accounting account first.',
+                    ]);
+                }
 
 
                 $total = 0;
@@ -605,6 +615,27 @@ class PurchaseInventoryController extends Controller
                     }
                 }
 
+                                // Reverse old journal
+                Accounting::postJournal([
+                    'branch_id' => $branchId,
+                    'date' => $request->purchase_date,
+                    'description' => 'Purchase Invoice Reversal',
+                    'entries' => [
+                        [
+                            'ledger_id' => 4,
+                            'sub_ledger_id' => 2,
+                            'debit' => 0,
+                            'credit' => $purchase->total,
+                        ],
+                        [
+                            'ledger_id' => 5,
+                            'sub_ledger_id' => $purchase->supplier->liability_sub_ledger_id,
+                            'debit' => $purchase->total,
+                            'credit' => 0,
+                        ],
+                    ]
+                ]);
+
 
                 /*
             |--------------------------------------------------------------------------
@@ -612,20 +643,31 @@ class PurchaseInventoryController extends Controller
             |--------------------------------------------------------------------------
             */
 
-                $purchase->update([
+                $purchase->update(['supplier_id' =>$request->supplier_id,
+                    'purchase_date' => $request->purchase_date,
+                    'invoice_no' => $request->invoice_no,
+                    'total' => $total,
+                ]);
 
-                    'supplier_id' =>
-                    $request->supplier_id,
-
-                    'purchase_date' =>
-                    $request->purchase_date,
-
-                    'invoice_no' =>
-                    $request->invoice_no,
-
-                    'total' =>
-                    $total,
-
+                // Post new journal
+                Accounting::postJournal([
+                    'branch_id' => $purchase->branch_id,
+                    'date' => $purchase->purchase_date,
+                    'description' => 'Purchase Invoice #' . $purchase->id . ' - Updated',
+                    'entries' => [
+                        [
+                            'ledger_id' => 4,
+                            'sub_ledger_id' => 2,
+                            'debit' => $total,
+                            'credit' => 0,
+                        ],
+                        [
+                            'ledger_id' => 5,
+                            'sub_ledger_id' => $supplier->liability_sub_ledger_id,
+                            'debit' => 0,
+                            'credit' => $total,
+                        ],
+                    ]
                 ]);
             });
 
@@ -681,9 +723,108 @@ class PurchaseInventoryController extends Controller
     /**
      * Remove the specified resource from storage.
      */
-    public function destroy(PurchaseInventory $purchaseInventory)
+        public function destroy(int $id)
     {
-        //
+        try {
+            DB::transaction(function () use ($id) {
+
+                $branchId = auth()->user()->branch_id;
+
+                $purchase = PurchaseInventory::lockForUpdate()
+                    ->with('items.item', 'supplier')
+                    ->findOrFail($id);
+
+                if ($purchase->status === 'cancelled') {
+                    throw ValidationException::withMessages([
+                        'purchase' => 'This purchase is already cancelled.'
+                    ]);
+                }
+
+                foreach ($purchase->items as $purchaseItem) {
+
+                    $usedInSale = SaleItemFifo::where(
+                        'purchase_item_id',
+                        $purchaseItem->id
+                    )->exists();
+
+                    if ($usedInSale) {
+                        throw ValidationException::withMessages([
+                            'purchase' =>
+                            "Cannot cancel this purchase because "
+                                . $purchaseItem->item->name
+                                . " has already been used in a sale."
+                        ]);
+                    }
+                }
+
+                /*
+            |--------------------------------------------------------------------------
+            | Reverse Purchase Journal
+            |--------------------------------------------------------------------------
+            */
+
+                Accounting::postJournal([
+                    'branch_id' => $branchId,
+                    'date' => now()->toDateString(),
+                    'description' => 'Purchase Invoice Cancellation',
+                    'entries' => [
+                        [
+                            'ledger_id' => 4,
+                            'sub_ledger_id' => 2,
+                            'debit' => 0,
+                            'credit' => $purchase->total,
+                        ],
+                        [
+                            'ledger_id' => 5,
+                            'sub_ledger_id' =>
+                            $purchase->supplier->liability_sub_ledger_id,
+                            'debit' => $purchase->total,
+                            'credit' => 0,
+                        ],
+                    ]
+                ]);
+
+                /*
+            |--------------------------------------------------------------------------
+            | Reverse Remaining Stock
+            |--------------------------------------------------------------------------
+            */
+
+                foreach ($purchase->items as $purchaseItem) {
+
+                    $purchaseItem->update([
+                        'remaining_qty' => 0,
+                    ]);
+                }
+
+                /*
+            |--------------------------------------------------------------------------
+            | Cancel Purchase
+            |--------------------------------------------------------------------------
+            */
+
+                $purchase->update([
+                    'status' => 'cancelled',
+                ]);
+            });
+
+            return redirect()
+                ->route('purchase_inventories.index')
+                ->with(
+                    'success',
+                    'Purchase cancelled successfully.'
+                );
+        } catch (ValidationException $e) {
+
+            throw $e;
+        } catch (\Throwable $e) {
+
+            return back()
+                ->with(
+                    'error',
+                    'Unable to cancel the purchase. Please try again.'
+                );
+        }
     }
 
     public function inventorySummary()

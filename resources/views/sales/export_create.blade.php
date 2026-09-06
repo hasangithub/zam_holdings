@@ -1,5 +1,21 @@
 @extends('layouts.app')
 
+@push('css')
+<link href="https://cdn.jsdelivr.net/npm/tom-select@2.4.3/dist/css/tom-select.css" rel="stylesheet">
+
+<style>
+    .ts-dropdown {
+        z-index: 99999 !important;
+    }
+
+    .ts-control {
+        min-height: 31px;
+        padding: 4px 8px;
+        font-size: 14px;
+    }
+</style>
+@endpush
+
 @section('title','Create Export Sale')
 
 @section('content')
@@ -88,10 +104,9 @@
                                 <select name="consignor" class="form-control form-control-sm">
                                     <option value="">Select Consignor</option>
 
-                                    @foreach(\App\Models\Sale::CONSIGNORS as $id => $name)
-                                    <option value="{{ $id }}"
-                                        {{ old('consignor', $sale->consignor ?? '') == $id ? 'selected' : '' }}>
-                                        {{ $name }}
+                                    @foreach($freightServices as $freightService)
+                                    <option value="{{ $freightService->id }}">
+                                        {{ $freightService->name }}
                                     </option>
                                     @endforeach
                                 </select>
@@ -185,8 +200,9 @@
 
                                         <td>
                                             <select name="items[0][group_key]"
-                                                class="form-control form-control-sm"
+                                                class="form-control form-control-sm item-select"
                                                 required>
+                                                <option value=""></option>
                                                 @foreach($stocks as $s)
                                                 <option value="{{ $s->item_id }}|{{ $s->price }}|{{ $s->total_qty }}">
                                                     {{ $s->item_name }}
@@ -299,57 +315,146 @@
 
 
 @push('scripts')
-
 <script>
     document.addEventListener('DOMContentLoaded', function() {
 
         let i = 1;
 
+        /*
+        |--------------------------------------------------------------------------
+        | Initialize Tom Select
+        |--------------------------------------------------------------------------
+        */
+        function initItemSelect(select) {
+
+            if (select.tomselect) {
+                return select.tomselect;
+            }
+
+            return new TomSelect(select, {
+                create: false,
+                maxItems: 1,
+                allowEmptyOption: true,
+                placeholder: 'Search item...',
+                dropdownParent: 'body',
+                closeAfterSelect: true
+            });
+        }
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | FIRST ROW
+        |--------------------------------------------------------------------------
+        */
+        document.querySelectorAll('.item-select').forEach(function(select) {
+            initItemSelect(select);
+        });
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Update disabled options
+        |--------------------------------------------------------------------------
+        */
         function updateItemOptions() {
+
             let selectedValues = [];
 
-            document.querySelectorAll('select[name$="[group_key]"]').forEach(function(select) {
+            /*
+            | Get selected values from every row
+            */
+            document.querySelectorAll(
+                '#salesTable select[name$="[group_key]"]'
+            ).forEach(function(select) {
 
                 if (select.value) {
                     selectedValues.push(select.value);
                 }
-
             });
 
-            document.querySelectorAll('select[name$="[group_key]"]').forEach(function(select) {
+
+            /*
+            | Update every Tom Select
+            */
+            document.querySelectorAll(
+                '#salesTable select[name$="[group_key]"]'
+            ).forEach(function(select) {
 
                 let currentValue = select.value;
+                let ts = select.tomselect;
 
+                /*
+                | Disable options in the original select
+                */
                 select.querySelectorAll('option').forEach(function(option) {
 
-                    if (option.value === '') {
+                    if (!option.value) {
                         return;
                     }
 
-                    option.disabled = (
+                    if (
                         selectedValues.includes(option.value) &&
                         option.value !== currentValue
-                    );
+                    ) {
+                        option.disabled = true;
+                    } else {
+                        option.disabled = false;
+                    }
 
                 });
+
+
+                /*
+                |--------------------------------------------------------------------------
+                | IMPORTANT:
+                | Rebuild Tom Select options so disabled state is reflected
+                |--------------------------------------------------------------------------
+                */
+                if (ts) {
+
+                    ts.clearOptions();
+
+                    Array.from(select.options).forEach(function(option) {
+
+                        ts.addOption({
+                            value: option.value,
+                            text: option.text,
+                            disabled: option.disabled
+                        });
+
+                    });
+
+                    /*
+                    | Restore current selected value
+                    */
+                    if (currentValue) {
+                        ts.setValue(currentValue, true);
+                    }
+
+                    ts.refreshOptions(false);
+                }
 
             });
         }
 
+
+        /*
+        |--------------------------------------------------------------------------
+        | ADD ROW
+        |--------------------------------------------------------------------------
+        */
         document.getElementById('addRow').addEventListener('click', function() {
 
             let row = `
         <tr>
 
             <td>
-
                 <select name="items[${i}][group_key]"
-                        class="form-control"
+                        class="form-control form-control-sm item-select"
                         required>
 
-                    <option value="">
-                        Select Item
-                    </option>
+                    <option value="">Select Item</option>
 
                     @foreach($stocks as $s)
                         <option value="{{ $s->item_id }}|{{ $s->price }}|{{ $s->total_qty }}">
@@ -360,20 +465,23 @@
                     @endforeach
 
                 </select>
-
             </td>
 
             <td>
                 <input type="number"
                        name="items[${i}][qty]"
-                       class="form-control"
+                       class="form-control form-control-sm"
+                       min="0.01"
+                       step="0.01"
                        required>
             </td>
 
             <td>
                 <input type="number"
                        name="items[${i}][sale_price_foreign]"
-                       class="form-control"
+                       class="form-control form-control-sm"
+                       min="0"
+                       step="0.01"
                        required>
             </td>
 
@@ -384,102 +492,244 @@
                 </button>
             </td>
 
-        </tr>`;
+        </tr>
+        `;
 
             document.querySelector('#salesTable tbody')
                 .insertAdjacentHTML('beforeend', row);
 
+
+            /*
+            | Initialize Tom Select for new row
+            */
+            let newSelect = document.querySelector(
+                '#salesTable tbody tr:last-child .item-select'
+            );
+
+            initItemSelect(newSelect);
+
+
+            /*
+            | Disable items already selected
+            */
             updateItemOptions();
-            // calculateLocalPOS();
 
             i++;
         });
 
+
+        /*
+        |--------------------------------------------------------------------------
+        | ITEM CHANGED
+        |--------------------------------------------------------------------------
+        */
         document.addEventListener('change', function(e) {
 
-            if (e.target.matches('select[name$="[group_key]"]')) {
+            if (e.target.matches(
+                    '#salesTable select[name$="[group_key]"]'
+                )) {
+
                 updateItemOptions();
+
+                validateStock(
+                    e.target.closest('tr')
+                );
+
+                calculatePOS();
             }
 
         });
 
+
+        /*
+        |--------------------------------------------------------------------------
+        | REMOVE ROW
+        |--------------------------------------------------------------------------
+        */
         document.addEventListener('click', function(e) {
 
-            if (e.target.classList.contains('removeRow')) {
+            let button = e.target.closest('.removeRow');
 
-                let rows = document.querySelectorAll('#salesTable tbody tr');
-
-                if (rows.length > 1) {
-                    e.target.closest('tr').remove();
-                }
-
-                updateItemOptions();
-                //calculateLocalPOS();
-            }
-
-        });
-
-        updateItemOptions();
-
-        document.addEventListener('input', function(e) {
-
-            if (!e.target.matches('input[name$="[qty]"]')) {
+            if (!button) {
                 return;
             }
 
-            document.addEventListener('input', (e) => {
-                if (e.target.closest('#salesTable') || e.target.matches('input[name="exchange_rate"]')) calculatePOS();
+            let rows = document.querySelectorAll(
+                '#salesTable tbody tr'
+            );
+
+            if (rows.length > 1) {
+
+                let row = button.closest('tr');
+
+                let select = row.querySelector(
+                    'select[name$="[group_key]"]'
+                );
+
+                /*
+                | Destroy Tom Select
+                */
+                if (select && select.tomselect) {
+                    select.tomselect.destroy();
+                }
+
+                row.remove();
+            }
+
+            updateItemOptions();
+            calculatePOS();
+        });
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | QUANTITY
+        |--------------------------------------------------------------------------
+        */
+        document.addEventListener('input', function(e) {
+
+            if (e.target.matches(
+                    '#salesTable input[name$="[qty]"]'
+                )) {
+
+                let row = e.target.closest('tr');
+
+                validateStock(row);
+                calculatePOS();
+            }
+
+
+            if (
+                e.target.matches(
+                    '#salesTable input[name$="[sale_price_foreign]"]'
+                ) ||
+                e.target.matches(
+                    'input[name="exchange_rate"]'
+                )
+            ) {
+                calculatePOS();
+            }
+
+        });
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | STOCK VALIDATION
+        |--------------------------------------------------------------------------
+        */
+        function validateStock(row) {
+
+            if (!row) {
+                return;
+            }
+
+            let select = row.querySelector(
+                'select[name$="[group_key]"]'
+            );
+
+            let qtyInput = row.querySelector(
+                'input[name$="[qty]"]'
+            );
+
+            if (!select || !qtyInput || !select.value) {
+                return;
+            }
+
+            let stock = parseFloat(
+                select.value.split('|')[2] || 0
+            );
+
+            let qty = parseFloat(
+                qtyInput.value || 0
+            );
+
+            if (qty > stock) {
+
+                alert(
+                    'Quantity cannot exceed stock: ' + stock
+                );
+
+                qtyInput.value = stock;
+            }
+        }
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | CALCULATE POS
+        |--------------------------------------------------------------------------
+        */
+        function calculatePOS() {
+
+            let totalItems = 0;
+            let totalUsd = 0;
+
+            let exchangeRate = parseFloat(
+                document.querySelector(
+                    'input[name="exchange_rate"]'
+                ).value || 0
+            );
+
+
+            document.querySelectorAll(
+                '#salesTable tbody tr'
+            ).forEach(function(row) {
+
+                let qtyInput = row.querySelector(
+                    'input[name$="[qty]"]'
+                );
+
+                let priceInput = row.querySelector(
+                    'input[name$="[sale_price_foreign]"]'
+                );
+
+                if (!qtyInput || !priceInput) {
+                    return;
+                }
+
+                let qty = parseFloat(
+                    qtyInput.value || 0
+                );
+
+                let price = parseFloat(
+                    priceInput.value || 0
+                );
+
+                if (qty > 0 && price > 0) {
+
+                    totalItems += qty;
+                    totalUsd += qty * price;
+                }
+
             });
 
-            let row = e.target.closest('tr');
 
-            let select = row.querySelector('select[name$="[group_key]"]');
+            let totalLkr = totalUsd * exchangeRate;
 
-            if (!select.value) return;
 
-            let stock = parseFloat(select.value.split('|')[2] || 0);
+            document.getElementById('totalItems').innerText =
+                totalItems;
 
-            if (parseFloat(e.target.value) > stock) {
-                alert('Quantity cannot exceed stock: ' + stock);
-                e.target.value = stock;
-            }
+            document.getElementById('totalUsd').innerText =
+                '$ ' + totalUsd.toFixed(2);
 
-        });
+            document.getElementById('exchangeDisplay').innerText =
+                exchangeRate || '-';
+
+            document.getElementById('totalLkr').innerText =
+                'Rs ' + totalLkr.toFixed(2);
+        }
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | INITIAL
+        |--------------------------------------------------------------------------
+        */
+        updateItemOptions();
+        calculatePOS();
 
     });
-
-    function calculatePOS() {
-
-        let totalItems = 0;
-        let totalUsd = 0;
-
-        let exchangeRate = parseFloat(
-            document.querySelector('input[name="exchange_rate"]').value || 0
-        );
-
-        document.querySelectorAll('#salesTable tbody tr').forEach(function(row) {
-
-            let qtyInput = row.querySelector('input[name$="[qty]"]');
-            let priceInput = row.querySelector('input[name$="[sale_price_foreign]"]');
-
-            if (!qtyInput || !priceInput) return;
-
-            let qty = parseFloat(qtyInput.value || 0);
-            let price = parseFloat(priceInput.value || 0);
-
-            if (qty > 0 && price > 0) {
-                totalItems += qty;
-                totalUsd += (qty * price);
-            }
-        });
-
-        let totalLkr = totalUsd * exchangeRate;
-
-        document.getElementById('totalItems').innerText = totalItems;
-        document.getElementById('totalUsd').innerText = '$ ' + totalUsd.toFixed(2);
-        document.getElementById('exchangeDisplay').innerText = exchangeRate || '-';
-        document.getElementById('totalLkr').innerText = 'Rs ' + totalLkr.toFixed(2);
-    }
 </script>
-
 @endpush

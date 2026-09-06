@@ -24,9 +24,11 @@ use App\Http\Controllers\ShipmentPlanController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\ChartOfAccountController;
 use App\Http\Controllers\AccountGroupController;
+use App\Http\Controllers\FreightController;
+use App\Http\Controllers\FreightServiceController;
 use App\Http\Controllers\LedgerController;
 use App\Http\Controllers\SubLedgerController;
-
+use App\Http\Controllers\SalesProfitLossController;
 
 // Route::get('/', function () {
 //     return view('welcome');
@@ -59,6 +61,8 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/stock-summary', [StockController::class, 'summary'])->name('stock.summary');
     Route::resource('purchase-inventories', PurchaseInventoryController::class);
     Route::resource('expenses', ExpenseController::class);
+    Route::patch('expenses/{id}/mark-paid', [ExpenseController::class, 'markPaid'])
+        ->name('expenses.mark-paid');
     Route::resource('packing-usages', PackingUsageController::class);
     Route::resource('expense-categories', ExpenseCategoryController::class);
     Route::get('/inventory-summary', [PurchaseInventoryController::class, 'inventorySummary'])->name('inventory.summary');
@@ -66,6 +70,7 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/export-sales/store', [SaleController::class, 'storeExport'])->name('export-sales.store');
     Route::get('/export-sales/{id}/edit', [SaleController::class, 'editExport'])->name('export-sales.edit');
     Route::put('/export-sales/{id}', [SaleController::class, 'updateExport'])->name('export-sales.update');
+    Route::delete('/export-sales/{id}', [SaleController::class, 'destroyExport'])->name('export-sales.destroy');
     Route::get('/export-sales', [SaleController::class, 'indexExport'])->name('export-sales.index');
     Route::get('/customers/{customer}/statement', [CustomerController::class, 'statement'])->name('customers.statement');
     Route::post('/customers/{id}/payment', [CustomerController::class, 'storePayment'])->name('customers.payment.store');
@@ -96,10 +101,51 @@ Route::middleware(['auth'])->group(function () {
 
         Route::post('/branch-comparison', [ReportController::class, 'generateBranchComparison'])
             ->name('reports.branch-comparison.generate');
+
+        Route::get('/customer-summary', [ReportController::class, 'customerSummary'])
+            ->name('reports.customer-summary');
+        Route::get('/supplier-summary', [ReportController::class, 'supplierSummary'])->name('reports.supplier-summary');
     });
+
+
+
+    Route::prefix('sales-profit-loss')
+        ->name('sales-profit-loss.')
+        ->group(function () {
+
+            Route::get('/', [
+                SalesProfitLossController::class,
+                'index'
+            ])->name('index');
+
+            Route::get('/create', [
+                SalesProfitLossController::class,
+                'create'
+            ])->name('create');
+
+            Route::post('/', [
+                SalesProfitLossController::class,
+                'store'
+            ])->name('store');
+
+            Route::get('/{sale}/edit', [
+                SalesProfitLossController::class,
+                'edit'
+            ])->name('edit');
+
+            Route::put('/{salesProfitLoss}', [
+                SalesProfitLossController::class,
+                'update'
+            ])->name('update');
+        });
 
     Route::resource('freight-records', FreightRecordController::class);
     Route::resource('/landing-costs', LandingCostController::class);
+
+    Route::resource('freight-services', FreightServiceController::class)->except(['show', 'destroy']);
+    Route::resource('freights', FreightController::class)->only(['index', 'create', 'store', 'show']);
+    Route::post('freights/{id}/payment', [FreightController::class, 'payment'])->name('freights.payment');
+    Route::post('freights/{id}/cancel', [FreightController::class, 'cancel'])->name('freights.cancel');
 });
 
 Route::middleware(['auth'])->prefix('accounting')->name('accounting.')->group(function () {

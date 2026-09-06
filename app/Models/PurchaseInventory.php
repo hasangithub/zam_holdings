@@ -10,6 +10,7 @@ class PurchaseInventory extends Model
         'supplier_id',
         'purchase_date',
         'total',
+        'status'
     ];
     
     public function supplier()

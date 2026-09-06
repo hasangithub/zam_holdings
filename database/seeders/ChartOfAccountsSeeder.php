@@ -71,7 +71,7 @@ class ChartOfAccountsSeeder extends Seeder
         // CASH & BANK
         $cash = Ledger::firstOrCreate([
             'account_group_id' => $currentAssets->id,
-            'name' => 'Cash'
+            'name' => 'Cash and Bank Account'
         ]);
 
         $bank = Ledger::firstOrCreate([

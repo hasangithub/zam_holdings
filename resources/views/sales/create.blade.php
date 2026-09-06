@@ -1,5 +1,22 @@
 @extends('layouts.app')
 
+@push('css')
+<link href="https://cdn.jsdelivr.net/npm/tom-select@2.4.3/dist/css/tom-select.css" rel="stylesheet">
+
+<style>
+    .ts-dropdown {
+        z-index: 99999 !important;
+    }
+
+    .ts-control {
+        min-height: 31px;
+        padding: 4px 8px;
+        font-size: 14px;
+    }
+</style>
+@endpush
+
+
 @section('title','Create Sale')
 
 @section('content')
@@ -54,13 +71,13 @@
 
                                 @foreach($customers as $c)
 
-                                    <option
-                                        value="{{ $c->id }}"
-                                        {{ old('customer_id') == $c->id ? 'selected' : '' }}>
+                                <option
+                                    value="{{ $c->id }}"
+                                    {{ old('customer_id') == $c->id ? 'selected' : '' }}>
 
-                                        {{ $c->name }}
+                                    {{ $c->name }}
 
-                                    </option>
+                                </option>
 
                                 @endforeach
 
@@ -117,7 +134,7 @@
 
                                             <select
                                                 name="items[0][group_key]"
-                                                class="form-control"
+                                                class="form-control item-select"
                                                 required>
 
                                                 <option value="">
@@ -127,20 +144,20 @@
 
                                                 @foreach($stocks as $s)
 
-                                                    <option
-                                                        value="{{ $s->item_id }}|{{ $s->price }}">
+                                                <option
+                                                    value="{{ $s->item_id }}|{{ $s->price }}">
 
-                                                        {{ $s->item_name }}
+                                                    {{ $s->item_name }}
 
-                                                        |
-                                                        Cost:
-                                                        {{ number_format($s->price, 2) }}
+                                                    |
+                                                    Cost:
+                                                    {{ number_format($s->price, 2) }}
 
-                                                        |
-                                                        Stock:
-                                                        {{ number_format($s->total_qty, 3) }}
+                                                    |
+                                                    Stock:
+                                                    {{ number_format($s->total_qty, 3) }}
 
-                                                    </option>
+                                                </option>
 
                                                 @endforeach
 
@@ -305,22 +322,74 @@
 @push('scripts')
 
 <script>
-
-document.addEventListener(
-    'DOMContentLoaded',
-    function () {
-
-
-        let i = 1;
+    document.addEventListener(
+        'DOMContentLoaded',
+        function() {
 
 
-        /*
-        |--------------------------------------------------------------------------
-        | Item Options
-        |--------------------------------------------------------------------------
-        */
+            let i = 1;
 
-        let itemOptions = `
+            // Initialize Tom Select for first row
+            function initItemSelect(select) {
+                if (!select.tomselect) {
+                    new TomSelect(select, {
+                        create: false,
+                        maxItems: 1,
+                        allowEmptyOption: true,
+                        placeholder: 'Search item...',
+                        dropdownParent: 'body',
+                        closeAfterSelect: true,
+                        hideSelected: false
+                    });
+
+                    select.tomselect.on('change', function() {
+                        updateItemOptions();
+                    });
+                }
+            }
+
+            function updateItemOptions() {
+                const selects = document.querySelectorAll(
+                    '#salesTable select[name$="[group_key]"]'
+                );
+
+                const selectedValues = new Set();
+
+                selects.forEach(select => {
+                    if (select.value) {
+                        selectedValues.add(select.value);
+                    }
+                });
+
+                selects.forEach(select => {
+                    const ts = select.tomselect;
+                    if (!ts) return;
+
+                    const currentValue = select.value;
+
+                    Object.keys(ts.options).forEach(value => {
+                        if (!value) return;
+
+                        ts.options[value].disabled =
+                            selectedValues.has(value) && value !== currentValue;
+                    });
+
+                    ts.refreshOptions(false);
+                });
+            }
+
+            document.querySelectorAll('.item-select').forEach(function(select) {
+                initItemSelect(select);
+            });
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | Item Options
+            |--------------------------------------------------------------------------
+            */
+
+            let itemOptions = `
 
             <option value="">
                 Select Item
@@ -346,98 +415,97 @@ document.addEventListener(
         `;
 
 
-        /*
-        |--------------------------------------------------------------------------
-        | CALCULATION
-        |--------------------------------------------------------------------------
-        */
+            /*
+            |--------------------------------------------------------------------------
+            | CALCULATION
+            |--------------------------------------------------------------------------
+            */
 
-        function calculateLocalPOS()
-        {
+            function calculateLocalPOS() {
 
-            let totalItems = 0;
+                let totalItems = 0;
 
-            let totalAmount = 0;
+                let totalAmount = 0;
 
+
+                document
+                    .querySelectorAll(
+                        '#salesTable tbody tr'
+                    )
+                    .forEach(function(row) {
+
+
+                        let qtyInput =
+                            row.querySelector(
+                                'input[name$="[qty]"]'
+                            );
+
+
+                        let priceInput =
+                            row.querySelector(
+                                'input[name$="[sale_price]"]'
+                            );
+
+
+                        if (
+                            !qtyInput ||
+                            !priceInput
+                        ) {
+
+                            return;
+
+                        }
+
+
+                        let qty =
+                            parseFloat(
+                                qtyInput.value
+                            ) || 0;
+
+
+                        let price =
+                            parseFloat(
+                                priceInput.value
+                            ) || 0;
+
+
+                        totalItems += qty;
+
+                        totalAmount +=
+                            qty * price;
+
+                    });
+
+
+                document.getElementById(
+                        'totalItems'
+                    ).innerText =
+                    totalItems.toFixed(3);
+
+
+                document.getElementById(
+                        'totalAmount'
+                    ).innerText =
+                    'Rs ' +
+                    totalAmount.toFixed(2);
+
+            }
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | ADD ROW
+            |--------------------------------------------------------------------------
+            */
 
             document
-                .querySelectorAll(
-                    '#salesTable tbody tr'
-                )
-                .forEach(function(row) {
+                .getElementById('addRow')
+                .addEventListener(
+                    'click',
+                    function() {
 
 
-                    let qtyInput =
-                        row.querySelector(
-                            'input[name$="[qty]"]'
-                        );
-
-
-                    let priceInput =
-                        row.querySelector(
-                            'input[name$="[sale_price]"]'
-                        );
-
-
-                    if (
-                        !qtyInput ||
-                        !priceInput
-                    ) {
-
-                        return;
-
-                    }
-
-
-                    let qty =
-                        parseFloat(
-                            qtyInput.value
-                        ) || 0;
-
-
-                    let price =
-                        parseFloat(
-                            priceInput.value
-                        ) || 0;
-
-
-                    totalItems += qty;
-
-                    totalAmount +=
-                        qty * price;
-
-                });
-
-
-            document.getElementById(
-                'totalItems'
-            ).innerText =
-                totalItems.toFixed(3);
-
-
-            document.getElementById(
-                'totalAmount'
-            ).innerText =
-                'Rs ' +
-                totalAmount.toFixed(2);
-
-        }
-
-
-        /*
-        |--------------------------------------------------------------------------
-        | ADD ROW
-        |--------------------------------------------------------------------------
-        */
-
-        document
-            .getElementById('addRow')
-            .addEventListener(
-                'click',
-                function () {
-
-
-                    let row = `
+                        let row = `
 
                     <tr>
 
@@ -445,7 +513,7 @@ document.addEventListener(
 
                             <select
                                 name="items[${i}][group_key]"
-                                class="form-control"
+                                class="form-control item-select"
                                 required>
 
                                 ${itemOptions}
@@ -498,119 +566,125 @@ document.addEventListener(
                     `;
 
 
-                    document
-                        .querySelector(
-                            '#salesTable tbody'
-                        )
-                        .insertAdjacentHTML(
-                            'beforeend',
-                            row
+                        document
+                            .querySelector(
+                                '#salesTable tbody'
+                            )
+                            .insertAdjacentHTML(
+                                'beforeend',
+                                row
+                            );
+
+                        let newSelect = document.querySelector(
+                            '#salesTable tbody tr:last-child .item-select'
+                        );
+
+                        initItemSelect(newSelect);
+                        updateItemOptions();
+
+                        i++;
+
+                        calculateLocalPOS();
+
+                    }
+                );
+
+
+            /*
+            |--------------------------------------------------------------------------
+            | REMOVE ROW
+            |--------------------------------------------------------------------------
+            */
+
+            document.addEventListener(
+                'click',
+                function(e) {
+
+
+                    let button =
+                        e.target.closest(
+                            '.removeRow'
                         );
 
 
-                    i++;
+                    if (!button) {
+
+                        return;
+
+                    }
+
+
+                    let rows =
+                        document.querySelectorAll(
+                            '#salesTable tbody tr'
+                        );
+
+
+                    if (
+                        rows.length <= 1
+                    ) {
+
+                        return;
+
+                    }
+
+
+                    button
+                        .closest('tr')
+                        .remove();
+
 
                     calculateLocalPOS();
+                    updateItemOptions();
 
                 }
             );
 
 
-        /*
-        |--------------------------------------------------------------------------
-        | REMOVE ROW
-        |--------------------------------------------------------------------------
-        */
+            /*
+            |--------------------------------------------------------------------------
+            | LIVE CALCULATION
+            |--------------------------------------------------------------------------
+            */
 
-        document.addEventListener(
-            'click',
-            function(e) {
-
-
-                let button =
-                    e.target.closest(
-                        '.removeRow'
-                    );
+            document.addEventListener(
+                'input',
+                function(e) {
 
 
-                if (!button) {
+                    if (
 
-                    return;
+                        e.target.matches(
+                            'input[name$="[qty]"]'
+                        )
 
-                }
+                        ||
 
+                        e.target.matches(
+                            'input[name$="[sale_price]"]'
+                        )
 
-                let rows =
-                    document.querySelectorAll(
-                        '#salesTable tbody tr'
-                    );
+                    ) {
 
+                        calculateLocalPOS();
 
-                if (
-                    rows.length <= 1
-                ) {
-
-                    return;
+                    }
 
                 }
+            );
 
 
-                button
-                    .closest('tr')
-                    .remove();
+            /*
+            |--------------------------------------------------------------------------
+            | INITIAL CALCULATION
+            |--------------------------------------------------------------------------
+            */
 
+            calculateLocalPOS();
 
-                calculateLocalPOS();
+        }
 
-            }
-        );
-
-
-        /*
-        |--------------------------------------------------------------------------
-        | LIVE CALCULATION
-        |--------------------------------------------------------------------------
-        */
-
-        document.addEventListener(
-            'input',
-            function(e) {
-
-
-                if (
-
-                    e.target.matches(
-                        'input[name$="[qty]"]'
-                    )
-
-                    ||
-
-                    e.target.matches(
-                        'input[name$="[sale_price]"]'
-                    )
-
-                ) {
-
-                    calculateLocalPOS();
-
-                }
-
-            }
-        );
-
-
-        /*
-        |--------------------------------------------------------------------------
-        | INITIAL CALCULATION
-        |--------------------------------------------------------------------------
-        */
-
-        calculateLocalPOS();
-
-    }
-
-);
-
+    );
 </script>
 
 @endpush

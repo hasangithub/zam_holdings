@@ -19,5 +19,14 @@ class Customer extends Model
         'phone',
         'receivable_sub_ledger_id',
     ];
-}
 
+    public function sales()
+    {
+        return $this->hasMany(Sale::class);
+    }
+
+    public function payments()
+    {
+        return $this->hasMany(SalesPayment::class);
+    }
+}

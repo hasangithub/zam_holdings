@@ -63,13 +63,13 @@
                                 View
                             </a>
 
-                            <a href="{{ route('expenses.edit',$expense->id) }}"
+                            <a href="{{ route('packing-usages.edit',$expense->id) }}"
                                class="btn btn-primary btn-sm">
                                 Edit
                             </a>
 
                             <form method="POST"
-                                  action="{{ route('expenses.destroy',$expense->id) }}"
+                                  action="{{ route('packing-usages.destroy',$expense->id) }}"
                                   style="display:inline-block">
 
                                 @csrf

@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Branch;
 use App\Models\Category;
+use App\Models\Customer;
 use App\Models\InvoiceProfitReport;
 use App\Models\InvoiceProfitReportItem;
 use App\Models\Sale;
@@ -314,7 +315,7 @@ class ReportController extends Controller
 
         $report = collect();
 
-        
+
 
         foreach ($items as $item) {
 
@@ -353,6 +354,150 @@ class ReportController extends Controller
                 'supplier'   => Supplier::find($request->supplier_id),
                 'requestData' => $request->all(),
             ]
+        );
+    }
+
+    public function customerSummary(Request $request)
+    {
+        $type = $request->type;
+
+        $customers = Customer::query()
+            ->when($type, function ($q) use ($type) {
+                $q->where('customer_type', $type);
+            })
+            ->withSum(['sales as total_sales' => function ($q) {
+                $q->where('status', '!=', 'cancelled');
+            }], 'total')
+            ->withMax(['sales as last_sale_date' => function ($q) {
+                $q->where('status', '!=', 'cancelled');
+            }], 'sale_date')
+            ->withSum('payments as total_paid', 'amount')
+            ->orderBy('name')
+            ->get();
+
+        $customers->each(function ($customer) {
+            $customer->outstanding =
+                ($customer->total_sales ?? 0) -
+                ($customer->total_paid ?? 0);
+        });
+
+        return view('reports.customer-summary', compact(
+            'customers',
+            'type'
+        ));
+    }
+
+
+    public function supplierSummary(Request $request)
+    {
+        $type = $request->supplier_type;
+
+        $suppliers = Supplier::query()
+            ->where('branch_id', auth()->user()->branch_id)
+
+            ->when($type, function ($query) use ($type) {
+                $query->where('supplier_type', $type);
+            })
+
+            ->select('suppliers.*')
+
+            // TRADING GOODS PURCHASE TOTAL
+            ->selectSub(function ($query) {
+                $query->from('purchases')
+                    ->selectRaw('COALESCE(SUM(total), 0)')
+                    ->whereColumn('purchases.supplier_id', 'suppliers.id')
+                    ->where('purchases.status', '!=', 'cancelled');
+            }, 'trading_purchase_total')
+
+            // TRADING GOODS PAYMENT TOTAL
+            ->selectSub(function ($query) {
+                $query->from('purchase_payments')
+                    ->selectRaw('COALESCE(SUM(amount), 0)')
+                    ->whereColumn('purchase_payments.supplier_id', 'suppliers.id');
+            }, 'trading_payment_total')
+
+            // PACKING MATERIAL / OTHERS PURCHASE TOTAL
+            ->selectSub(function ($query) {
+                $query->from('purchase_inventories')
+                    ->selectRaw('COALESCE(SUM(total), 0)')
+                    ->whereColumn('purchase_inventories.supplier_id', 'suppliers.id')
+                    ->where('purchase_inventories.status', '!=', 'cancelled');
+            }, 'inventory_purchase_total')
+
+            // PACKING MATERIAL / OTHERS PAYMENT TOTAL
+            ->selectSub(function ($query) {
+                $query->from('purchase_inventory_payments')
+                    ->selectRaw('COALESCE(SUM(amount), 0)')
+                    ->whereColumn(
+                        'purchase_inventory_payments.supplier_id',
+                        'suppliers.id'
+                    );
+            }, 'inventory_payment_total')
+
+            // LAST TRADING PURCHASE
+            ->selectSub(function ($query) {
+                $query->from('purchases')
+                    ->selectRaw('MAX(purchase_date)')
+                    ->whereColumn('purchases.supplier_id', 'suppliers.id')
+                    ->where('purchases.status', '!=', 'cancelled');
+            }, 'trading_last_purchase')
+
+            // LAST INVENTORY PURCHASE
+            ->selectSub(function ($query) {
+                $query->from('purchase_inventories')
+                    ->selectRaw('MAX(purchase_date)')
+                    ->whereColumn(
+                        'purchase_inventories.supplier_id',
+                        'suppliers.id'
+                    )
+                    ->where('purchase_inventories.status', '!=', 'cancelled');
+            }, 'inventory_last_purchase')
+
+            ->orderBy('name')
+            ->get();
+
+
+        /*
+    |--------------------------------------------------------------------------
+    | Calculate supplier balance based on supplier type
+    |--------------------------------------------------------------------------
+    */
+
+        $suppliers->each(function ($supplier) {
+
+            if ($supplier->supplier_type === 'Trading Goods') {
+
+                // Trading Goods
+                $supplier->purchase_total =
+                    (float) $supplier->trading_purchase_total;
+
+                $supplier->payment_total =
+                    (float) $supplier->trading_payment_total;
+
+                $supplier->last_purchase =
+                    $supplier->trading_last_purchase;
+            } else {
+
+                // Packing Material + Others
+                $supplier->purchase_total =
+                    (float) $supplier->inventory_purchase_total;
+
+                $supplier->payment_total =
+                    (float) $supplier->inventory_payment_total;
+
+                $supplier->last_purchase =
+                    $supplier->inventory_last_purchase;
+            }
+
+            $supplier->outstanding =
+                $supplier->purchase_total -
+                $supplier->payment_total;
+        });
+
+
+        return view(
+            'reports.supplier-summary',
+            compact('suppliers', 'type')
         );
     }
 }

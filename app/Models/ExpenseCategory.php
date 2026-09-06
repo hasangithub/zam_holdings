@@ -10,6 +10,7 @@ class ExpenseCategory extends Model
         'name',
         'type',
         'ledger_id',
+        'accrued_expense_sub_ledger_id',
         'is_active'
     ];
 

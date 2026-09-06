@@ -6,6 +6,35 @@
 
 <div class="container-fluid">
 
+    {{-- VALIDATION ERRORS --}}
+    @if($errors->any())
+
+    <div class="alert alert-danger alert-dismissible fade show">
+
+        <strong>
+            Please correct the following errors:
+        </strong>
+
+        <ul class="mb-0 mt-2">
+
+            @foreach($errors->all() as $error)
+            <li>{{ $error }}</li>
+            @endforeach
+
+        </ul>
+
+        <button type="button"
+            class="close"
+            data-dismiss="alert">
+
+            <span>&times;</span>
+
+        </button>
+
+    </div>
+
+    @endif
+
     <div class="card">
 
         <div class="card-header bg-dark">
@@ -45,13 +74,13 @@
 
                                 @foreach($suppliers as $supplier)
 
-                                    <option
-                                        value="{{ $supplier->id }}"
-                                        {{ old('supplier_id', $purchase->supplier_id) == $supplier->id ? 'selected' : '' }}>
+                                <option
+                                    value="{{ $supplier->id }}"
+                                    {{ old('supplier_id', $purchase->supplier_id) == $supplier->id ? 'selected' : '' }}>
 
-                                        {{ $supplier->name }}
+                                    {{ $supplier->name }}
 
-                                    </option>
+                                </option>
 
                                 @endforeach
 
@@ -148,92 +177,92 @@
 
                             @foreach($purchase->items as $index => $purchaseItem)
 
-                                <tr>
-                                     <input
-                                type="hidden"
-                                name="items[{{ $index }}][id]"
-                                value="{{ $purchaseItem->id }}">
+                            <tr>
+                                <input
+                                    type="hidden"
+                                    name="items[{{ $index }}][id]"
+                                    value="{{ $purchaseItem->id }}">
 
-                                    <td>
+                                <td>
 
-                                        <select
-                                            name="items[{{ $index }}][item_id]"
-                                            class="form-control form-control-sm item-select"
-                                            required>
+                                    <select
+                                        name="items[{{ $index }}][item_id]"
+                                        class="form-control form-control-sm item-select"
+                                        required>
 
-                                            <option value="">
-                                                Select Item
-                                            </option>
+                                        <option value="">
+                                            Select Item
+                                        </option>
 
-                                            @foreach($items as $item)
+                                        @foreach($items as $item)
 
-                                                <option
-                                                    value="{{ $item->id }}"
-                                                    {{ old("items.$index.item_id", $purchaseItem->item_id) == $item->id ? 'selected' : '' }}>
+                                        <option
+                                            value="{{ $item->id }}"
+                                            {{ old("items.$index.item_id", $purchaseItem->item_id) == $item->id ? 'selected' : '' }}>
 
-                                                    {{ $item->name }}
+                                            {{ $item->name }}
 
-                                                </option>
+                                        </option>
 
-                                            @endforeach
+                                        @endforeach
 
-                                        </select>
+                                    </select>
 
-                                    </td>
-
-
-                                    <td>
-
-                                        <input
-                                            type="number"
-                                            name="items[{{ $index }}][qty]"
-                                            class="form-control form-control-sm qty"
-                                            min="0.001"
-                                            step="0.001"
-                                            value="{{ old("items.$index.qty", $purchaseItem->qty) }}"
-                                            required>
-
-                                    </td>
+                                </td>
 
 
-                                    <td>
+                                <td>
 
-                                        <input
-                                            type="number"
-                                            name="items[{{ $index }}][price]"
-                                            class="form-control form-control-sm price"
-                                            min="0"
-                                            step="0.01"
-                                            value="{{ old("items.$index.price", $purchaseItem->price) }}"
-                                            required>
+                                    <input
+                                        type="number"
+                                        name="items[{{ $index }}][qty]"
+                                        class="form-control form-control-sm qty"
+                                        min="0.001"
+                                        step="0.001"
+                                        value="{{ old("items.$index.qty", $purchaseItem->qty) }}"
+                                        required>
 
-                                    </td>
-
-
-                                    <td>
-
-                                        <input
-                                            type="text"
-                                            class="form-control form-control-sm subtotal"
-                                            value="{{ number_format($purchaseItem->qty * $purchaseItem->price, 2, '.', '') }}"
-                                            readonly>
-
-                                    </td>
+                                </td>
 
 
-                                    <td class="text-center">
+                                <td>
 
-                                        <button
-                                            type="button"
-                                            class="btn btn-danger btn-sm removeRow">
+                                    <input
+                                        type="number"
+                                        name="items[{{ $index }}][price]"
+                                        class="form-control form-control-sm price"
+                                        min="0"
+                                        step="0.01"
+                                        value="{{ old("items.$index.price", $purchaseItem->price) }}"
+                                        required>
 
-                                            <i class="fas fa-times"></i>
+                                </td>
 
-                                        </button>
 
-                                    </td>
+                                <td>
 
-                                </tr>
+                                    <input
+                                        type="text"
+                                        class="form-control form-control-sm subtotal"
+                                        value="{{ number_format($purchaseItem->qty * $purchaseItem->price, 2, '.', '') }}"
+                                        readonly>
+
+                                </td>
+
+
+                                <td class="text-center">
+
+                                    <button
+                                        type="button"
+                                        class="btn btn-danger btn-sm removeRow">
+
+                                        <i class="fas fa-times"></i>
+
+                                    </button>
+
+                                </td>
+
+                            </tr>
 
                             @endforeach
 
@@ -324,78 +353,79 @@
 @push('scripts')
 
 <script>
-
-let rowIndex = {{ $purchase->items->count() }};
-
-
-/*
-|--------------------------------------------------------------------------
-| Calculate Row
-|--------------------------------------------------------------------------
-*/
-
-function calculateRow(row)
-{
-    let qty =
-        parseFloat(
-            row.querySelector('.qty').value
-        ) || 0;
-
-    let price =
-        parseFloat(
-            row.querySelector('.price').value
-        ) || 0;
-
-    let subtotal = qty * price;
-
-    row.querySelector('.subtotal').value =
-        subtotal.toFixed(2);
-}
+    let rowIndex = {
+        {
+            $purchase - > items - > count()
+        }
+    };
 
 
-/*
-|--------------------------------------------------------------------------
-| Calculate Total
-|--------------------------------------------------------------------------
-*/
+    /*
+    |--------------------------------------------------------------------------
+    | Calculate Row
+    |--------------------------------------------------------------------------
+    */
 
-function calculateTotal()
-{
-    let total = 0;
+    function calculateRow(row) {
+        let qty =
+            parseFloat(
+                row.querySelector('.qty').value
+            ) || 0;
 
-    document
-        .querySelectorAll('#purchaseTable tbody tr')
-        .forEach(function(row) {
+        let price =
+            parseFloat(
+                row.querySelector('.price').value
+            ) || 0;
 
-            let qty =
-                parseFloat(
-                    row.querySelector('.qty').value
-                ) || 0;
+        let subtotal = qty * price;
 
-            let price =
-                parseFloat(
-                    row.querySelector('.price').value
-                ) || 0;
-
-            total += qty * price;
-
-        });
-
-    document.getElementById('total').value =
-        total.toFixed(2);
-}
+        row.querySelector('.subtotal').value =
+            subtotal.toFixed(2);
+    }
 
 
-/*
-|--------------------------------------------------------------------------
-| Add Row
-|--------------------------------------------------------------------------
-*/
+    /*
+    |--------------------------------------------------------------------------
+    | Calculate Total
+    |--------------------------------------------------------------------------
+    */
 
-document.getElementById('addRow')
-    .addEventListener('click', function () {
+    function calculateTotal() {
+        let total = 0;
 
-        let row = `
+        document
+            .querySelectorAll('#purchaseTable tbody tr')
+            .forEach(function(row) {
+
+                let qty =
+                    parseFloat(
+                        row.querySelector('.qty').value
+                    ) || 0;
+
+                let price =
+                    parseFloat(
+                        row.querySelector('.price').value
+                    ) || 0;
+
+                total += qty * price;
+
+            });
+
+        document.getElementById('total').value =
+            total.toFixed(2);
+    }
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Add Row
+    |--------------------------------------------------------------------------
+    */
+
+    document.getElementById('addRow')
+        .addEventListener('click', function() {
+
+            let row = `
 
         <tr>
 
@@ -476,90 +506,89 @@ document.getElementById('addRow')
 
         `;
 
-        document
-            .querySelector('#purchaseTable tbody')
-            .insertAdjacentHTML('beforeend', row);
+            document
+                .querySelector('#purchaseTable tbody')
+                .insertAdjacentHTML('beforeend', row);
 
-        rowIndex++;
+            rowIndex++;
+
+        });
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Remove Row
+    |--------------------------------------------------------------------------
+    */
+
+    document.addEventListener('click', function(e) {
+
+        if (!e.target.closest('.removeRow')) {
+            return;
+        }
+
+        let rows =
+            document.querySelectorAll(
+                '#purchaseTable tbody tr'
+            );
+
+        if (rows.length <= 1) {
+
+            alert('At least one item is required.');
+
+            return;
+        }
+
+        e.target.closest('tr').remove();
+
+        calculateTotal();
 
     });
 
 
-/*
-|--------------------------------------------------------------------------
-| Remove Row
-|--------------------------------------------------------------------------
-*/
+    /*
+    |--------------------------------------------------------------------------
+    | Quantity / Price Change
+    |--------------------------------------------------------------------------
+    */
 
-document.addEventListener('click', function(e) {
+    document.addEventListener('input', function(e) {
 
-    if (!e.target.closest('.removeRow')) {
-        return;
-    }
+        if (
+            !e.target.classList.contains('qty') &&
+            !e.target.classList.contains('price')
+        ) {
+            return;
+        }
 
-    let rows =
-        document.querySelectorAll(
-            '#purchaseTable tbody tr'
-        );
+        let row = e.target.closest('tr');
 
-    if (rows.length <= 1) {
+        calculateRow(row);
 
-        alert('At least one item is required.');
+        calculateTotal();
 
-        return;
-    }
-
-    e.target.closest('tr').remove();
-
-    calculateTotal();
-
-});
+    });
 
 
-/*
-|--------------------------------------------------------------------------
-| Quantity / Price Change
-|--------------------------------------------------------------------------
-*/
+    /*
+    |--------------------------------------------------------------------------
+    | Initial Total
+    |--------------------------------------------------------------------------
+    */
 
-document.addEventListener('input', function(e) {
+    document.addEventListener('DOMContentLoaded', function() {
 
-    if (
-        !e.target.classList.contains('qty') &&
-        !e.target.classList.contains('price')
-    ) {
-        return;
-    }
+        document
+            .querySelectorAll('#purchaseTable tbody tr')
+            .forEach(function(row) {
 
-    let row = e.target.closest('tr');
+                calculateRow(row);
 
-    calculateRow(row);
+            });
 
-    calculateTotal();
+        calculateTotal();
 
-});
-
-
-/*
-|--------------------------------------------------------------------------
-| Initial Total
-|--------------------------------------------------------------------------
-*/
-
-document.addEventListener('DOMContentLoaded', function() {
-
-    document
-        .querySelectorAll('#purchaseTable tbody tr')
-        .forEach(function(row) {
-
-            calculateRow(row);
-
-        });
-
-    calculateTotal();
-
-});
-
+    });
 </script>
 
 @endpush

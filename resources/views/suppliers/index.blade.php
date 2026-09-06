@@ -20,6 +20,7 @@
                 <tr>
                     <th>#</th>
                     <th>Supplier Name</th>
+                    <th>Type</th>
                     <th>Phone</th>
                     <th>Email</th>
                     <th>Action</th>
@@ -31,6 +32,7 @@
                 <tr>
                     <td>{{ $s->id }}</td>
                     <td>{{ $s->name }}</td>
+                    <td>{{ $s->supplier_type }}</td>
                     <td>{{ $s->phone }}</td>
                     <td>{{ $s->email }}</td>
 

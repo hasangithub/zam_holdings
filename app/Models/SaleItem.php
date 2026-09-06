@@ -29,5 +29,9 @@ class SaleItem extends Model
     {
         return $this->belongsTo(Sale::class);
     }
-}
 
+    public function fifoItems()
+    {
+        return $this->hasMany(SaleItemFifo::class);
+    }
+}

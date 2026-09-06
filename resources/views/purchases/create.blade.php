@@ -1,5 +1,20 @@
 @extends('layouts.app')
 
+@push('css')
+<style>
+    /* Tom Select dropdown */
+    .ts-dropdown {
+        z-index: 99999 !important;
+    }
+
+    /* Do NOT use overflow hidden on the form/card */
+    .card,
+    .card-body {
+        overflow: visible !important;
+    }
+</style>
+@endpush
+
 @section('title','Create Purchase')
 
 @section('content')
@@ -425,6 +440,22 @@ document.getElementById('addRow')
             .querySelector('#purchaseTable tbody')
             .insertAdjacentHTML('beforeend', row);
 
+         // Get the newly added select
+        const newSelect =
+            document.querySelector(
+                '#purchaseTable tbody tr:last-child .item-select'
+            );
+
+        // Initialize Tom Select
+        new TomSelect(newSelect, {
+            create: false,
+            maxItems: 1,
+            allowEmptyOption: true,
+            placeholder: 'Search item...',
+            dropdownParent: 'body'
+        });
+
+
 
         rowIndex++;
 
@@ -554,6 +585,22 @@ function calculateTotal()
     document.getElementById('total').value =
         total.toFixed(2);
 }
+
+document.addEventListener('DOMContentLoaded', function () {
+
+    document.querySelectorAll('.item-select').forEach(function (element) {
+
+        new TomSelect(element, {
+            create: false,
+            maxItems: 1,
+            allowEmptyOption: true,
+            placeholder: 'Search item...',
+            dropdownParent: 'body'
+        });
+
+    });
+
+});
 
 </script>
 

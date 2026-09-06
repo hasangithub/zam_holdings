@@ -155,6 +155,13 @@
                                 <p>Export Sales</p>
                             </a>
                         </li>
+                        <li class="nav-item">
+                            <a href="/sales-profit-loss/" class="nav-link">
+                                <i class="nav-icon fas fa-cash-register"></i>
+                                <p>Profit Prediction</p>
+                            </a>
+                        </li>
+
                     </ul>
                 </li>
                 <li class="nav-item has-treeview">
@@ -179,6 +186,32 @@
                             <a href="/packings" class="nav-link">
                                 <i class="nav-icon fas fa-cash-register"></i>
                                 <p>Shipment Packing</p>
+                            </a>
+                        </li>
+                    </ul>
+                </li>
+                <li class="nav-item has-treeview">
+                    <a href="#" class="nav-link">
+                        <i class="nav-icon fas fa-warehouse"></i>
+                        <p>
+                            Freight Services
+                            <i class="right fas fa-angle-left"></i>
+                        </p>
+                    </a>
+
+                    <ul class="nav nav-treeview">
+
+                        <li class="nav-item">
+                            <a href="/freight-services" class="nav-link">
+                                <i class="nav-icon fas fa-cash-register"></i>
+                                <p>Freight Services</p>
+                            </a>
+                        </li>
+
+                        <li class="nav-item">
+                            <a href="/freights" class="nav-link">
+                                <i class="nav-icon fas fa-cash-register"></i>
+                                <p>Freight Expenses</p>
                             </a>
                         </li>
                     </ul>
@@ -222,6 +255,20 @@
                             <a href="" class="nav-link">
                                 <i class="far fa-circle nav-icon"></i>
                                 <p>Balance Sheet</p>
+                            </a>
+                        </li>
+
+                         <li class="nav-item">
+                            <a href="{{ route('reports.customer-summary') }}" class="nav-link">
+                                <i class="far fa-circle nav-icon"></i>
+                                <p>Customer Summary</p>
+                            </a>
+                        </li>
+
+                         <li class="nav-item">
+                            <a href="{{ route('reports.supplier-summary') }}" class="nav-link">
+                                <i class="far fa-circle nav-icon"></i>
+                                <p>Supplier Summary</p>
                             </a>
                         </li>
 

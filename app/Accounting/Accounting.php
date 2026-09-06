@@ -4,6 +4,7 @@ namespace App\Accounting;
 
 use App\Models\JournalEntry;
 use App\Models\JournalEntryDetail;
+use App\Models\JournalEntryReference;
 use Illuminate\Support\Facades\DB;
 
 class Accounting
@@ -32,5 +33,47 @@ class Accounting
             }
 
             return $journal;
+    }
+
+    public static function reverse($modelType, $modelId)
+    {
+        return DB::transaction(function () use ($modelType, $modelId) {
+
+            $references = JournalEntryReference::where('model_type', $modelType)
+                ->where('model_id', $modelId)
+                ->whereIn('action', ['created', 'updated'])
+                ->with('journalEntry.details')
+                ->get();
+
+            foreach ($references as $reference) {
+
+                $journal = $reference->journalEntry;
+
+                $entries = [];
+
+                foreach ($journal->details as $detail) {
+                    $entries[] = [
+                        'ledger_id' => $detail->ledger_id,
+                        'sub_ledger_id' => $detail->sub_ledger_id,
+                        'debit' => $detail->credit,
+                        'credit' => $detail->debit,
+                    ];
+                }
+
+                $reversal = Accounting::postJournal([
+                    'branch_id' => $journal->branch_id,
+                    'date' => now()->toDateString(),
+                    'description' => 'Reversal of Journal #' . $journal->id,
+                    'entries' => $entries,
+                ]);
+
+                $reference->update([
+                    'action' => 'reversed',
+                    'reversal_of_id' => $journal->id,
+                ]);
+            }
+
+            return true;
+        });
     }
 }

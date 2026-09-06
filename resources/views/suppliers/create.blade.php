@@ -22,28 +22,54 @@
 
                 <div class="card-body">
 
-                    <div class="form-group">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-group">
 
-                        <label>
-                            Supplier Name
-                            <span class="text-danger">*</span>
-                        </label>
+                                <label>
+                                    Supplier Name
+                                    <span class="text-danger">*</span>
+                                </label>
 
-                        <input type="text"
-                               name="name"
-                               value="{{ old('name') }}"
-                               class="form-control @error('name') is-invalid @enderror"
-                               placeholder="Enter Supplier Name"
-                               required>
+                                <input type="text"
+                                    name="name"
+                                    value="{{ old('name') }}"
+                                    class="form-control @error('name') is-invalid @enderror"
+                                    placeholder="Enter Supplier Name"
+                                    required>
 
-                        @error('name')
-                            <span class="invalid-feedback">
-                                {{ $message }}
-                            </span>
-                        @enderror
+                                @error('name')
+                                <span class="invalid-feedback">
+                                    {{ $message }}
+                                </span>
+                                @enderror
+
+                            </div>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="mb-1">Type</label>
+                            <select name="supplier_type"
+                                class="form-control form-control-sm"
+                                required>
+                                <option value="Trading Goods"
+                                    {{ old('supplier_type', 'Trading Goods') == 'Trading Goods' ? 'selected' : '' }}>
+                                    Trading Goods
+                                </option>
+
+                                <option value="Packing Material"
+                                    {{ old('supplier_type') == 'Packing Material' ? 'selected' : '' }}>
+                                    Packing Material
+                                </option>
+
+                                <option value="Others"
+                                    {{ old('supplier_type') == 'Others' ? 'selected' : '' }}>
+                                    Others
+                                </option>
+                            </select>
+                        </div>
 
                     </div>
-
                     <div class="row">
 
                         <div class="col-md-6">
@@ -55,10 +81,10 @@
                                 </label>
 
                                 <input type="text"
-                                       name="phone"
-                                       value="{{ old('phone') }}"
-                                       class="form-control"
-                                       placeholder="0771234567">
+                                    name="phone"
+                                    value="{{ old('phone') }}"
+                                    class="form-control"
+                                    placeholder="0771234567">
 
                             </div>
 
@@ -73,10 +99,10 @@
                                 </label>
 
                                 <input type="email"
-                                       name="email"
-                                       value="{{ old('email') }}"
-                                       class="form-control"
-                                       placeholder="supplier@email.com">
+                                    name="email"
+                                    value="{{ old('email') }}"
+                                    class="form-control"
+                                    placeholder="supplier@email.com">
 
                             </div>
 
@@ -91,18 +117,17 @@
                         </label>
 
                         <textarea name="address"
-                                  rows="3"
-                                  class="form-control"
-                                  placeholder="Enter Supplier Address">{{ old('address') }}</textarea>
+                            rows="3"
+                            class="form-control"
+                            placeholder="Enter Supplier Address">{{ old('address') }}</textarea>
 
                     </div>
-
                 </div>
 
                 <div class="card-footer">
 
                     <a href="{{ route('suppliers.index') }}"
-                       class="btn btn-secondary">
+                        class="btn btn-secondary">
 
                         <i class="fas fa-arrow-left mr-1"></i>
                         Back
@@ -110,7 +135,7 @@
                     </a>
 
                     <button type="submit"
-                            class="btn btn-success float-right">
+                        class="btn btn-success float-right">
 
                         <i class="fas fa-save mr-1"></i>
                         Save Supplier

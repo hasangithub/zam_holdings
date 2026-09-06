@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class JournalEntry extends Model
 {
-     protected $fillable = [
+    protected $fillable = [
         'branch_id',
         'journal_date',
         'description',
@@ -21,5 +21,10 @@ class JournalEntry extends Model
     public function details()
     {
         return $this->hasMany(JournalEntryDetail::class);
+    }
+
+    public function references()
+    {
+        return $this->hasMany(JournalEntryReference::class);
     }
 }

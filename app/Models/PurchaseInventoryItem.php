@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class PurchaseInventoryItem extends Model
 {
-     protected $fillable = [
+    protected $fillable = [
         'purchase_inventory_id',
         'item_id',
         'qty',
@@ -14,7 +14,7 @@ class PurchaseInventoryItem extends Model
         'price',
         'subtotal',
     ];
-    
+
     public function purchaseInventory()
     {
         return $this->belongsTo(PurchaseInventory::class);
@@ -23,5 +23,12 @@ class PurchaseInventoryItem extends Model
     public function item()
     {
         return $this->belongsTo(Item::class);
+    }
+
+    public function expenseFifos()
+    {
+        return $this->hasMany(
+            ExpenseDetailFifo::class
+        );
     }
 }

@@ -1,130 +1,228 @@
 @extends('layouts.app')
 
-@section('title','Expense Details')
+@section('title', 'Expense Details')
 
 @section('content')
+<div class="container-fluid">
 
-<div class="card">
+    <div class="card card-primary card-outline">
 
-    <div class="card-header">
-        <h3 class="card-title">
-            Expense #{{ $expense->id }}
-        </h3>
+        <div class="card-header py-2">
+            <h3 class="card-title">
+                <i class="fas fa-file-invoice-dollar"></i>
+                Expense #{{ $expense->id }}
+            </h3>
 
-        <div class="card-tools">
-            <a href="{{ route('expenses.index') }}"
-               class="btn btn-secondary btn-sm">
-                Back
-            </a>
-        </div>
-    </div>
-
-    <div class="card-body">
-
-        <div class="row">
-
-            <div class="col-md-3">
-                <strong>Date</strong><br>
-                {{ \Carbon\Carbon::parse($expense->expense_date)->format('d-m-Y') }}
+            <div class="card-tools">
+                <a href="{{ route('expenses.index') }}"
+                   class="btn btn-sm btn-secondary">
+                    <i class="fas fa-arrow-left"></i> Back
+                </a>
             </div>
-
-            <div class="col-md-3">
-                <strong>Category</strong><br>
-                {{ $expense->category->name ?? '' }}
-            </div>
-
-            <div class="col-md-3">
-                <strong>Type</strong><br>
-
-                @if($expense->category->type == 'fixed')
-                    <span class="badge badge-info">Fixed</span>
-                @else
-                    <span class="badge badge-warning">Packaging</span>
-                @endif
-
-            </div>
-
-            <div class="col-md-3">
-                <strong>Total Amount</strong><br>
-                {{ number_format($expense->total_amount,2) }}
-            </div>
-
         </div>
 
-        @if($expense->remarks)
-            <hr>
+        <div class="card-body p-2">
 
-            <strong>Remarks</strong>
+            <div class="row">
 
-            <p>
-                {{ $expense->remarks }}
-            </p>
-        @endif
+                <div class="col-md-6">
 
-        <hr>
+                    <table class="table table-sm table-bordered mb-2">
 
-        <h5>Expense Details</h5>
+                        <tr>
+                            <th width="40%">Expense No</th>
+                            <td>#{{ $expense->id }}</td>
+                        </tr>
 
-        <table class="table table-bordered">
+                        <tr>
+                            <th>Expense Date</th>
+                            <td>
+                                {{ \Carbon\Carbon::parse($expense->expense_date)->format('d-m-Y') }}
+                            </td>
+                        </tr>
 
-            <thead>
-                <tr>
-                    <th>Item</th>
-                    <th width="120">Qty</th>
-                    <th width="150">Amount</th>
-                </tr>
-            </thead>
+                        <tr>
+                            <th>Category</th>
+                            <td>
+                                {{ $expense->expenseCategory->name ?? '-' }}
+                            </td>
+                        </tr>
 
-            <tbody>
+                        <tr>
+                            <th>Amount</th>
+                            <td>
+                                <strong>
+                                    {{ number_format($expense->total_amount, 2) }}
+                                </strong>
+                            </td>
+                        </tr>
 
-                @forelse($expense->details as $detail)
+                        <tr>
+                            <th>Payment Status</th>
+                            <td>
+                                @if($expense->is_paid)
+                                    <span class="badge badge-success">
+                                        Paid
+                                    </span>
+                                @else
+                                    <span class="badge badge-warning">
+                                        Unpaid
+                                    </span>
+                                @endif
+                            </td>
+                        </tr>
 
-                    <tr>
+                        <tr>
+                            <th>Status</th>
+                            <td>
+                                @if($expense->status === 'cancelled')
+                                    <span class="badge badge-danger">
+                                        Cancelled
+                                    </span>
+                                @else
+                                    <span class="badge badge-success">
+                                        Active
+                                    </span>
+                                @endif
+                            </td>
+                        </tr>
 
-                        <td>
-                            {{ $detail->item->name ?? $detail->description }}
-                        </td>
+                    </table>
 
-                        <td>
-                            {{ number_format($detail->qty,2) }}
-                        </td>
+                </div>
 
-                        <td class="text-right">
-                            {{ number_format($detail->amount,2) }}
-                        </td>
+                <div class="col-md-6">
 
-                    </tr>
+                    <table class="table table-sm table-bordered mb-2">
 
-                @empty
+                        <tr>
+                            <th width="40%">Payment Account</th>
+                            <td>
+                                @if($expense->paymentSubLedger)
+                                    {{ $expense->paymentSubLedger->name }}
+                                @else
+                                    -
+                                @endif
+                            </td>
+                        </tr>
 
-                    <tr>
-                        <td colspan="3" class="text-center">
-                            No Details Found
-                        </td>
-                    </tr>
+                        <tr>
+                            <th>Remarks</th>
+                            <td>
+                                {{ $expense->remarks ?: '-' }}
+                            </td>
+                        </tr>
 
-                @endforelse
+                        <tr>
+                            <th>Created At</th>
+                            <td>
+                                {{ $expense->created_at->format('d-m-Y H:i') }}
+                            </td>
+                        </tr>
 
-            </tbody>
+                        <tr>
+                            <th>Updated At</th>
+                            <td>
+                                {{ $expense->updated_at->format('d-m-Y H:i') }}
+                            </td>
+                        </tr>
 
-            <tfoot>
+                    </table>
 
-                <tr>
-                    <th colspan="2" class="text-right">
-                        Total
-                    </th>
+                </div>
 
-                    <th class="text-right">
-                        {{ number_format($expense->total_amount,2) }}
-                    </th>
-                </tr>
+            </div>
 
-            </tfoot>
+            @if(!$expense->is_paid && $expense->status !== 'cancelled')
 
-        </table>
+                <div class="card card-warning card-outline mb-0">
+
+                    <div class="card-header py-2">
+                        <h3 class="card-title">
+                            <i class="fas fa-money-bill-wave"></i>
+                            Make Payment
+                        </h3>
+                    </div>
+
+                    <div class="card-body p-2">
+
+                        <form action="{{ route('expenses.mark-paid', $expense->id) }}"
+                              method="POST">
+
+                            @csrf
+                            @method('PATCH')
+
+                            <div class="form-row align-items-end">
+
+                                <div class="col-md-5">
+                                    <label class="mb-1">
+                                        Payment Account
+                                    </label>
+
+                                    <select name="payment_sub_ledger_id"
+                                            class="form-control form-control-sm"
+                                            required>
+
+                                        <option value="">
+                                            Select Cash / Bank Account
+                                        </option>
+
+                                        @foreach($paymentSubLedgers as $subLedger)
+                                            <option value="{{ $subLedger->id }}">
+                                                {{ $subLedger->name }}
+                                            </option>
+                                        @endforeach
+
+                                    </select>
+                                </div>
+
+                                <div class="col-md-3">
+                                    <label class="mb-1">
+                                        Amount
+                                    </label>
+
+                                    <input type="text"
+                                           class="form-control form-control-sm"
+                                           value="{{ number_format($expense->total_amount, 2) }}"
+                                           readonly>
+                                </div>
+
+                                <div class="col-md-2">
+                                    <button type="submit"
+                                            class="btn btn-sm btn-success btn-block"
+                                            onclick="return confirm('Mark this expense as paid?')">
+                                        <i class="fas fa-check"></i>
+                                        Mark Paid
+                                    </button>
+                                </div>
+
+                            </div>
+
+                        </form>
+
+                    </div>
+
+                </div>
+
+            @elseif($expense->is_paid)
+
+                <div class="alert alert-success py-2 mb-0">
+                    <i class="fas fa-check-circle"></i>
+                    This expense has been paid.
+                </div>
+
+            @elseif($expense->status === 'cancelled')
+
+                <div class="alert alert-danger py-2 mb-0">
+                    <i class="fas fa-ban"></i>
+                    This expense has been cancelled.
+                </div>
+
+            @endif
+
+        </div>
 
     </div>
 
 </div>
-
 @endsection
