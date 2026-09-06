@@ -9,13 +9,15 @@
     {{-- HEADER --}}
     <div class="d-flex justify-content-between align-items-center mb-3">
         <h3 class="mb-0">{{ $supplier->name }} - Statement</h3>
-
+        @if($supplier->supplier_type == 'Trading Goods')
         <button class="btn btn-primary" data-toggle="modal" data-target="#payModal">
             + Purchase Payment
         </button>
+        @else
         <button class="btn btn-primary" data-toggle="modal" data-target="#payInventoryModal">
             + Inventory Payment
         </button>
+        @endif
     </div>
 
     {{-- SUMMARY CARDS --}}
