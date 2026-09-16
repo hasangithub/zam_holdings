@@ -22,8 +22,7 @@ class PurchaseInventoryController extends Controller
     public function index()
     {
         $purchases = PurchaseInventory::with('supplier')
-            ->latest()
-            ->paginate(20);
+            ->get();
 
         return view('purchase_inventories.index', compact('purchases'));
     }

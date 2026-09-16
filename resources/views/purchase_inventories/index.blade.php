@@ -38,7 +38,7 @@
 
             <tbody>
 
-                @forelse($purchases as $purchase)
+                @foreach($purchases as $purchase)
 
                 <tr>
 
@@ -105,26 +105,14 @@
 
                 </tr>
 
-                @empty
-
-                <tr>
-                    <td colspan="8" class="text-center">
-                        No Records Found
-                    </td>
-                </tr>
-
-                @endforelse
+            
+                @endforeach
 
             </tbody>
 
         </table>
 
     </div>
-
-    <div class="card-footer clearfix">
-        {{ $purchases->links() }}
-    </div>
-
 </div>
 
 @endsection
