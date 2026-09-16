@@ -379,7 +379,7 @@ class PurchaseController extends Controller
                     'entries' => [
                         [
                             'ledger_id' => 4,
-                            'sub_ledger_id' => 1,
+                            'sub_ledger_id' => null,
                             'debit' => $total,
                             'credit' => 0,
                         ],
