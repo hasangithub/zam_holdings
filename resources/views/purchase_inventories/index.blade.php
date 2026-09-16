@@ -1,48 +1,50 @@
 @extends('layouts.app')
 
-@section('title','Purchase Inventories')
+@section('title', 'Purchase Inventories')
 
 @section('content')
 
 <div class="card">
 
-    <div class="card-header">
+<div class="card-header">
 
-        <h3 class="card-title">Purchase Inventories</h3>
+    <h3 class="card-title">Purchase Inventories</h3>
 
-        <div class="card-tools">
-            <a href="{{ route('purchase-inventories.create') }}"
-                class="btn btn-primary btn-sm">
-                Add Purchase
-            </a>
-        </div>
-
+    <div class="card-tools">
+        <a href="{{ route('purchase-inventories.create') }}"
+           class="btn btn-primary btn-sm">
+            Add Purchase
+        </a>
     </div>
 
-    <div class="card-body">
+</div>
 
-        <table class="table table-bordered table-striped table-erp">
+<div class="card-body">
 
-            <thead>
+    <table class="table table-bordered table-striped table-erp">
+
+        <thead>
+            <tr>
+                <th>#</th>
+                <th>Date</th>
+                <th>Supplier</th>
+                <th>Total</th>
+                <th>Paid</th>
+                <th>Balance</th>
+                <th>Status</th>
+                <th width="180">Action</th>
+            </tr>
+        </thead>
+
+        <tbody>
+
+            @foreach($purchases as $purchase)
+
                 <tr>
-                    <th>#</th>
-                    <th>Date</th>
-                    <th>Supplier</th>
-                    <th>Total</th>
-                    <th>Paid</th>
-                    <th>Balance</th>
-                    <th>Status</th>
-                    <th width="180">Action</th>
-                </tr>
-            </thead>
 
-            <tbody>
-
-                @foreach($purchases as $purchase)
-
-                <tr>
-
-                    <td>{{ $purchase->id }}</td>
+                    <td>
+                        {{ $purchase->id }}
+                    </td>
 
                     <td>
                         {{ \Carbon\Carbon::parse($purchase->purchase_date)->format('d-m-Y') }}
@@ -65,54 +67,73 @@
                     </td>
 
                     <td>
+
                         @if($purchase->status === 'pending')
-                        <span class="badge badge-warning">Pending</span>
+
+                            <span class="badge badge-warning">
+                                Pending
+                            </span>
+
                         @elseif($purchase->status === 'paid')
-                        <span class="badge badge-success">Paid</span>
+
+                            <span class="badge badge-success">
+                                Paid
+                            </span>
+
                         @elseif($purchase->status === 'cancelled')
-                        <span class="badge badge-danger">Cancelled</span>
+
+                            <span class="badge badge-danger">
+                                Cancelled
+                            </span>
+
                         @endif
+
                     </td>
 
                     <td>
 
-                        <a href="{{ route('purchase-inventories.show',$purchase->id) }}"
-                            class="btn btn-info btn-sm">
+                        <a href="{{ route('purchase-inventories.show', $purchase->id) }}"
+                           class="btn btn-info btn-sm">
                             View
                         </a>
 
-                        <a href="{{ route('purchase-inventories.edit',$purchase->id) }}"
-                            class="btn btn-primary btn-sm">
-                            Edit
-                        </a>
-                        @if($pu)
-                        <form method="POST"
-                            action="{{ route('purchase-inventories.destroy',$purchase->id) }}"
-                            style="display:inline-block">
+                        @if($purchase->status !== 'cancelled')
 
-                            @csrf
-                            @method('DELETE')
+                            <a href="{{ route('purchase-inventories.edit', $purchase->id) }}"
+                               class="btn btn-primary btn-sm">
+                                Edit
+                            </a>
 
-                            <button type="submit"
-                                class="btn btn-danger btn-sm"
-                                onclick="return confirm('Delete this purchase?')">
-                                Delete
-                            </button>
+                            <form method="POST"
+                                  action="{{ route('purchase-inventories.destroy', $purchase->id) }}"
+                                  style="display:inline-block">
 
-                        </form>
+                                @csrf
+                                @method('DELETE')
+
+                                <button type="submit"
+                                        class="btn btn-danger btn-sm"
+                                        onclick="return confirm('Delete this purchase?')">
+                                    Delete
+                                </button>
+
+                            </form>
+
+                        @endif
 
                     </td>
 
                 </tr>
 
-            
-                @endforeach
+            @endforeach
 
-            </tbody>
+        </tbody>
 
-        </table>
+    </table>
 
-    </div>
+</div>
+
+
 </div>
 
 @endsection
