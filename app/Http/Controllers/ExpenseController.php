@@ -104,7 +104,7 @@ class ExpenseController extends Controller
                         'payment_sub_ledger_id' => $request->payment_sub_ledger_id,
                     ]);
                 } else {
-                    $creditLedgerId = 14;
+                    $creditLedgerId = 16;
                     $creditSubLedgerId = $category->accrued_expense_sub_ledger_id;
                     $debitLedgerId = $category->ledger_id;
                     $debitSubLedgerId = null;
