@@ -153,97 +153,197 @@ class SupplierController extends Controller
     //     ));
     // }
 
-    public function statement($id)
+    public function statement(Request $request, $id)
     {
         $supplier = Supplier::findOrFail($id);
 
-        $purchases = Purchase::where('supplier_id', $id)->get();
+        $all = $request->boolean('all');
 
-        $purchasePayments = PurchasePayment::where('supplier_id', $id)->get();
+        $fromDate = $request->input(
+            'from_date',
+            now()->subDays(6)->format('Y-m-d')
+        );
 
-        $inventoryPurchases = PurchaseInventory::where('supplier_id', $id)->get();
-
-        $inventoryPayments = PurchaseInventoryPayment::where('supplier_id', $id)->get();
-
-        $totalPurchase =
-            $purchases->sum('total')
-            +
-            $inventoryPurchases->sum('total');
-
-        $totalPaid =
-            $purchasePayments->sum('amount')
-            +
-            $inventoryPayments->sum('amount');
-
-        $balance = $totalPurchase - $totalPaid;
+        $toDate = $request->input(
+            'to_date',
+            now()->format('Y-m-d')
+        );
 
         $ledger = collect();
+        $openingBalance = 0;
 
-        // PURCHASES
-        foreach ($purchases as $p) {
+        /*
+    |--------------------------------------------------------------------------
+    | Trading Goods
+    |--------------------------------------------------------------------------
+    */
 
-            $ledger->push([
-                'date' => $p->purchase_date,
-                'module' => 'Purchase',
-                'type' => 'Invoice',
-                'debit' => $p->total,
-                'credit' => 0,
-            ]);
+        if ($supplier->supplier_type == 'Trading Goods') {
+
+            $purchases = Purchase::where('supplier_id', $id)->get();
+
+            $payments = PurchasePayment::where('supplier_id', $id)->get();
+
+            foreach ($purchases as $purchase) {
+
+                $ledger->push([
+                    'date' => $purchase->purchase_date,
+                    'module' => 'Purchase',
+                    'type' => 'Invoice',
+                    'debit' => $purchase->total,
+                    'credit' => 0,
+                ]);
+            }
+
+            foreach ($payments as $payment) {
+
+                $ledger->push([
+                    'date' => $payment->payment_date,
+                    'module' => 'Purchase',
+                    'type' => 'Payment',
+                    'debit' => 0,
+                    'credit' => $payment->amount,
+                ]);
+            }
         }
 
-        // PURCHASE PAYMENTS
-        foreach ($purchasePayments as $pay) {
+        /*
+    |--------------------------------------------------------------------------
+    | Other Supplier Types
+    |--------------------------------------------------------------------------
+    */ else {
 
-            $ledger->push([
-                'date' => $pay->payment_date,
-                'module' => 'Purchase',
-                'type' => 'Payment',
-                'debit' => 0,
-                'credit' => $pay->amount,
-            ]);
+            $purchases = PurchaseInventory::where(
+                'supplier_id',
+                $id
+            )->get();
+
+            $payments = PurchaseInventoryPayment::where(
+                'supplier_id',
+                $id
+            )->get();
+
+            foreach ($purchases as $purchase) {
+
+                $ledger->push([
+                    'date' => $purchase->purchase_date,
+                    'module' => 'Inventory',
+                    'type' => 'Invoice',
+                    'debit' => $purchase->total,
+                    'credit' => 0,
+                ]);
+            }
+
+            foreach ($payments as $payment) {
+
+                $ledger->push([
+                    'date' => $payment->payment_date,
+                    'module' => 'Inventory',
+                    'type' => 'Payment',
+                    'debit' => 0,
+                    'credit' => $payment->amount,
+                ]);
+            }
         }
 
-        // INVENTORY PURCHASES
-        foreach ($inventoryPurchases as $inv) {
-
-            $ledger->push([
-                'date' => $inv->purchase_date,
-                'module' => 'Inventory',
-                'type' => 'Invoice',
-                'debit' => $inv->total,
-                'credit' => 0,
-            ]);
-        }
-
-        // INVENTORY PAYMENTS
-        foreach ($inventoryPayments as $pay) {
-
-            $ledger->push([
-                'date' => $pay->payment_date,
-                'module' => 'Inventory',
-                'type' => 'Payment',
-                'debit' => 0,
-                'credit' => $pay->amount,
-            ]);
-        }
+        /*
+    |--------------------------------------------------------------------------
+    | Sort
+    |--------------------------------------------------------------------------
+    */
 
         $ledger = $ledger->sortBy('date')->values();
 
-        $running = 0;
 
-        foreach ($ledger as &$item) {
+        /*
+    |--------------------------------------------------------------------------
+    | Filter + Opening Balance
+    |--------------------------------------------------------------------------
+    */
 
-            $running += ($item['debit'] - $item['credit']);
+        if (!$all) {
 
-            $item['balance'] = $running;
+            $filtered = collect();
+
+            foreach ($ledger as $row) {
+
+                // Before From Date = Opening Balance
+                if ($row['date'] < $fromDate) {
+
+                    $openingBalance +=
+                        $row['debit'] - $row['credit'];
+                }
+
+                // From Date to To Date = Transactions
+                elseif (
+                    $row['date'] >= $fromDate &&
+                    $row['date'] <= $toDate
+                ) {
+
+                    $filtered->push($row);
+                }
+            }
+
+            $ledger = $filtered;
         }
+
+
+        /*
+    |--------------------------------------------------------------------------
+    | Running Balance
+    |--------------------------------------------------------------------------
+    */
+
+        $running = $openingBalance;
+
+        $ledger = $ledger->map(function ($row) use (&$running) {
+
+            $running += $row['debit'] - $row['credit'];
+
+            $row['balance'] = $running;
+
+            return $row;
+        });
+
+
+        /*
+    |--------------------------------------------------------------------------
+    | Totals
+    |--------------------------------------------------------------------------
+    */
+
+        $periodPurchase = $ledger->sum('debit');
+
+        $periodPaid = $ledger->sum('credit');
+
+        $balance = $openingBalance + $periodPurchase - $periodPaid;
+
+
+        /*
+    |--------------------------------------------------------------------------
+    | If All, balance is final balance
+    |--------------------------------------------------------------------------
+    */
+
+        if ($all) {
+
+            $balance = $ledger->last()['balance'] ?? 0;
+        }
+
+        $paymentSubLedgers = SubLedger::where('ledger_id', 1)->get();
+
 
         return view('suppliers.statement', compact(
             'supplier',
             'ledger',
             'balance',
-            'totalPurchase',
-            'totalPaid'
+            'openingBalance',
+            'periodPurchase',
+            'periodPaid',
+            'fromDate',
+            'toDate',
+            'all',
+            'paymentSubLedgers'
         ));
     }
 
@@ -252,7 +352,7 @@ class SupplierController extends Controller
         $request->validate([
             'amount' => ['required', 'numeric', 'gt:0',],
             'payment_date' => ['required', 'date',],
-            'method' => ['required', 'in:Cash,Bank,Cheque',],
+            'sub_ledger_id' => 'required|exists:sub_ledgers,id',
             'note' => ['nullable', 'string', 'max:1000',],
         ]);
 
@@ -273,17 +373,11 @@ class SupplierController extends Controller
                     'supplier_id' => $supplier->id,
                     'amount' => $request->amount,
                     'payment_date' => $request->payment_date,
-                    'method' => $request->method,
                     'note' => $request->note,
                 ]);
 
-                if ($request->method === 'Cash') {
-                    $paymentLedgerId = 1;
-                    $paymentSubLedgerId = null;
-                } else {
-                    $paymentLedgerId = 2;
-                    $paymentSubLedgerId = null;
-                }
+                $paymentLedgerId = 1;
+                $paymentSubLedgerId = $request->sub_ledger_id;
 
                 Accounting::postJournal([
                     'branch_id' => $branchId,
@@ -321,7 +415,7 @@ class SupplierController extends Controller
         $request->validate([
             'amount' => ['required', 'numeric', 'gt:0',],
             'payment_date' => ['required', 'date',],
-            'method' => ['required', 'in:Cash,Bank,Cheque',],
+            'sub_ledger_id' => 'required|exists:sub_ledgers,id',
             'note' => ['nullable', 'string', 'max:1000',],
         ]);
 
@@ -342,18 +436,12 @@ class SupplierController extends Controller
                     'supplier_id' => $supplier->id,
                     'amount' => $request->amount,
                     'payment_date' => $request->payment_date,
-                    'method' => $request->method,
                     'note' => $request->note,
                 ]);
 
 
-                if ($request->method === 'cash') {
-                    $paymentLedgerId = 1;
-                    $paymentSubLedgerId = null;
-                } else {
-                    $paymentLedgerId = 2;
-                    $paymentSubLedgerId = null;
-                }
+                $paymentLedgerId = 1;
+                $paymentSubLedgerId = $request->sub_ledger_id;
 
                 Accounting::postJournal([
                     'branch_id' => $branchId,

@@ -152,8 +152,6 @@
 
         <div class="card-footer">
 
-            {{ $journalEntries->links() }}
-
         </div>
 
     </div>

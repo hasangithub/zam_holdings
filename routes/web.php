@@ -72,7 +72,7 @@ Route::middleware(['auth'])->group(function () {
     Route::put('/export-sales/{id}', [SaleController::class, 'updateExport'])->name('export-sales.update');
     Route::delete('/export-sales/{id}', [SaleController::class, 'destroyExport'])->name('export-sales.destroy');
     Route::get('/export-sales', [SaleController::class, 'indexExport'])->name('export-sales.index');
-    Route::get('/customers/{customer}/statement', [CustomerController::class, 'statement'])->name('customers.statement');
+    Route::get('/customers/{id}/statement', [CustomerController::class, 'statement'])->name('customers.statement');
     Route::post('/customers/{id}/payment', [CustomerController::class, 'storePayment'])->name('customers.payment.store');
     Route::get('/suppliers/{id}/statement', [SupplierController::class, 'statement'])->name('suppliers.statement');
     Route::post('/suppliers/{id}/payment', [SupplierController::class, 'storePayment'])->name('suppliers.payment.store');

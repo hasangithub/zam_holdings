@@ -88,58 +88,172 @@ class CustomerController extends Controller
         return back();
     }
 
-    public function statement(int $customerId)
+    public function statement(Request $request, $id)
     {
-        $customer = Customer::findOrFail($customerId);
+        $customer = Customer::findOrFail($id);
 
-        $sales = Sale::where('customer_id', $customerId)
-            ->selectRaw("
-            id,
-            invoice_id,
-            sale_date as trans_date,
-            total as debit,
-            0 as credit,
-            'Invoice' as type
-        ");
+        $all = $request->boolean('all');
 
-        $payments = SalesPayment::where('customer_id', $customerId)
-            ->selectRaw("
-            id,
-            NULL as invoice_id,
-            payment_date as trans_date,
-            0 as debit,
-            amount as credit,
-            'Payment' as type
-        ");
-
-        $transactions = $sales
-            ->unionAll($payments)
-            ->orderBy('trans_date')
-            ->get();
-
-        $totalSales = Sale::where('customer_id', $customerId)->sum('total');
-
-        $totalPayments = SalesPayment::where('customer_id', $customerId)
-            ->sum('amount');
-
-        $outstanding = $totalSales - $totalPayments;
-
-        return view(
-            'customers.statement',
-            compact(
-                'customer',
-                'transactions',
-                'totalSales',
-                'totalPayments',
-                'outstanding'
-            )
+        $fromDate = $request->input(
+            'from_date',
+            now()->subDays(6)->format('Y-m-d')
         );
+
+        $toDate = $request->input(
+            'to_date',
+            now()->format('Y-m-d')
+        );
+
+        $ledger = collect();
+        $openingBalance = 0;
+
+        /*
+    |--------------------------------------------------------------------------
+    | SALES
+    |--------------------------------------------------------------------------
+    */
+
+        $sales = Sale::where('customer_id', $id)->get();
+
+        $payments = SalesPayment::where('customer_id', $id)->get();
+
+        foreach ($sales as $sale) {
+
+            $ledger->push([
+                'date' => $sale->sale_date,
+                'module' => 'Sale',
+                'type' => 'Invoice',
+                'debit' => $sale->total,
+                'credit' => 0,
+            ]);
+        }
+
+        /*
+    |--------------------------------------------------------------------------
+    | SALES PAYMENTS
+    |--------------------------------------------------------------------------
+    */
+
+        foreach ($payments as $payment) {
+
+            $ledger->push([
+                'date' => $payment->payment_date,
+                'module' => 'Sale',
+                'type' => 'Payment',
+                'debit' => 0,
+                'credit' => $payment->amount,
+            ]);
+        }
+
+        /*
+    |--------------------------------------------------------------------------
+    | SORT
+    |--------------------------------------------------------------------------
+    */
+
+        $ledger = $ledger->sortBy('date')->values();
+
+
+        /*
+    |--------------------------------------------------------------------------
+    | FILTER + OPENING BALANCE
+    |--------------------------------------------------------------------------
+    */
+
+        if (!$all) {
+
+            $filtered = collect();
+
+            foreach ($ledger as $row) {
+
+                // Before From Date = Opening Balance
+                if ($row['date'] < $fromDate) {
+
+                    $openingBalance +=
+                        $row['debit'] - $row['credit'];
+                }
+
+                // From Date to To Date
+                elseif (
+                    $row['date'] >= $fromDate &&
+                    $row['date'] <= $toDate
+                ) {
+
+                    $filtered->push($row);
+                }
+            }
+
+            $ledger = $filtered;
+        }
+
+
+        /*
+    |--------------------------------------------------------------------------
+    | RUNNING BALANCE
+    |--------------------------------------------------------------------------
+    */
+
+        $running = $openingBalance;
+
+        $ledger = $ledger->map(function ($row) use (&$running) {
+
+            $running +=
+                $row['debit'] - $row['credit'];
+
+            $row['balance'] = $running;
+
+            return $row;
+        });
+
+
+        /*
+    |--------------------------------------------------------------------------
+    | TOTALS
+    |--------------------------------------------------------------------------
+    */
+
+        $periodSales = $ledger->sum('debit');
+
+        $periodPaid = $ledger->sum('credit');
+
+        $balance = $openingBalance +
+            $periodSales -
+            $periodPaid;
+
+
+        /*
+    |--------------------------------------------------------------------------
+    | ALL = FINAL CUSTOMER BALANCE
+    |--------------------------------------------------------------------------
+    */
+
+        if ($all) {
+
+            $balance = $ledger->last()['balance'] ?? 0;
+        }
+
+        $paymentSubLedgers = SubLedger::where('ledger_id', 1)->get();
+
+
+        return view('customers.statement', compact(
+            'customer',
+            'ledger',
+            'balance',
+            'openingBalance',
+            'periodSales',
+            'periodPaid',
+            'fromDate',
+            'toDate',
+            'all',
+            'paymentSubLedgers'
+        ));
     }
 
     public function storePayment(Request $request, int $id)
     {
         $request->validate([
             'amount' => ['required', 'numeric', 'gt:0',],
+            'sub_ledger_id' => 'required|exists:sub_ledgers,id',
         ]);
 
         try {
@@ -163,13 +277,8 @@ class CustomerController extends Controller
                     'note' => $request->note,
                 ]);
 
-                if ($request->method === 'Cash') {
-                    $paymentLedgerId = 1;
-                    $paymentSubLedgerId = null;
-                } else {
-                    $paymentLedgerId = 2;
-                    $paymentSubLedgerId = null;
-                }
+                $paymentLedgerId = 1;
+                $paymentSubLedgerId = $request->sub_ledger_id;
 
                 Accounting::postJournal([
                     'branch_id' => $branchId,

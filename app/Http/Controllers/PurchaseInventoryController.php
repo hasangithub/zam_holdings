@@ -4,8 +4,10 @@ namespace App\Http\Controllers;
 
 use App\Accounting\Accounting;
 use App\Models\Item;
+use App\Models\JournalEntryReference;
 use App\Models\PurchaseInventory;
 use App\Models\PurchaseInventoryItem;
+use App\Models\SaleItemFifo;
 use App\Models\Supplier;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -232,7 +234,7 @@ class PurchaseInventoryController extends Controller
         |--------------------------------------------------------------------------
         */
 
-            Accounting::postJournal([
+            $journal = Accounting::postJournal([
 
                 'branch_id' =>
                 $branchId,
@@ -240,7 +242,7 @@ class PurchaseInventoryController extends Controller
                 'date' =>
                 $request->purchase_date,
 
-                'description' => 'Purchase Packing Material - '. $supplier->name,
+                'description' => 'Purchase Packing Material - ' . $supplier->name,
 
                 'entries' => [
 
@@ -285,6 +287,13 @@ class PurchaseInventoryController extends Controller
 
                 ],
 
+            ]);
+
+            JournalEntryReference::create([
+                'journal_entry_id' => $journal->id,
+                'model_type' => PurchaseInventory::class,
+                'model_id' => $purchase->id,
+                'action' => 'created',
             ]);
         });
 
@@ -362,7 +371,7 @@ class PurchaseInventoryController extends Controller
 
             DB::transaction(function () use ($request, $id) {
 
-             $branchId = auth()->user()->branch_id;
+                $branchId = auth()->user()->branch_id;
 
                 /*
             |--------------------------------------------------------------------------
@@ -375,7 +384,7 @@ class PurchaseInventoryController extends Controller
                     ->with('items.item')
                     ->findOrFail($id);
 
-                 $supplier = Supplier::lockForUpdate()->findOrFail($request->supplier_id);
+                $supplier = Supplier::lockForUpdate()->findOrFail($request->supplier_id);
 
                 if (!$supplier->liability_sub_ledger_id) {
                     throw ValidationException::withMessages([
@@ -615,26 +624,8 @@ class PurchaseInventoryController extends Controller
                     }
                 }
 
-                                // Reverse old journal
-                Accounting::postJournal([
-                    'branch_id' => $branchId,
-                    'date' => $request->purchase_date,
-                    'description' => 'Purchase Invoice Reversal',
-                    'entries' => [
-                        [
-                            'ledger_id' => 4,
-                            'sub_ledger_id' => 2,
-                            'debit' => 0,
-                            'credit' => $purchase->total,
-                        ],
-                        [
-                            'ledger_id' => 5,
-                            'sub_ledger_id' => $purchase->supplier->liability_sub_ledger_id,
-                            'debit' => $purchase->total,
-                            'credit' => 0,
-                        ],
-                    ]
-                ]);
+                // Reverse old journal
+                Accounting::reverse(PurchaseInventory::class, $purchase->id);
 
 
                 /*
@@ -643,14 +634,15 @@ class PurchaseInventoryController extends Controller
             |--------------------------------------------------------------------------
             */
 
-                $purchase->update(['supplier_id' =>$request->supplier_id,
+                $purchase->update([
+                    'supplier_id' => $request->supplier_id,
                     'purchase_date' => $request->purchase_date,
                     'invoice_no' => $request->invoice_no,
                     'total' => $total,
                 ]);
 
                 // Post new journal
-                Accounting::postJournal([
+                $journal = Accounting::postJournal([
                     'branch_id' => $purchase->branch_id,
                     'date' => $purchase->purchase_date,
                     'description' => 'Purchase Invoice #' . $purchase->id . ' - Updated',
@@ -668,6 +660,13 @@ class PurchaseInventoryController extends Controller
                             'credit' => $total,
                         ],
                     ]
+                ]);
+                
+                JournalEntryReference::create([
+                    'journal_entry_id' => $journal->id,
+                    'model_type' => PurchaseInventory::class,
+                    'model_id' => $purchase->id,
+                    'action' => 'updated',
                 ]);
             });
 
@@ -723,7 +722,7 @@ class PurchaseInventoryController extends Controller
     /**
      * Remove the specified resource from storage.
      */
-        public function destroy(int $id)
+    public function destroy(int $id)
     {
         try {
             DB::transaction(function () use ($id) {
@@ -763,26 +762,7 @@ class PurchaseInventoryController extends Controller
             |--------------------------------------------------------------------------
             */
 
-                Accounting::postJournal([
-                    'branch_id' => $branchId,
-                    'date' => now()->toDateString(),
-                    'description' => 'Purchase Invoice Cancellation',
-                    'entries' => [
-                        [
-                            'ledger_id' => 4,
-                            'sub_ledger_id' => 2,
-                            'debit' => 0,
-                            'credit' => $purchase->total,
-                        ],
-                        [
-                            'ledger_id' => 5,
-                            'sub_ledger_id' =>
-                            $purchase->supplier->liability_sub_ledger_id,
-                            'debit' => $purchase->total,
-                            'credit' => 0,
-                        ],
-                    ]
-                ]);
+                Accounting::reverse(PurchaseInventory::class, $purchase->id);
 
                 /*
             |--------------------------------------------------------------------------

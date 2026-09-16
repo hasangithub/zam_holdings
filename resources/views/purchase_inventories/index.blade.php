@@ -12,7 +12,7 @@
 
         <div class="card-tools">
             <a href="{{ route('purchase-inventories.create') }}"
-               class="btn btn-primary btn-sm">
+                class="btn btn-primary btn-sm">
                 Add Purchase
             </a>
         </div>
@@ -40,88 +40,78 @@
 
                 @forelse($purchases as $purchase)
 
-                    <tr>
+                <tr>
 
-                        <td>{{ $purchase->id }}</td>
+                    <td>{{ $purchase->id }}</td>
 
-                        <td>
-                            {{ \Carbon\Carbon::parse($purchase->purchase_date)->format('d-m-Y') }}
-                        </td>
+                    <td>
+                        {{ \Carbon\Carbon::parse($purchase->purchase_date)->format('d-m-Y') }}
+                    </td>
 
-                        <td>
-                            {{ $purchase->supplier->name ?? '' }}
-                        </td>
+                    <td>
+                        {{ $purchase->supplier->name ?? '' }}
+                    </td>
 
-                        <td class="text-right">
-                            {{ number_format($purchase->total, 2) }}
-                        </td>
+                    <td class="text-right">
+                        {{ number_format($purchase->total, 2) }}
+                    </td>
 
-                        <td class="text-right">
-                            {{ number_format($purchase->paid_amount, 2) }}
-                        </td>
+                    <td class="text-right">
+                        {{ number_format($purchase->paid_amount, 2) }}
+                    </td>
 
-                        <td class="text-right">
-                            {{ number_format($purchase->balance_amount, 2) }}
-                        </td>
+                    <td class="text-right">
+                        {{ number_format($purchase->balance_amount, 2) }}
+                    </td>
 
-                        <td>
+                    <td>
+                        @if($purchase->status === 'pending')
+                        <span class="badge badge-warning">Pending</span>
+                        @elseif($purchase->status === 'paid')
+                        <span class="badge badge-success">Paid</span>
+                        @elseif($purchase->status === 'cancelled')
+                        <span class="badge badge-danger">Cancelled</span>
+                        @endif
+                    </td>
 
-                            @if($purchase->payment_status == 'paid')
-                                <span class="badge badge-success">
-                                    Paid
-                                </span>
+                    <td>
 
-                            @elseif($purchase->payment_status == 'partial')
-                                <span class="badge badge-warning">
-                                    Partial
-                                </span>
+                        <a href="{{ route('purchase-inventories.show',$purchase->id) }}"
+                            class="btn btn-info btn-sm">
+                            View
+                        </a>
 
-                            @else
-                                <span class="badge badge-danger">
-                                    Unpaid
-                                </span>
-                            @endif
+                        <a href="{{ route('purchase-inventories.edit',$purchase->id) }}"
+                            class="btn btn-primary btn-sm">
+                            Edit
+                        </a>
+                        @if($pu)
+                        <form method="POST"
+                            action="{{ route('purchase-inventories.destroy',$purchase->id) }}"
+                            style="display:inline-block">
 
-                        </td>
+                            @csrf
+                            @method('DELETE')
 
-                        <td>
+                            <button type="submit"
+                                class="btn btn-danger btn-sm"
+                                onclick="return confirm('Delete this purchase?')">
+                                Delete
+                            </button>
 
-                            <a href="{{ route('purchase-inventories.show',$purchase->id) }}"
-                               class="btn btn-info btn-sm">
-                                View
-                            </a>
+                        </form>
 
-                            <a href="{{ route('purchase-inventories.edit',$purchase->id) }}"
-                               class="btn btn-primary btn-sm">
-                                Edit
-                            </a>
+                    </td>
 
-                            <form method="POST"
-                                  action="{{ route('purchase-inventories.destroy',$purchase->id) }}"
-                                  style="display:inline-block">
-
-                                @csrf
-                                @method('DELETE')
-
-                                <button type="submit"
-                                        class="btn btn-danger btn-sm"
-                                        onclick="return confirm('Delete this purchase?')">
-                                    Delete
-                                </button>
-
-                            </form>
-
-                        </td>
-
-                    </tr>
+                </tr>
 
                 @empty
 
-                    <tr>
-                        <td colspan="8" class="text-center">
-                            No Records Found
-                        </td>
-                    </tr>
+                <tr>
+                    <td colspan="8" class="text-center">
+                        No Records Found
+                    </td>
+                </tr>
 
                 @endforelse
 

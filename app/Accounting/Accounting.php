@@ -63,7 +63,7 @@ class Accounting
                 $reversal = Accounting::postJournal([
                     'branch_id' => $journal->branch_id,
                     'date' => now()->toDateString(),
-                    'description' => 'Reversal of Journal #' . $journal->id,
+                    'description' => $modelType . ' Reversal of Journal #' . $journal->id,
                     'entries' => $entries,
                 ]);
 

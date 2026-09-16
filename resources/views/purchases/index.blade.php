@@ -46,7 +46,8 @@
                     <th>Supplier</th>
                     <th>Date</th>
                     <th>Total</th>
-                    <th>Action</th>
+                    <th>Status</th>
+                    <th class="text-nowrap">Action</th>
                 </tr>
             </thead>
 
@@ -57,15 +58,17 @@
                     <td>{{ $p->supplier->name }}</td>
                     <td>{{ $p->purchase_date }}</td>
                     <td>{{ $p->total }}</td>
+                    <td>{{ $p->status }}</td>
                     <td>
                         <a href="{{ route('purchases.invoice',$p->id) }}" class="btn btn-info btn-xs">Invoice</a>
                         <a href="{{ route('purchases.show',$p->id) }}" class="btn btn-info btn-xs">View</a>
                         <a href="{{ route('purchases.edit',$p->id) }}" class="btn btn-warning btn-xs">Edit</a>
-
+                        @if($p->status !== 'cancelled')
                         <form method="POST" action="{{ route('purchases.destroy',$p->id) }}" style="display:inline;">
                             @csrf @method('DELETE')
                             <button class="btn btn-warning btn-xs">Cancel</button>
                         </form>
+                        @endif
                     </td>
                 </tr>
                 @endforeach

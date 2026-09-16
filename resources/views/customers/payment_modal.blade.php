@@ -1,25 +1,25 @@
 <div class="modal fade"
-     id="paymentModal"
-     tabindex="-1">
+    id="paymentModal"
+    tabindex="-1">
 
     <div class="modal-dialog">
 
         <form method="POST"
-              action="{{ route('customers.payment.store', $customer->id) }}">
+            action="{{ route('customers.payment.store', $customer->id) }}">
 
             @csrf
 
             <input type="hidden"
-                   name="customer_id"
-                   value="{{ $customer->id }}">
+                name="customer_id"
+                value="{{ $customer->id }}">
 
             <div class="modal-content">
 
                 <div class="modal-header">
                     <h5>Add Payment</h5>
                     <button type="button"
-                            class="close"
-                            data-dismiss="modal">
+                        class="close"
+                        data-dismiss="modal">
                         &times;
                     </button>
                 </div>
@@ -30,26 +30,39 @@
                         <label>Payment Date</label>
 
                         <input type="date"
-                               name="payment_date"
-                               value="{{ date('Y-m-d') }}"
-                               class="form-control">
+                            name="payment_date"
+                            value="{{ date('Y-m-d') }}"
+                            class="form-control">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Payment Account</label>
+                        <select name="sub_ledger_id" class="form-control" required>
+                            <option value="">Select Cash / Bank Account</option>
+
+                            @foreach($paymentSubLedgers as $subLedger)
+                            <option value="{{ $subLedger->id }}">
+                                {{ $subLedger->name }}
+                            </option>
+                            @endforeach
+                        </select>
                     </div>
 
                     <div class="form-group">
                         <label>Amount</label>
 
                         <input type="number"
-                               step="0.01"
-                               name="amount"
-                               class="form-control"
-                               required>
+                            step="0.01"
+                            name="amount"
+                            class="form-control"
+                            required>
                     </div>
 
                     <div class="form-group">
                         <label>Remarks</label>
 
                         <textarea name="remarks"
-                                  class="form-control"></textarea>
+                            class="form-control"></textarea>
                     </div>
 
                 </div>

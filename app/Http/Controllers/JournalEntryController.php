@@ -26,9 +26,8 @@ class JournalEntryController extends Controller
     {
         $journalEntries = JournalEntry::with('branch')
             ->withCount('details')
-            ->orderByDesc('journal_date')
             ->orderByDesc('id')
-            ->paginate(25);
+            ->get();
 
         return view(
             'accounting.journal-entries.index',

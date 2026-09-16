@@ -8,6 +8,7 @@ use App\Models\Supplier;
 use App\Models\Item;
 use Illuminate\Http\Request;
 use App\Accounting\Accounting;
+use App\Models\JournalEntryReference;
 use App\Models\PurchasePayment;
 use App\Models\SaleItemFifo;
 use Illuminate\Support\Facades\DB;
@@ -74,7 +75,7 @@ class PurchaseController extends Controller
 
         $purchase->update(['total' => $total, 'balance_amount' => $total]);
 
-        Accounting::postJournal([
+        $journal = Accounting::postJournal([
             'branch_id' => $branchId,
             'date' => $request->purchase_date,
             'description' => 'Purchase Invoice',
@@ -93,6 +94,13 @@ class PurchaseController extends Controller
                     'credit' => $total,
                 ],
             ]
+        ]);
+
+        JournalEntryReference::create([
+            'journal_entry_id' => $journal->id,
+            'model_type' => Purchase::class,
+            'model_id' => $purchase->id,
+            'action' => 'created',
         ]);
 
         return redirect()->route('purchases.index');
@@ -355,25 +363,7 @@ class PurchaseController extends Controller
                 }
 
                 // Reverse old journal
-                Accounting::postJournal([
-                    'branch_id' => $branchId,
-                    'date' => $request->purchase_date,
-                    'description' => 'Purchase Invoice Reversal',
-                    'entries' => [
-                        [
-                            'ledger_id' => 4,
-                            'sub_ledger_id' => 1,
-                            'debit' => 0,
-                            'credit' => $purchase->total,
-                        ],
-                        [
-                            'ledger_id' => 5,
-                            'sub_ledger_id' => $purchase->supplier->liability_sub_ledger_id,
-                            'debit' => $purchase->total,
-                            'credit' => 0,
-                        ],
-                    ]
-                ]);
+                Accounting::reverse(Purchase::class, $purchase->id);
 
                 $purchase->update([
                     'supplier_id' => $request->supplier_id,
@@ -382,7 +372,7 @@ class PurchaseController extends Controller
                 ]);
 
                 // Post new journal
-                Accounting::postJournal([
+                $journal = Accounting::postJournal([
                     'branch_id' => $purchase->branch_id,
                     'date' => $purchase->purchase_date,
                     'description' => 'Purchase Invoice #' . $purchase->id . ' - Updated',
@@ -401,6 +391,13 @@ class PurchaseController extends Controller
                         ],
                     ]
                 ]);
+
+                JournalEntryReference::create([
+                    'journal_entry_id' => $journal->id,
+                    'model_type' => Purchase::class,
+                    'model_id' => $purchase->id,
+                    'action' => 'updated',
+                ]);
             });
 
             return redirect()
@@ -414,7 +411,7 @@ class PurchaseController extends Controller
                 ->with('error', 'Unable to update the purchase. Please try again.');
         }
     }
-    public function destroy($id)
+    public function destroy(int $id)
     {
         try {
             DB::transaction(function () use ($id) {
@@ -454,26 +451,7 @@ class PurchaseController extends Controller
             |--------------------------------------------------------------------------
             */
 
-                Accounting::postJournal([
-                    'branch_id' => $branchId,
-                    'date' => now()->toDateString(),
-                    'description' => 'Purchase Invoice Cancellation',
-                    'entries' => [
-                        [
-                            'ledger_id' => 4,
-                            'sub_ledger_id' => 1,
-                            'debit' => 0,
-                            'credit' => $purchase->total,
-                        ],
-                        [
-                            'ledger_id' => 5,
-                            'sub_ledger_id' =>
-                            $purchase->supplier->liability_sub_ledger_id,
-                            'debit' => $purchase->total,
-                            'credit' => 0,
-                        ],
-                    ]
-                ]);
+                Accounting::reverse(Purchase::class, $purchase->id);
 
                 /*
             |--------------------------------------------------------------------------
