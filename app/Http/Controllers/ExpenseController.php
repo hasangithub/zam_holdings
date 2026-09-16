@@ -410,7 +410,7 @@ class ExpenseController extends Controller
                     'description' => 'Payment of Expense #' . $expense->id,
                     'entries' => [
                         [
-                            'ledger_id' => 14,
+                            'ledger_id' => 16,
                             'sub_ledger_id' =>
                             $category->accrued_expense_sub_ledger_id,
                             'debit' => $expense->total_amount,
