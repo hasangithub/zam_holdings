@@ -23,7 +23,7 @@
                     <th>Total (USD)</th>
                     <th>Total (LKR)</th>
                     <th>Exchange Rate</th>
-                    <th>Balance (LKR)</th>
+                    <th>Status</th>
                     <th>Action</th>
                 </tr>
             </thead>
@@ -38,7 +38,7 @@
                     <td>{{ $sale->total_foreign }}</td>
                     <td>{{ $sale->total }}</td>
                     <td>{{ $sale->exchange_rate }}</td>
-                    <td>{{ $sale->balance_amount }}</td>
+                    <td>{{ $sale->status }}</td>
 
                     <td>
                         <a href="{{ route('export-sales.edit',$sale->id) }}"
@@ -49,6 +49,7 @@
                             class="btn btn-warning btn-sm">
                              Invoice
                         </a>
+                         @if($sale->status !== 'cancelled')
                          <form action="{{ route('export-sales.destroy', $sale->id) }}"
                             method="POST"
                             class="d-inline"
@@ -60,6 +61,7 @@
                                 <i class="fas fa-ban"></i> Cancel
                             </button>
                         </form>
+                        @endif
                     </td>
                 </tr>
                 @endforeach

@@ -28,23 +28,6 @@
                     </a>
                 </li>
 
-                {{-- MASTER DATA --}}
-                <li class="nav-header">MASTER DATA</li>
-
-                <li class="nav-item">
-                    <a href="/categories" class="nav-link">
-                        <i class="nav-icon fas fa-list"></i>
-                        <p>Categories</p>
-                    </a>
-                </li>
-
-                <li class="nav-item">
-                    <a href="/items" class="nav-link">
-                        <i class="nav-icon fas fa-box"></i>
-                        <p>Items</p>
-                    </a>
-                </li>
-
                 <li class="nav-item">
                     <a href="/suppliers" class="nav-link">
                         <i class="nav-icon fas fa-truck"></i>
@@ -59,22 +42,37 @@
                     </a>
                 </li>
 
-                <li class="nav-item">
-                    <a href="/stock-summary" class="nav-link">
-                        <i class="nav-icon fas fa-users"></i>
-                        <p>Stock Summary</p>
-                    </a>
-                </li>
-
                 {{-- TRANSACTIONS --}}
                 <li class="nav-header">TRANSACTIONS</li>
 
-                <li class="nav-item">
-                    <a href="/purchases" class="nav-link">
-                        <i class="nav-icon fas fa-shopping-cart"></i>
-                        <p>Purchases</p>
+                <li class="nav-item has-treeview">
+                    <a href="#" class="nav-link">
+                        <i class="nav-icon fas fa-warehouse"></i>
+                        <p>
+                            Purchases
+                            <i class="right fas fa-angle-left"></i>
+                        </p>
                     </a>
+
+                    <ul class="nav nav-treeview">
+
+                        <li class="nav-item">
+                            <a href="/purchases" class="nav-link">
+                                <i class="far fa-circle nav-icon"></i>
+                                <p>Purchases</p>
+                            </a>
+                        </li>
+
+                        <li class="nav-item">
+                            <a href="/stock-summary" class="nav-link">
+                                <i class="far fa-circle nav-icon"></i>
+                                <p>Trading Goods Summary</p>
+                            </a>
+                        </li>
+
+                    </ul>
                 </li>
+
 
                 <li class="nav-item has-treeview">
                     <a href="#" class="nav-link">
@@ -93,7 +91,7 @@
                                 <p>Purchase Inventories</p>
                             </a>
                         </li>
-                        
+
                         <li class="nav-item">
                             <a href="{{ route('inventory.summary') }}" class="nav-link">
                                 <i class="far fa-circle nav-icon"></i>
@@ -258,14 +256,14 @@
                             </a>
                         </li>
 
-                         <li class="nav-item">
+                        <li class="nav-item">
                             <a href="{{ route('reports.customer-summary') }}" class="nav-link">
                                 <i class="far fa-circle nav-icon"></i>
                                 <p>Customer Summary</p>
                             </a>
                         </li>
 
-                         <li class="nav-item">
+                        <li class="nav-item">
                             <a href="{{ route('reports.supplier-summary') }}" class="nav-link">
                                 <i class="far fa-circle nav-icon"></i>
                                 <p>Supplier Summary</p>
@@ -439,6 +437,34 @@
 
                     </a>
 
+                </li>
+
+                                <li class="nav-item has-treeview">
+                    <a href="#" class="nav-link">
+                        <i class="nav-icon fas fa-warehouse"></i>
+                        <p>
+                            Master Data
+                            <i class="right fas fa-angle-left"></i>
+                        </p>
+                    </a>
+
+                    <ul class="nav nav-treeview">
+
+                        <li class="nav-item">
+                            <a href="/categories" class="nav-link">
+                                <i class="nav-icon fas fa-list"></i>
+                                <p>Categories</p>
+                            </a>
+                        </li>
+
+                        <li class="nav-item">
+                            <a href="/items" class="nav-link">
+                                <i class="nav-icon fas fa-box"></i>
+                                <p>Items</p>
+                            </a>
+                        </li>
+
+                    </ul>
                 </li>
 
             </ul>

@@ -12,11 +12,6 @@
         <h3>
             Supplier: {{ $purchase->supplier->name }}
         </h3>
-
-        <button class="btn btn-primary" data-toggle="modal" data-target="#paymentModal">
-            Add Payment
-        </button>
-
     </div>
 
     {{-- SUMMARY (SUPPLIER BASED) --}}
@@ -126,40 +121,6 @@
         </table>
     </div>
 
-</div>
-
-{{-- PAYMENT MODAL --}}
-<div class="modal fade" id="paymentModal">
-    <div class="modal-dialog">
-
-        <form method="POST" action="{{ route('suppliers.payment.store', $purchase->supplier_id) }}">
-            @csrf
-
-            <div class="modal-content">
-
-                <div class="modal-header">
-                    <h5>Add Payment</h5>
-                </div>
-
-                <div class="modal-body">
-
-                    <input type="number" name="amount" class="form-control" placeholder="Amount">
-
-                    <input type="date" name="payment_date" class="form-control mt-2">
-
-                    <input type="text" name="method" class="form-control mt-2" placeholder="Method">
-
-                </div>
-
-                <div class="modal-footer">
-                    <button class="btn btn-primary">Save</button>
-                </div>
-
-            </div>
-
-        </form>
-
-    </div>
 </div>
 
 @endsection

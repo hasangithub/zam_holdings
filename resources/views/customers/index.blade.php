@@ -51,15 +51,6 @@
                         <a href="{{ route('customers.edit',$c->id) }}" class="btn btn-warning btn-xs">
                             Edit
                         </a>
-
-                        <form action="{{ route('customers.destroy',$c->id) }}" method="POST" style="display:inline;">
-                            @csrf
-                            @method('DELETE')
-
-                            <button class="btn btn-danger btn-xs" onclick="return confirm('Delete this customer?')">
-                                Delete
-                            </button>
-                        </form>
                     </td>
                 </tr>
                 @endforeach

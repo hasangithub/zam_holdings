@@ -44,15 +44,6 @@
                         <a href="{{ route('suppliers.edit',$s->id) }}" class="btn btn-warning btn-xs">
                             Edit
                         </a>
-
-                        <form action="{{ route('suppliers.destroy',$s->id) }}" method="POST" style="display:inline;">
-                            @csrf
-                            @method('DELETE')
-
-                            <button class="btn btn-danger btn-xs" onclick="return confirm('Delete?')">
-                                Delete
-                            </button>
-                        </form>
                     </td>
                 </tr>
                 @endforeach

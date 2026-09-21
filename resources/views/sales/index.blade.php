@@ -59,11 +59,11 @@
                     </td>
                     <td>
                         @if($s->status === 'posted')
-                            <span class="badge badge-success">Posted</span>
+                        <span class="badge badge-success">Posted</span>
                         @elseif($s->status === 'pending')
-                            <span class="badge badge-warning">Pending</span>
+                        <span class="badge badge-warning">Pending</span>
                         @elseif($s->status === 'cancelled')
-                            <span class="badge badge-danger">Cancelled</span>
+                        <span class="badge badge-danger">Cancelled</span>
                         @endif
                     </td>
 
@@ -77,24 +77,11 @@
                             View
                         </a>
 
-                        @if($s->currency === 'USD')
-
-                        <a href="{{ route('export-sales.edit', $s->id) }}"
-                            class="btn btn-warning btn-sm">
-                            Export Edit
-                        </a>
-
-                        @else
-
+                        @if($s->status !== 'cancelled')
                         <a href="{{ route('sales.edit', $s->id) }}"
                             class="btn btn-primary btn-sm">
                             Edit
                         </a>
-
-                        @endif
-
-
-                        @if($s->status !== 'cancelled')
                         <form action="{{ route('sales.destroy', $s->id) }}"
                             method="POST"
                             class="d-inline"

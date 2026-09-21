@@ -128,9 +128,9 @@
 
             </tbody>
 
-        </table>
+            @if($freights->count() > 0) <tfoot> <tr class="font-weight-bold bg-light"> <td colspan="5" class="text-right"> Total </td> <td class="text-right"> {{ number_format($freights->sum('amount_usd'), 2) }} </td> <td class="text-right"> {{ number_format($freights->sum('amount_lkr'), 2) }} </td> <td class="text-right"> {{ number_format($freights->sum('total_paid'), 2) }} </td> <td class="text-right"> {{ number_format($freights->sum('balance_amount'), 2) }} </td> <td></td> <td></td> </tr> </tfoot> @endif
 
-        {{ $freights->withQueryString()->links() }}
+        </table>
 
     </div>
 </div>

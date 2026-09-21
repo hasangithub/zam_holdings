@@ -62,8 +62,8 @@
                     <td>
                         <a href="{{ route('purchases.invoice',$p->id) }}" class="btn btn-info btn-xs">Invoice</a>
                         <a href="{{ route('purchases.show',$p->id) }}" class="btn btn-info btn-xs">View</a>
-                        <a href="{{ route('purchases.edit',$p->id) }}" class="btn btn-warning btn-xs">Edit</a>
                         @if($p->status !== 'cancelled')
+                        <a href="{{ route('purchases.edit',$p->id) }}" class="btn btn-warning btn-xs">Edit</a>
                         <form method="POST" action="{{ route('purchases.destroy',$p->id) }}" style="display:inline;">
                             @csrf @method('DELETE')
                             <button class="btn btn-warning btn-xs">Cancel</button>

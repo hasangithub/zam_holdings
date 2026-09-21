@@ -28,7 +28,7 @@ class FreightController extends Controller
                 );
             })
             ->latest()
-            ->paginate(20);
+            ->get();
 
         return view('freight_expenses.index', compact(
             'freights',

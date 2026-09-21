@@ -10,6 +10,7 @@ use App\Models\FreightService;
 use App\Models\Item;
 use App\Models\JournalEntry;
 use App\Models\JournalEntryDetail;
+use App\Models\JournalEntryReference;
 use App\Models\PurchaseItem;
 use App\Models\SaleItemFifo;
 use App\Models\SalesPayment;
@@ -468,31 +469,14 @@ class SaleController extends Controller
                     */
 
                         $saleItem = SaleItem::create([
-
-                            'sale_id' =>
-                            $sale->id,
-
-                            'item_id' =>
-                            $itemId,
-
-                            'qty' =>
-                            $deductQty,
-
-                            'sale_price' =>
-                            $salePrice,
-
-                            'base_price' =>
-                            $batch->price,
-
-                            'subtotal' =>
-                            $saleSubtotal,
-
-                            'sale_price_foreign' =>
-                            0,
-
-                            'sub_total_foreign' =>
-                            0,
-
+                            'sale_id' => $sale->id,
+                            'item_id' => $itemId,
+                            'qty' => $deductQty,
+                            'sale_price' =>$salePrice,
+                            'base_price' => $batch->price,
+                            'subtotal' =>$saleSubtotal,
+                            'sale_price_foreign' =>0,
+                            'sub_total_foreign' =>0,
                         ]);
 
                         SaleItemFifo::create([
@@ -503,64 +487,18 @@ class SaleController extends Controller
                             'total_cost' => $deductQty * $batch->price,
                         ]);
 
-
-                        /*
-                    |--------------------------------------------------------------------------
-                    | TOTALS
-                    |--------------------------------------------------------------------------
-                    */
-
-                        $total +=
-                            $saleSubtotal;
-
-
-                        $costOfGoodsSold +=
-                            $batchCost;
-
-
-                        $remainingToDeduct -=
-                            $deductQty;
+                        $total += $saleSubtotal;
+                        $costOfGoodsSold += $batchCost;
+                        $remainingToDeduct -= $deductQty;
                     }
+                    //SAFETY CHECK
 
-
-                    /*
-                |--------------------------------------------------------------------------
-                | SAFETY CHECK
-                |--------------------------------------------------------------------------
-                */
-
-                    if (
-                        $remainingToDeduct > 0
-                    ) {
-
-                        throw ValidationException::withMessages([
-
-                            'items' =>
-                            'Stock deduction failed.'
-
-                        ]);
+                    if ($remainingToDeduct > 0) {
+                        throw ValidationException::withMessages(['items' =>'Stock deduction failed.']);
                     }
                 }
-
-
-                /*
-            |--------------------------------------------------------------------------
-            | UPDATE SALE TOTAL
-            |--------------------------------------------------------------------------
-            */
-
-                $sale->update([
-
-                    'total' =>
-                    $total,
-
-                    'total_foreign' =>
-                    0,
-
-                    'balance_amount' =>
-                    $total,
-
-                ]);
+               //UPDATE SALE TOTAL
+                $sale->update(['total' =>$total,'total_foreign' =>0,'balance_amount' =>$total,]);
 
 
                 /*
@@ -576,116 +514,30 @@ class SaleController extends Controller
             |--------------------------------------------------------------------------
             */
 
-                Accounting::postJournal([
+                $journal = Accounting::postJournal([
 
-                    'branch_id' =>
-                    $branchId,
-
-                    'date' =>
-                    $sale->sale_date,
-
-                    'description' =>
-                    'Credit Sale - Invoice '
-                        . $sale->invoice_id,
-
+                    'branch_id' =>$branchId,
+                    'date' =>$sale->sale_date,
+                    'description' =>'Credit Sale - Invoice '. $sale->invoice_id,
                     'entries' => [
-
-                        /*
-                    |--------------------------------------------------------------------------
-                    | CUSTOMER RECEIVABLE
-                    |--------------------------------------------------------------------------
-                    */
-
-                        [
-
-                            'ledger_id' =>
-                            3,
-
-                            'sub_ledger_id' =>
-                            $customer
-                                ->receivable_sub_ledger_id,
-
-                            'debit' =>
-                            $total,
-
-                            'credit' =>
-                            0,
-
-                        ],
-
-
-                        /*
-                    |--------------------------------------------------------------------------
-                    | SALES
-                    |--------------------------------------------------------------------------
-                    */
-
-                        [
-
-                            'ledger_id' =>
-                            6,
-
-                            'sub_ledger_id' =>
-                            null,
-
-                            'debit' =>
-                            0,
-
-                            'credit' =>
-                            $total,
-
-                        ],
-
-
-                        /*
-                    |--------------------------------------------------------------------------
-                    | COGS
-                    |--------------------------------------------------------------------------
-                    */
-
-                        [
-
-                            'ledger_id' =>
-                            8,
-
-                            'sub_ledger_id' =>
-                            null,
-
-                            'debit' =>
-                            $costOfGoodsSold,
-
-                            'credit' =>
-                            0,
-
-                        ],
-
-
-                        /*
-                    |--------------------------------------------------------------------------
-                    | INVENTORY
-                    |--------------------------------------------------------------------------
-                    */
-
-                        [
-
-                            'ledger_id' =>
-                            4,
-
-                            'sub_ledger_id' =>
-                            1,
-
-                            'debit' =>
-                            0,
-
-                            'credit' =>
-                            $costOfGoodsSold,
-
-                        ],
-
+                        //CUSTOMER RECEIVABLE
+                        ['ledger_id' =>3,'sub_ledger_id' =>$customer->receivable_sub_ledger_id,'debit' => $total, 'credit' => 0,],
+                        // SALES
+                        ['ledger_id' =>6,'sub_ledger_id' =>null,'debit' =>0,'credit' =>$total,],
+                        // COGS
+                        ['ledger_id' => 8,'sub_ledger_id' =>null,'debit' =>$costOfGoodsSold,'credit' =>0,],
+                        //INVENTORY
+                        ['ledger_id' => 4,'sub_ledger_id' =>1,'debit' =>0,'credit' =>$costOfGoodsSold,],
                     ],
 
                 ]);
 
+                JournalEntryReference::create([
+                    'journal_entry_id' => $journal->id,
+                    'model_type' => Sale::class,
+                    'model_id' => $sale->id,
+                    'action' => 'created',
+                ]);
 
                 return $sale;
             });
@@ -705,23 +557,6 @@ class SaleController extends Controller
                 )
                 ->withInput();
         } catch (\Throwable $e) {
-
-            \Log::error(
-                'Local sale creation failed',
-                [
-
-                    'user_id' =>
-                    auth()->id(),
-
-                    'error' =>
-                    $e->getMessage(),
-
-                    'trace' =>
-                    $e->getTraceAsString(),
-
-                ]
-            );
-
 
             return back()
                 ->withInput()
@@ -895,122 +730,28 @@ class SaleController extends Controller
                     'total' => $totalLkr,
                 ]);
 
-
-                /*
-            |--------------------------------------------------------------------------
-            | ACCOUNTING
-            |--------------------------------------------------------------------------
-            |
-            | Dr Customer Receivable
-            |     Cr Sales Revenue
-            |
-            | Dr COGS
-            |     Cr Inventory
-            |
-            */
-
-                Accounting::postJournal([
-
-                    'branch_id' =>
-                    $branchId,
-
-                    'date' =>
-                    $sale->sale_date,
-
-                    'description' =>
-                    'Export Sale - Invoice '
-                        . $sale->invoice_id,
-
+                $journal = Accounting::postJournal([
+                    'branch_id' => $branchId,
+                    'date' => $sale->sale_date,
+                    'description' => 'Export Sale - Invoice ' . $sale->invoice_id,
                     'entries' => [
-
-                        /*
-                    |--------------------------------------------------------------------------
-                    | CUSTOMER RECEIVABLE
-                    |--------------------------------------------------------------------------
-                    */
-
-                        [
-                            'ledger_id' =>
-                            3,
-
-                            'sub_ledger_id' =>
-                            $customer
-                                ->receivable_sub_ledger_id,
-
-                            'debit' =>
-                            $totalLkr,
-
-                            'credit' =>
-                            0,
-                        ],
-
-
-                        /*
-                    |--------------------------------------------------------------------------
-                    | SALES REVENUE
-                    |--------------------------------------------------------------------------
-                    */
-
-                        [
-                            'ledger_id' =>
-                            7,
-
-                            'sub_ledger_id' =>
-                            null,
-
-                            'debit' =>
-                            0,
-
-                            'credit' =>
-                            $totalLkr,
-                        ],
-
-
-                        /*
-                    |--------------------------------------------------------------------------
-                    | COGS
-                    |--------------------------------------------------------------------------
-                    */
-
-                        [
-                            'ledger_id' =>
-                            9,
-
-                            'sub_ledger_id' =>
-                            null,
-
-                            'debit' =>
-                            $totalCogs,
-
-                            'credit' =>
-                            0,
-                        ],
-
-
-                        /*
-                    |--------------------------------------------------------------------------
-                    | INVENTORY
-                    |--------------------------------------------------------------------------
-                    */
-
-                        [
-                            'ledger_id' =>
-                            4,
-
-                            'sub_ledger_id' =>
-                            1,
-
-                            'debit' =>
-                            0,
-
-                            'credit' =>
-                            $totalCogs,
-                        ],
-
+                        // CUSTOMER RECEIVABLE
+                        ['ledger_id' => 3, 'sub_ledger_id' => $customer->receivable_sub_ledger_id, 'debit' => $totalLkr, 'credit' => 0,],
+                        //SALES REVENUE
+                        ['ledger_id' => 7, 'sub_ledger_id' => null, 'debit' => 0, 'credit' => $totalLkr,],
+                        // COGS
+                        ['ledger_id' => 9, 'sub_ledger_id' => null, 'debit' => $totalCogs, 'credit' => 0,],
+                        // INVENTORY
+                        ['ledger_id' => 4, 'sub_ledger_id' => 1, 'debit' => 0, 'credit' => $totalCogs,],
                     ],
-
                 ]);
 
+                JournalEntryReference::create([
+                    'journal_entry_id' => $journal->id,
+                    'model_type' => Sale::class,
+                    'model_id' => $sale->id,
+                    'action' => 'created',
+                ]);
 
                 return $sale;
             });
@@ -1023,7 +764,7 @@ class SaleController extends Controller
                     'Export sale created successfully.'
                 );
         } catch (ValidationException $e) {
-            dd($e);
+           
             return back()
                 ->withErrors(
                     $e->errors()
@@ -1031,7 +772,7 @@ class SaleController extends Controller
                 ->withInput();
         } catch (\Throwable $e) {
 
-            dd($e);
+    
             return back()
                 ->withInput()
                 ->with(
@@ -1267,355 +1008,69 @@ class SaleController extends Controller
                 $oldSaleItems = SaleItem::where('sale_id', $sale->id)->lockForUpdate()->get();
 
                 foreach ($oldSaleItems as $oldItem) {
-
-                    $fifoItems = SaleItemFifo::where(
-                        'sale_item_id',
-                        $oldItem->id
-                    )
-                        ->lockForUpdate()
-                        ->get();
-
-                    /*
-                |--------------------------------------------------------------------------
-                | FIFO RECORD SHOULD EXIST
-                |--------------------------------------------------------------------------
-                */
-
+                    $fifoItems = SaleItemFifo::where('sale_item_id',$oldItem->id)->lockForUpdate()->get();
+                    //FIFO RECORD SHOULD EXIST
                     if ($fifoItems->isEmpty()) {
-
-                        throw new \Exception(
-                            'FIFO allocation not found for Sale Item ID '
-                                . $oldItem->id
-                        );
+                        throw new \Exception('FIFO allocation not found for Sale Item ID '. $oldItem->id);
                     }
-
-
-                    /*
-                |--------------------------------------------------------------------------
-                | RESTORE EACH EXACT PURCHASE BATCH
-                |--------------------------------------------------------------------------
-                */
-
+                  //RESTORE EACH EXACT PURCHASE BATCH
                     foreach ($fifoItems as $fifo) {
-
-                        $purchaseItem =
-                            PurchaseItem::lockForUpdate()
-                            ->find(
-                                $fifo->purchase_item_id
-                            );
-
-
+                        $purchaseItem = PurchaseItem::lockForUpdate()->find($fifo->purchase_item_id);
                         if (!$purchaseItem) {
-
-                            throw new \Exception(
-                                'Purchase Item ID '
-                                    . $fifo->purchase_item_id
-                                    . ' not found.'
-                            );
+                            throw new \Exception('Purchase Item ID '. $fifo->purchase_item_id. ' not found.');
                         }
-
-
-                        /*
-                    |--------------------------------------------------------------------------
-                    | RESTORE EXACT FIFO QUANTITY
-                    |--------------------------------------------------------------------------
-                    */
-
-                        $purchaseItem->remaining_qty =
-                            (float) $purchaseItem->remaining_qty
-                            + (float) $fifo->qty;
-
-
+                       //RESTORE EXACT FIFO QUANTITY
+                        $purchaseItem->remaining_qty =(float) $purchaseItem->remaining_qty + (float) $fifo->qty;
                         $purchaseItem->save();
                     }
                 }
 
 
-                /*
-            |--------------------------------------------------------------------------
-            | DELETE OLD FIFO RECORDS
-            |--------------------------------------------------------------------------
-            |
-            | We have already restored their quantities above.
-            |
-            | New FIFO records will be created below.
-            |--------------------------------------------------------------------------
-            */
+              //DELETE OLD FIFO RECORDS, We have already restored their quantities above. New FIFO records will be created below.
 
-                SaleItemFifo::whereIn(
-                    'sale_item_id',
-                    $oldSaleItems->pluck('id')
-                )->delete();
-
-
-                /*
-            |--------------------------------------------------------------------------
-            | REVERSE OLD JOURNAL
-            |--------------------------------------------------------------------------
-            */
-
-                $oldJournal = JournalEntry::where(
-                    'branch_id',
-                    $sale->branch_id
-                )
-                    ->where(
-                        'description',
-                        'Credit Sale - Invoice ' .
-                            $sale->invoice_id
-                    )
-                    ->lockForUpdate()
-                    ->first();
-
-
-                if ($oldJournal) {
-
-                    $oldDetails =
-                        JournalEntryDetail::where(
-                            'journal_entry_id',
-                            $oldJournal->id
-                        )
-                        ->lockForUpdate()
-                        ->get();
-
-
-                    /*
-                |--------------------------------------------------------------------------
-                | CREATE REVERSAL JOURNAL
-                |--------------------------------------------------------------------------
-                |
-                | Old:
-                |
-                | Dr Customer
-                | Cr Sales
-                | Dr COGS
-                | Cr Inventory
-                |
-                | Reversal:
-                |
-                | Dr Sales
-                | Cr Customer
-                | Dr Inventory
-                | Cr COGS
-                |--------------------------------------------------------------------------
-                */
-
-                    $reversalEntries = [];
-
-
-                    foreach ($oldDetails as $detail) {
-
-                        $reversalEntries[] = [
-
-                            'ledger_id' =>
-                            $detail->ledger_id,
-
-                            'sub_ledger_id' =>
-                            $detail->sub_ledger_id,
-
-                            'debit' =>
-                            (float) $detail->credit,
-
-                            'credit' =>
-                            (float) $detail->debit,
-
-                        ];
-                    }
-
-
-                    // Accounting::postJournal([
-
-                    //     'branch_id' =>
-                    //     $sale->branch_id,
-
-                    //     'date' =>
-                    //     $sale->sale_date,
-
-                    //     'description' =>
-                    //     'Reversal - Credit Sale - Invoice '
-                    //         . $sale->invoice_id,
-
-                    //     'entries' =>
-                    //     $reversalEntries,
-
-                    // ]);
-
-
-                    /*
-                |--------------------------------------------------------------------------
-                | DELETE OLD JOURNAL
-                |--------------------------------------------------------------------------
-                |
-                | Keeping your existing behaviour.
-                |--------------------------------------------------------------------------
-                */
-
-                    JournalEntryDetail::where(
-                        'journal_entry_id',
-                        $oldJournal->id
-                    )->delete();
-
-
-                    $oldJournal->delete();
-                }
-
-
-                /*
-            |--------------------------------------------------------------------------
-            | DELETE OLD SALE ITEMS
-            |--------------------------------------------------------------------------
-            */
-
-                SaleItem::where(
-                    'sale_id',
-                    $sale->id
-                )->delete();
-
-
-                /*
-            |--------------------------------------------------------------------------
-            | RESET TOTALS
-            |--------------------------------------------------------------------------
-            */
-
+                SaleItemFifo::whereIn('sale_item_id',$oldSaleItems->pluck('id') )->delete();
+          //REVERSE OLD JOURNAL
+             Accounting::reverse(Sale::class, $sale->id);
+            //DELETE OLD SALE ITEMS
+            SaleItem::where('sale_id',$sale->id)->delete();
+               //RESET TOTALS
                 $total = 0;
-
                 $costOfGoodsSold = 0;
-
-
-                /*
-            |--------------------------------------------------------------------------
-            | PROCESS NEW POS ITEMS
-            |--------------------------------------------------------------------------
-            */
+             //PROCESS NEW POS ITEMS
 
                 foreach ($request->items as $row) {
 
-
-                    /*
-                |--------------------------------------------------------------------------
-                | READ GROUP KEY
-                |--------------------------------------------------------------------------
-                |
-                | Example:
-                |
-                | 5|100
-                |--------------------------------------------------------------------------
-                */
-
-                    $parts =
-                        explode(
-                            '|',
-                            $row['group_key']
-                        );
-
+                   // Read group_key 5|100
+                    $parts = explode('|',$row['group_key']);
 
                     if (count($parts) < 2) {
-
-                        throw ValidationException::withMessages([
-
-                            'items' =>
-                            'Invalid item selection.'
-
-                        ]);
+                        throw ValidationException::withMessages(['items' =>'Invalid item selection.']);
                     }
+                    $itemId =(int) $parts[0];
+                    $costPrice =(float) $parts[1];
+                    $qtyRequested = (float) $row['qty'];
+                    $salePrice = (float) $row['sale_price'];
 
-
-                    $itemId =
-                        (int) $parts[0];
-
-
-                    $costPrice =
-                        (float) $parts[1];
-
-
-                    $qtyRequested =
-                        (float) $row['qty'];
-
-
-                    $salePrice =
-                        (float) $row['sale_price'];
-
-
-                    /*
-                |--------------------------------------------------------------------------
-                | LOCK MATCHING PURCHASE BATCHES
-                |--------------------------------------------------------------------------
-                |
-                | FIFO:
-                | Oldest purchase_item first.
-                |--------------------------------------------------------------------------
-                */
-
-                    $batches = PurchaseItem::query()
-
-                        ->where(
-                            'item_id',
-                            $itemId
-                        )
-
-                        ->where(
-                            'price',
-                            $costPrice
-                        )
-
-                        ->where(
-                            'remaining_qty',
-                            '>',
-                            0
-                        )
-
+                   //FIFO: Oldest purchase_item first
+                    $batches = PurchaseItem::query()->where('item_id',$itemId)
+                        ->where('price',$costPrice)
+                        ->where('remaining_qty','>',0)
                         ->orderBy('id')
-
                         ->lockForUpdate()
-
                         ->get();
-
-
                     /*
                 |--------------------------------------------------------------------------
                 | CALCULATE AVAILABLE STOCK
                 |--------------------------------------------------------------------------
                 */
 
-                    $availableQty =
-                        $batches->sum(
-                            function ($batch) {
-
-                                return (float)
-                                $batch->remaining_qty;
-                            }
-                        );
-
-
-                    /*
-                |--------------------------------------------------------------------------
-                | STOCK CHECK
-                |--------------------------------------------------------------------------
-                */
-
+                    $availableQty = $batches->sum(function ($batch) { return (float)$batch->remaining_qty;});
+                   // STOCK CHECK
                     if ($availableQty < $qtyRequested) {
-
-                        $itemName =
-                            optional(
-                                Item::find($itemId)
-                            )->name
-                            ?? "Item ID {$itemId}";
-
-
-                        throw ValidationException::withMessages([
-
-                            'items' =>
-                            "Not enough stock for {$itemName} "
-                                . "at cost price "
-                                . number_format(
-                                    $costPrice,
-                                    2
-                                )
-                                . ". Available: "
-                                . number_format(
-                                    $availableQty,
-                                    3
-                                )
+                        $itemName = optional(Item::find($itemId))->name ?? "Item ID {$itemId}";
+                        throw ValidationException::withMessages(['items' =>
+                            "Not enough stock for {$itemName} ". "at cost price "
+                                . number_format($costPrice, 2). ". Available: ". number_format($availableQty,3)
                                 . ", Required: "
                                 . number_format(
                                     $qtyRequested,
@@ -1624,88 +1079,22 @@ class SaleController extends Controller
 
                         ]);
                     }
-
-
-                    /*
-                |--------------------------------------------------------------------------
-                | QUANTITY TO DEDUCT
-                |--------------------------------------------------------------------------
-                */
-
-                    $remainingToDeduct =
-                        $qtyRequested;
-
-
-                    /*
-                |--------------------------------------------------------------------------
-                | DEDUCT FIFO STOCK
-                |--------------------------------------------------------------------------
-                */
-
+                    // QUANTITY TO DEDUCT
+                    $remainingToDeduct = $qtyRequested;
+                    //DEDUCT FIFO STOCK
                     foreach ($batches as $batch) {
 
-                        if (
-                            $remainingToDeduct <= 0
-                        ) {
-
-                            break;
-                        }
-
-
-                        $batchRemaining =
-                            (float)
-                            $batch->remaining_qty;
-
-
-                        /*
-                    |--------------------------------------------------------------------------
-                    | FIFO QUANTITY
-                    |--------------------------------------------------------------------------
-                    */
-
-                        $deductQty =
-                            min(
-                                $batchRemaining,
-                                $remainingToDeduct
-                            );
-
-
-                        /*
-                    |--------------------------------------------------------------------------
-                    | SALE SUBTOTAL
-                    |--------------------------------------------------------------------------
-                    */
-
-                        $saleSubtotal =
-                            $deductQty *
-                            $salePrice;
-
-
-                        /*
-                    |--------------------------------------------------------------------------
-                    | COGS
-                    |--------------------------------------------------------------------------
-                    */
-
-                        $batchCost =
-                            $deductQty *
-                            (float) $batch->price;
-
-
-                        /*
-                    |--------------------------------------------------------------------------
-                    | UPDATE PURCHASE STOCK
-                    |--------------------------------------------------------------------------
-                    */
-
-                        $batch->remaining_qty =
-                            $batchRemaining -
-                            $deductQty;
-
-
+                        if ($remainingToDeduct <= 0) {break;}
+                        $batchRemaining = (float)$batch->remaining_qty;
+                        //FIFO QUANTITY
+                        $deductQty = min($batchRemaining,$remainingToDeduct);
+                     //SALE SUBTOTAL
+                        $saleSubtotal = $deductQty * $salePrice;
+                     // COGS
+                        $batchCost = $deductQty * (float) $batch->price;
+                    //UPDATE PURCHASE STOCK
+                        $batch->remaining_qty = $batchRemaining - $deductQty;
                         $batch->save();
-
-
                         /*
                     |--------------------------------------------------------------------------
                     | CREATE SALE ITEM
@@ -1716,31 +1105,14 @@ class SaleController extends Controller
                     */
 
                         $saleItem = SaleItem::create([
-
-                            'sale_id' =>
-                            $sale->id,
-
-                            'item_id' =>
-                            $itemId,
-
-                            'qty' =>
-                            $deductQty,
-
-                            'sale_price' =>
-                            $salePrice,
-
-                            'base_price' =>
-                            $batch->price,
-
-                            'subtotal' =>
-                            $saleSubtotal,
-
-                            'sale_price_foreign' =>
-                            0,
-
-                            'sub_total_foreign' =>
-                            0,
-
+                            'sale_id' => $sale->id,
+                            'item_id' => $itemId,
+                            'qty' => $deductQty,
+                            'sale_price' =>$salePrice,
+                            'base_price' =>$batch->price,
+                            'subtotal' => $saleSubtotal,
+                            'sale_price_foreign' => 0,
+                            'sub_total_foreign' => 0,
                         ]);
 
 
@@ -1755,40 +1127,16 @@ class SaleController extends Controller
                     */
 
                         SaleItemFifo::create([
-
-                            'sale_item_id' =>
-                            $saleItem->id,
-
-                            'purchase_item_id' =>
-                            $batch->id,
-
-                            'qty' =>
-                            $deductQty,
-
-                            'unit_cost' =>
-                            $batch->price,
-                            'total_cost' =>
-                            $batch->price,
-
+                            'sale_item_id' => $saleItem->id,
+                            'purchase_item_id' => $batch->id,
+                            'qty' => $deductQty,
+                            'unit_cost' => $batch->price,
+                            'total_cost' =>$batch->price,
                         ]);
 
-
-                        /*
-                    |--------------------------------------------------------------------------
-                    | TOTALS
-                    |--------------------------------------------------------------------------
-                    */
-
-                        $total +=
-                            $saleSubtotal;
-
-
-                        $costOfGoodsSold +=
-                            $batchCost;
-
-
-                        $remainingToDeduct -=
-                            $deductQty;
+                        $total += $saleSubtotal;
+                        $costOfGoodsSold += $batchCost;
+                        $remainingToDeduct -= $deductQty;
                     }
 
 
@@ -1811,180 +1159,42 @@ class SaleController extends Controller
                     }
                 }
 
-
-                /*
-            |--------------------------------------------------------------------------
-            | UPDATE SALE
-            |--------------------------------------------------------------------------
-            */
-
-                $sale->update([
-
-                    'customer_id' =>
-                    $customer->id,
-
-                    'total' =>
-                    $total,
-
-                    'total_foreign' =>
-                    0,
-
-                    'balance_amount' =>
-                    $total,
-
-                    'cost_of_goods_sold' =>
-                    $costOfGoodsSold,
-
+                $sale->update(['customer_id' =>$customer->id,
+                    'total' => $total,
+                    'total_foreign' => 0,
+                    'balance_amount' => $total,
+                    'cost_of_goods_sold' =>$costOfGoodsSold,
                 ]);
 
-
-                /*
-            |--------------------------------------------------------------------------
-            | POST NEW JOURNAL
-            |--------------------------------------------------------------------------
-            |
-            | Dr Customer Receivable
-            |     Cr Sales
-            |
-            | Dr COGS
-            |     Cr Inventory
-            |--------------------------------------------------------------------------
-            */
-
-                Accounting::postJournal([
-
-                    'branch_id' =>
-                    $branchId,
-
-                    'date' =>
-                    $sale->sale_date,
-
-                    'description' =>
-                    'Credit Sale - Invoice '
-                        . $sale->invoice_id,
-
+                $journal = Accounting::postJournal([
+                    'branch_id' => $branchId,
+                    'date' => $sale->sale_date,
+                    'description' => 'Credit Sale - Invoice '. $sale->invoice_id,
                     'entries' => [
-
-                        /*
-                    |--------------------------------------------------------------------------
-                    | CUSTOMER RECEIVABLE
-                    |--------------------------------------------------------------------------
-                    */
-
-                        [
-
-                            'ledger_id' =>
-                            3,
-
-                            'sub_ledger_id' =>
-                            $customer
-                                ->receivable_sub_ledger_id,
-
-                            'debit' =>
-                            $total,
-
-                            'credit' =>
-                            0,
-
-                        ],
-
-
-                        /*
-                    |--------------------------------------------------------------------------
-                    | SALES
-                    |--------------------------------------------------------------------------
-                    */
-
-                        [
-
-                            'ledger_id' =>
-                            6,
-
-                            'sub_ledger_id' =>
-                            null,
-
-                            'debit' =>
-                            0,
-
-                            'credit' =>
-                            $total,
-
-                        ],
-
-
-                        /*
-                    |--------------------------------------------------------------------------
-                    | COGS
-                    |--------------------------------------------------------------------------
-                    */
-
-                        [
-
-                            'ledger_id' =>
-                            8,
-
-                            'sub_ledger_id' =>
-                            null,
-
-                            'debit' =>
-                            $costOfGoodsSold,
-
-                            'credit' =>
-                            0,
-
-                        ],
-
-
-                        /*
-                    |--------------------------------------------------------------------------
-                    | INVENTORY
-                    |--------------------------------------------------------------------------
-                    */
-
-                        [
-
-                            'ledger_id' =>
-                            4,
-
-                            'sub_ledger_id' =>
-                            1,
-
-                            'debit' =>
-                            0,
-
-                            'credit' =>
-                            $costOfGoodsSold,
-
-                        ],
-
+                    //CUSTOMER RECEIVABLE
+                        ['ledger_id' =>3,'sub_ledger_id' =>$customer->receivable_sub_ledger_id,'debit' =>$total,'credit' =>0,],
+                    //SALES
+                        ['ledger_id' =>6,'sub_ledger_id' => null,'debit' => 0,'credit' => $total,],
+                    // COGS
+                        ['ledger_id' => 8,'sub_ledger_id' => null,'debit' => $costOfGoodsSold,'credit' =>0,],
+                    //INVENTORY
+                        ['ledger_id' =>4,'sub_ledger_id' =>1, 'debit' =>0,'credit' =>$costOfGoodsSold,],
                     ],
 
                 ]);
+
+                JournalEntryReference::create([
+                    'journal_entry_id' => $journal->id,
+                    'model_type' => Sale::class,
+                    'model_id' => $sale->id,
+                    'action' => 'updated',
+                ]);
             });
-
-
-            return redirect()
-                ->route('sales.index')
-                ->with(
-                    'success',
-                    'Sale updated successfully.'
-                );
+            return redirect()->route('sales.index')->with('success','Sale updated successfully.');
         } catch (ValidationException $e) {
-
-            return back()
-                ->withErrors(
-                    $e->errors()
-                )
-                ->withInput();
+            return back() ->withErrors( $e->errors())->withInput();
         } catch (\Throwable $e) {
-
-
-            return back()
-                ->withInput()
-                ->with(
-                    'error',
-                    'Unable to update sale. Please try again.'
-                );
+            return back()->withInput()->with('error','Unable to update sale. Please try again.');
         }
     }
 
@@ -2018,29 +1228,7 @@ class SaleController extends Controller
 
                 SaleItemFifo::whereIn('sale_item_id', $oldItems->pluck('id'))->delete();
 
-                $journal = JournalEntry::where('branch_id', $sale->branch_id)
-                    ->where('description', 'Export Sale - Invoice ' . $sale->invoice_id)
-                    ->lockForUpdate()->first();
-
-                if ($journal) {
-                    $details = JournalEntryDetail::where('journal_entry_id', $journal->id)
-                        ->lockForUpdate()->get();
-
-                    // Accounting::postJournal([
-                    //     'branch_id' => $sale->branch_id,
-                    //     'date' => $sale->sale_date,
-                    //     'description' => 'Reversal - Export Sale - Invoice ' . $sale->invoice_id,
-                    //     'entries' => $details->map(fn($d) => [
-                    //         'ledger_id' => $d->ledger_id,
-                    //         'sub_ledger_id' => $d->sub_ledger_id,
-                    //         'debit' => (float)$d->credit,
-                    //         'credit' => (float)$d->debit,
-                    //     ])->toArray(),
-                    // ]);
-
-                    $journal->details()->delete();
-                    $journal->delete();
-                }
+                Accounting::reverse(Sale::class, $sale->id);
 
                 $sale->items()->delete();
 
@@ -2109,7 +1297,7 @@ class SaleController extends Controller
                     'cost_of_goods_sold' => $cogs,
                 ]);
 
-                Accounting::postJournal([
+                $journal = Accounting::postJournal([
                     'branch_id' => $sale->branch_id,
                     'date' => $sale->sale_date,
                     'description' => 'Export Sale - Invoice ' . $sale->invoice_id,
@@ -2119,6 +1307,13 @@ class SaleController extends Controller
                         ['ledger_id' => 8, 'sub_ledger_id' => null, 'debit' => $cogs, 'credit' => 0],
                         ['ledger_id' => 4, 'sub_ledger_id' => 1, 'debit' => 0, 'credit' => $cogs],
                     ],
+                ]);
+                
+                JournalEntryReference::create([
+                    'journal_entry_id' => $journal->id,
+                    'model_type' => Sale::class,
+                    'model_id' => $sale->id,
+                    'action' => 'updated',
                 ]);
             });
 
@@ -2170,7 +1365,7 @@ class SaleController extends Controller
                     }
                 }
 
-                $this->reverseSaleJournal($sale);
+                Accounting::reverse(Sale::class, $sale->id);
 
                 $sale->update([
                     'status' => 'cancelled',
@@ -2221,142 +1416,7 @@ class SaleController extends Controller
         return "{$prefix}/{$customerCode}/{$year}/{$nextNumber}";
     }
 
-    private function reverseSaleJournal(Sale $sale)
-    {
-        $customer = Customer::findOrFail(
-            $sale->customer_id
-        );
-
-        Accounting::postJournal([
-
-            'branch_id' =>
-            $sale->branch_id,
-
-            'date' =>
-            now(),
-
-            'description' =>
-            'Cancelled Sale - Invoice '
-                . $sale->invoice_id,
-
-            'entries' => [
-
-                /*
-            |--------------------------------------------------------------------------
-            | REVERSE CUSTOMER RECEIVABLE
-            |--------------------------------------------------------------------------
-            |
-            | Original:
-            | Dr Customer Receivable
-            |
-            | Cancellation:
-            | Cr Customer Receivable
-            |
-            */
-
-                [
-                    'ledger_id' =>
-                    3,
-
-                    'sub_ledger_id' =>
-                    $customer->receivable_sub_ledger_id,
-
-                    'debit' =>
-                    0,
-
-                    'credit' =>
-                    $sale->total,
-                ],
-
-
-                /*
-            |--------------------------------------------------------------------------
-            | REVERSE SALES
-            |--------------------------------------------------------------------------
-            |
-            | Original:
-            | Cr Sales
-            |
-            | Cancellation:
-            | Dr Sales
-            |
-            */
-
-                [
-                    'ledger_id' =>
-                    6,
-
-                    'sub_ledger_id' =>
-                    null,
-
-                    'debit' =>
-                    $sale->total,
-
-                    'credit' =>
-                    0,
-                ],
-
-
-                /*
-            |--------------------------------------------------------------------------
-            | REVERSE COGS
-            |--------------------------------------------------------------------------
-            |
-            | Original:
-            | Dr COGS
-            |
-            | Cancellation:
-            | Cr COGS
-            |
-            */
-
-                [
-                    'ledger_id' =>
-                    8,
-
-                    'sub_ledger_id' =>
-                    null,
-
-                    'debit' =>
-                    0,
-
-                    'credit' =>
-                    $sale->cost_of_goods_sold,
-                ],
-
-
-                /*
-            |--------------------------------------------------------------------------
-            | REVERSE INVENTORY
-            |--------------------------------------------------------------------------
-            |
-            | Original:
-            | Cr Inventory
-            |
-            | Cancellation:
-            | Dr Inventory
-            |
-            */
-
-                [
-                    'ledger_id' =>
-                    4,
-
-                    'sub_ledger_id' =>
-                    1,
-
-                    'debit' =>
-                    $sale->cost_of_goods_sold,
-
-                    'credit' =>
-                    0,
-                ],
-
-            ],
-        ]);
-    }
-
-    function destroyExport($id)
+    function destroyExport(int $id)
     {
         try {
 
@@ -2396,7 +1456,7 @@ class SaleController extends Controller
                     }
                 }
 
-                $this->reverseSaleJournal($sale);
+                Accounting::reverse(Sale::class, $sale->id);
 
                 $sale->update([
                     'status' => 'cancelled',

@@ -686,29 +686,6 @@ class PurchaseInventoryController extends Controller
 
             throw $e;
         } catch (\Throwable $e) {
-
-            \Log::error(
-                'Purchase inventory update failed',
-                [
-                    'purchase_id' =>
-                    $id,
-
-                    'user_id' =>
-                    auth()->id(),
-
-                    'error' =>
-                    $e->getMessage(),
-
-                    'file' =>
-                    $e->getFile(),
-
-                    'line' =>
-                    $e->getLine(),
-
-                ]
-            );
-
-
             return back()
                 ->withInput()
                 ->with(
