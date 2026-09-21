@@ -45,6 +45,11 @@ class ChartOfAccountsSeeder extends Seeder
             'name' => 'Current Liabilities'
         ]);
 
+         $nonCurrentLiab = AccountGroup::firstOrCreate([
+            'account_type_id' => $liability->id,
+            'name' => 'Non Current Liabilities'
+        ]);
+
         // INCOME
         $sales = AccountGroup::firstOrCreate([
             'account_type_id' => $income->id,
@@ -74,9 +79,9 @@ class ChartOfAccountsSeeder extends Seeder
             'name' => 'Cash and Bank Account'
         ]);
 
-        $bank = Ledger::firstOrCreate([
+        $salaryAdvances = Ledger::firstOrCreate([
             'account_group_id' => $currentAssets->id,
-            'name' => 'Bank'
+            'name' => 'Salary Advances'
         ]);
 
         // RECEIVABLES
@@ -95,6 +100,11 @@ class ChartOfAccountsSeeder extends Seeder
         $ap = Ledger::firstOrCreate([
             'account_group_id' => $currentLiab->id,
             'name' => 'Accounts Payable'
+        ]);
+
+        $accruedExpenses = Ledger::firstOrCreate([
+            'account_group_id' => $currentLiab->id,
+            'name' => 'Accrued Expenses'
         ]);
 
         // INCOME

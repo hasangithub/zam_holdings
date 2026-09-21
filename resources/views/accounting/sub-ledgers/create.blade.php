@@ -42,3 +42,39 @@
 </section>
 
 @endsection
+
+@push('scripts')
+    <script>
+$(document).ready(function () {
+
+    function toggleBranch() {
+
+        let ledgerId = $('#ledger_id').val();
+
+        if (ledgerId == '1') {
+
+            $('#branch_group').show();
+
+            $('#branch_id').prop('required', true);
+
+        } else {
+
+            $('#branch_group').hide();
+
+            $('#branch_id')
+                .prop('required', false)
+                .val('');
+
+        }
+    }
+
+    $('#ledger_id').on('change', function () {
+        toggleBranch();
+    });
+
+    // Important for edit page
+    toggleBranch();
+
+});
+</script>
+@endpush

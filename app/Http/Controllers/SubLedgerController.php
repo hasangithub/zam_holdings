@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\Models\Branch;
 use App\Models\Ledger;
 use App\Models\SubLedger;
 use Illuminate\Http\Request;
@@ -15,7 +16,7 @@ class SubLedgerController extends Controller
         $subLedgers = SubLedger::with([
             'ledger.accountGroup.accountType'
         ])
-        ->paginate(25);
+            ->paginate(25);
 
         return view(
             'accounting.sub-ledgers.index',
@@ -27,10 +28,11 @@ class SubLedgerController extends Controller
     {
         $ledgers = Ledger::with('accountGroup')
             ->get();
+        $branches = Branch::all();
 
         return view(
             'accounting.sub-ledgers.create',
-            compact('ledgers')
+            compact('ledgers', 'branches')
         );
     }
 
@@ -47,11 +49,26 @@ class SubLedgerController extends Controller
                 'string',
                 'max:150',
             ],
+            'branch_id' => ['nullable', 'exists:branches,id'],
         ]);
 
-        $validated['created_by'] = auth()->id();
+        $branchId = null;
 
-        SubLedger::create($validated);
+        // Ledger ID 1 = Cash and Bank Account
+        if ((int) $request->ledger_id === 1) {
+
+            $request->validate([
+                'branch_id' => ['required', 'exists:branches,id'],
+            ]);
+
+            $branchId = $request->branch_id;
+        }
+
+        SubLedger::create([
+            'ledger_id' => $request->ledger_id,
+            'name'      => $request->name,
+            'branch_id' => $branchId,
+        ]);
 
         return redirect()
             ->route('accounting.sub-ledgers.index')
