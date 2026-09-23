@@ -24,12 +24,14 @@ use App\Http\Controllers\ShipmentPlanController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\ChartOfAccountController;
 use App\Http\Controllers\AccountGroupController;
+use App\Http\Controllers\FixedAssetController;
 use App\Http\Controllers\FreightController;
 use App\Http\Controllers\FreightServiceController;
 use App\Http\Controllers\LedgerController;
 use App\Http\Controllers\SubLedgerController;
 use App\Http\Controllers\SalesProfitLossController;
-
+use App\Http\Controllers\CashbookController;
+use App\Http\Controllers\SalaryAdvanceController;
 // Route::get('/', function () {
 //     return view('welcome');
 // });
@@ -48,6 +50,48 @@ require __DIR__ . '/auth.php';
 
 Route::middleware(['auth'])->group(function () {
 
+
+
+    Route::get(
+        'cashbooks',
+        [CashbookController::class, 'index']
+    )->name('cashbooks.index');
+
+    Route::get(
+        'cashbooks/create',
+        [CashbookController::class, 'create']
+    )->name('cashbooks.create');
+
+    Route::post(
+        'cashbooks',
+        [CashbookController::class, 'store']
+    )->name('cashbooks.store');
+
+    Route::get(
+        'cashbooks/ledger/{ledger}/subledgers',
+        [CashbookController::class, 'subLedgers']
+    )->name('cashbooks.subledgers');
+
+    Route::get(
+        'items/parent-search',
+        [ItemController::class, 'parentSearch']
+    )->name('items.parent.search');
+
+    Route::post(
+        'items/update-parent',
+        [ItemController::class, 'updateParent']
+    )->name('items.parent.update');
+
+    
+
+Route::resource('salary-advances', SalaryAdvanceController::class);
+
+Route::get('salary-advances/{salaryAdvance}/return', [SalaryAdvanceController::class, 'returnForm'])
+    ->name('salary-advances.return');
+
+Route::post('salary-advances/{salaryAdvance}/return', [SalaryAdvanceController::class, 'storeReturn'])
+    ->name('salary-advances.store-return');
+
     Route::get('/dashboard', [App\Http\Controllers\DashboardController::class, 'index'])->name('dashboard');
     Route::resource('categories', CategoryController::class);
     Route::resource('items', ItemController::class);
@@ -55,6 +99,7 @@ Route::middleware(['auth'])->group(function () {
     Route::resource('sales', SaleController::class);
     Route::resource('suppliers', SupplierController::class);
     Route::resource('customers', CustomerController::class);
+    Route::resource('fixed-assets', FixedAssetController::class);
     Route::get('/purchases/{purchase}/invoice', [PurchaseController::class, 'invoice'])->name('purchases.invoice');
     Route::get('/sales/{sale}/invoice', [SaleController::class, 'invoice'])->name('sales.invoice');
     Route::get('/export-sales/{sale}/invoice', [SaleController::class, 'invoiceExport'])->name('export-sales.invoice');
@@ -77,6 +122,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/suppliers/{id}/statement', [SupplierController::class, 'statement'])->name('suppliers.statement');
     Route::post('/suppliers/{id}/payment', [SupplierController::class, 'storePayment'])->name('suppliers.payment.store');
     Route::post('/suppliers/{id}/inventory-payment', [SupplierController::class, 'storeInventoryPayment'])->name('suppliers.inventory.payment.store');
+    Route::post('/suppliers/{id}/asset-payment', [SupplierController::class, 'storeAssetPayment'])->name('suppliers.asset.payment.store');
     Route::prefix('pos')->group(function () {
 
         Route::get('/local', [PosController::class, 'local'])->name('pos.local');

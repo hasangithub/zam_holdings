@@ -79,9 +79,24 @@ class ChartOfAccountsSeeder extends Seeder
             'name' => 'Cash and Bank Account'
         ]);
 
-        $salaryAdvances = Ledger::firstOrCreate([
+        $salaryAdvance = Ledger::firstOrCreate([
             'account_group_id' => $currentAssets->id,
-            'name' => 'Salary Advances'
+            'name' => 'Salary Advance'
+        ]);
+
+        $buildingsProperty = Ledger::firstOrCreate([
+            'account_group_id' => $fixedAssets->id,
+            'name' => 'Buildings & Property'
+        ]);
+
+        $officeFurniture = Ledger::firstOrCreate([
+            'account_group_id' => $fixedAssets->id,
+            'name' => 'Office Furniture & Fixtures'
+        ]);
+
+        $vehicles = Ledger::firstOrCreate([
+            'account_group_id' => $fixedAssets->id,
+            'name' => 'Vehicles'
         ]);
 
         // RECEIVABLES
@@ -105,6 +120,11 @@ class ChartOfAccountsSeeder extends Seeder
         $accruedExpenses = Ledger::firstOrCreate([
             'account_group_id' => $currentLiab->id,
             'name' => 'Accrued Expenses'
+        ]);
+
+        $nap = Ledger::firstOrCreate([
+            'account_group_id' => $nonCurrentLiab->id,
+            'name' => 'Non-Current Accounts Payable'
         ]);
 
         // INCOME

@@ -18,6 +18,12 @@
             data-target="#payModal">
             + Purchase Payment
         </button>
+        @elseif($supplier->supplier_type == 'Asset Providers')
+        <button class="btn btn-primary"
+            data-toggle="modal"
+            data-target="#payAssetModal">
+            + Fixed Asset Payment
+        </button>
         @else
         <button class="btn btn-primary"
             data-toggle="modal"
@@ -625,6 +631,140 @@
 
             <form method="POST"
                 action="{{ route('suppliers.inventory.payment.store', $supplier->id) }}">
+
+                @csrf
+
+
+                <div class="modal-header">
+
+                    <h5 class="modal-title">
+                        Add Supplier Payment
+                    </h5>
+
+                    <button type="button"
+                        class="close"
+                        data-dismiss="modal">
+
+                        <span>
+                            &times;
+                        </span>
+
+                    </button>
+
+                </div>
+
+
+                <div class="modal-body">
+
+
+                    {{-- AMOUNT --}}
+                    <div class="form-group">
+
+                        <label>
+                            Amount
+                        </label>
+
+                        <input type="number"
+                            name="amount"
+                            class="form-control"
+                            step="0.01"
+                            min="0"
+                            required>
+
+                    </div>
+
+
+                    {{-- DATE --}}
+                    <div class="form-group">
+
+                        <label>
+                            Date
+                        </label>
+
+                        <input type="date"
+                            name="payment_date"
+                            class="form-control"
+                            value="{{ date('Y-m-d') }}"
+                            required>
+
+                    </div>
+
+
+                    <div class="form-group">
+                        <label>Payment Account</label>
+                        <select name="sub_ledger_id" class="form-control" required>
+                            <option value="">Select Cash / Bank Account</option>
+
+                            @foreach($paymentSubLedgers as $subLedger)
+                            <option value="{{ $subLedger->id }}">
+                                {{ $subLedger->name }}
+                            </option>
+                            @endforeach
+                        </select>
+                    </div>
+
+                    {{-- NOTE --}}
+                    <div class="form-group">
+
+                        <label>
+                            Note
+                        </label>
+
+                        <textarea name="note"
+                            class="form-control"
+                            rows="3"></textarea>
+
+                    </div>
+
+
+                </div>
+
+
+                <div class="modal-footer">
+
+                    <button type="button"
+                        class="btn btn-secondary"
+                        data-dismiss="modal">
+
+                        Close
+
+                    </button>
+
+                    <button type="submit"
+                        class="btn btn-primary">
+
+                        Save Payment
+
+                    </button>
+
+                </div>
+
+
+            </form>
+
+        </div>
+
+    </div>
+
+</div>
+
+{{-- ========================================================= --}}
+{{-- Asset PAYMENT MODAL --}}
+{{-- ========================================================= --}}
+
+<div class="modal fade"
+    id="payAssetModal"
+    tabindex="-1"
+    role="dialog">
+
+    <div class="modal-dialog"
+        role="document">
+
+        <div class="modal-content">
+
+
+            <form method="POST"
+                action="{{ route('suppliers.asset.payment.store', $supplier->id) }}">
 
                 @csrf
 

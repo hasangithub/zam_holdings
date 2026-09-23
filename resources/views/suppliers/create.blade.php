@@ -62,6 +62,11 @@
                                     Packing Material
                                 </option>
 
+                                 <option value="Asset Providers"
+                                    {{ old('supplier_type') == 'Asset Providers' ? 'selected' : '' }}>
+                                    Asset Providers
+                                </option>
+
                                 <option value="Others"
                                     {{ old('supplier_type') == 'Others' ? 'selected' : '' }}>
                                     Others

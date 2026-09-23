@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Accounting\Accounting;
+use App\Models\FixedAssetPayment;
+use App\Models\FixedAsset;
 use App\Models\Purchase;
 use App\Models\PurchaseInventory;
 use App\Models\PurchaseInventoryPayment;
@@ -30,7 +32,7 @@ class SupplierController extends Controller
     {
         $request->validate([
             'name' => 'required|string|max:255',
-            'supplier_type' => 'required|in:Trading Goods,Packing Material,Others',
+            'supplier_type' => 'required|in:Trading Goods,Packing Material,Asset Providers,Others',
         ]);
 
 
@@ -52,12 +54,31 @@ class SupplierController extends Controller
         | Create Liability Sub Ledger
         |--------------------------------------------------------------------------
         */
+            if ($supplier->supplier_type == 'Trading Goods') {
+                $subLedger = SubLedger::create([
 
-            $subLedger = SubLedger::create([
+                    'ledger_id' => 7,
+                    'name'      => $supplier->name,
+                ]);
+            } else if ($supplier->supplier_type == 'Packing Material') {
+                $subLedger = SubLedger::create([
 
-                'ledger_id' => 5,
-                'name'      => $supplier->name,
-            ]);
+                    'ledger_id' => 7,
+                    'name'      => $supplier->name,
+                ]);
+            } else if ($supplier->supplier_type == 'Asset Providers') {
+                $subLedger = SubLedger::create([
+
+                    'ledger_id' => 9,
+                    'name'      => $supplier->name,
+                ]);
+            } else if ($supplier->supplier_type == 'Others') {
+                $subLedger = SubLedger::create([
+
+                    'ledger_id' => 7,
+                    'name'      => $supplier->name,
+                ]);
+            }
 
 
             /*
@@ -67,10 +88,7 @@ class SupplierController extends Controller
         */
 
             $supplier->update([
-
-                'liability_sub_ledger_id' =>
-                $subLedger->id,
-
+                'liability_sub_ledger_id' => $subLedger->id,
             ]);
         });
 
@@ -200,6 +218,33 @@ class SupplierController extends Controller
                 $ledger->push([
                     'date' => $payment->payment_date,
                     'module' => 'Purchase',
+                    'type' => 'Payment',
+                    'debit' => 0,
+                    'credit' => $payment->amount,
+                ]);
+            }
+        } elseif ($supplier->supplier_type == 'Asset Providers') {
+
+            $purchases = FixedAsset::where('supplier_id', $id)->get();
+
+            $payments = FixedAssetPayment::where('supplier_id', $id)->get();
+
+            foreach ($purchases as $purchase) {
+
+                $ledger->push([
+                    'date' => $purchase->purchase_date,
+                    'module' => 'Fixed Asset',
+                    'type' => 'Invoice',
+                    'debit' => $purchase->amount,
+                    'credit' => 0,
+                ]);
+            }
+
+            foreach ($payments as $payment) {
+
+                $ledger->push([
+                    'date' => $payment->payment_date,
+                    'module' => 'Fixed Asset',
                     'type' => 'Payment',
                     'debit' => 0,
                     'credit' => $payment->amount,
@@ -451,6 +496,71 @@ class SupplierController extends Controller
                     'entries' => [
                         [
                             'ledger_id' => 5,
+                            'sub_ledger_id' => $supplier->liability_sub_ledger_id,
+                            'debit' => $amount,
+                            'credit' => 0,
+                        ],
+                        [
+                            'ledger_id' => $paymentLedgerId,
+                            'sub_ledger_id' =>  $paymentSubLedgerId,
+                            'debit' => 0,
+                            'credit' => $amount,
+                        ],
+                    ]
+                ]);
+            });
+
+
+            return back()->with('success', 'Payment added successfully.');
+        } catch (ValidationException $e) {
+            throw $e;
+        } catch (\Throwable $e) {
+            return back()->withInput()->with('error', 'Unable to process the payment.');
+        }
+    }
+
+    public function storeAssetPayment(Request $request, $id)
+    {
+        $request->validate([
+            'amount' => ['required', 'numeric', 'gt:0',],
+            'payment_date' => ['required', 'date',],
+            'sub_ledger_id' => 'required|exists:sub_ledgers,id',
+            'note' => ['nullable', 'string', 'max:1000',],
+        ]);
+
+        try {
+
+            DB::transaction(function () use ($request, $id) {
+
+                $supplier = Supplier::lockForUpdate()->findOrFail($id);
+                $amount = (float) $request->amount;
+                $branchId = auth()->user()->branch_id;
+
+                if (!$supplier->liability_sub_ledger_id) {
+                    throw ValidationException::withMessages(['amount' => 'This supplier does not have a non current liability sub-ledger.']);
+                }
+
+                $payment = FixedAssetPayment::create([
+
+                    'supplier_id' => $supplier->id,
+                    'amount' => $request->amount,
+                    'payment_date' => $request->payment_date,
+                    'payment_sub_ledger_id' => $request->sub_ledger_id,
+                    'note' => $request->note,
+                ]);
+
+
+                $paymentLedgerId = 1;
+                $paymentSubLedgerId = $request->sub_ledger_id;
+
+                Accounting::postJournal([
+                    'branch_id' => $branchId,
+                    'date' => $request->payment_date,
+                    'description' => 'Payment for purchase - ' . $supplier->name,
+
+                    'entries' => [
+                        [
+                            'ledger_id' => 9,
                             'sub_ledger_id' => $supplier->liability_sub_ledger_id,
                             'debit' => $amount,
                             'credit' => 0,

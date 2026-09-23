@@ -15,6 +15,7 @@ return new class extends Migration
             $table->enum('supplier_type', [
                 'Trading Goods',
                 'Packing Material',
+                'Asset Providers',
                 'Others'
             ])->default('Trading Goods')->after('branch_id');
         });

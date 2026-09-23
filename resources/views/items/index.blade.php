@@ -21,6 +21,7 @@
                     <th>Category</th>
                     <th>Item Name</th>
                     <th>Type</th>
+                    <th>Parent</th>
                     <th>Action</th>
                 </tr>
             </thead>
@@ -32,6 +33,19 @@
                     <td>{{ $item->category->name }}</td>
                     <td>{{ $item->name }}</td>
                     <td>{{ $item->item_type_name }}</td>
+                    <td>
+                         <select class="form-control form-control-sm parent-item"
+                            data-id="{{ $item->id }}"
+                            data-parent-id="{{ $item->parent_id }}">
+
+                            @if($item->parent)
+                            <option value="{{ $item->parent->id }}" selected>
+                                {{ $item->parent->name }}
+                            </option>
+                            @endif
+
+                        </select>
+                    </td>
                     <td>
                         <a href="/items/{{ $item->id }}/edit" class="btn btn-warning btn-xs">Edit</a>
                     </td>
@@ -57,6 +71,79 @@
             ordering: true,
             searching: true
         });
+
+          $('.parent-item').each(function() {
+
+                let select = this;
+                let itemId = $(select).data('id');
+
+                new TomSelect(select, {
+                    valueField: 'id',
+                    labelField: 'text',
+                    searchField: ['text'],
+
+                    placeholder: 'Search parent item',
+                    allowEmptyOption: true,
+
+                    maxOptions: 20,
+
+                    loadThrottle: 300,
+
+                    load: function(query, callback) {
+
+                        if (query.length < 2) {
+                            callback();
+                            return;
+                        }
+
+                        $.ajax({
+                            url: "{{ route('items.parent.search') }}",
+                            type: "GET",
+                            dataType: "json",
+
+                            data: {
+                                search: query,
+                                item_id: itemId
+                            },
+
+                            success: function(response) {
+                                callback(response.data);
+                            },
+
+                            error: function() {
+                                callback();
+                            }
+                        });
+
+                    },
+
+                    onChange: function(value) {
+
+                        $.ajax({
+                            url: "{{ route('items.parent.update') }}",
+                            type: "POST",
+
+                            data: {
+                                _token: "{{ csrf_token() }}",
+                                item_id: itemId,
+                                parent_id: value || null
+                            },
+
+                            success: function() {
+                                toastr.success('Parent updated');
+                            },
+
+                            error: function() {
+                                toastr.error('Unable to update parent');
+                            }
+                        });
+
+                    }
+
+                });
+
+            });
+
     });
 </script>
 @endpush

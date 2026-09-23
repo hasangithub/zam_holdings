@@ -11,6 +11,7 @@ class Item extends Model
 
     protected $fillable = [
         'category_id',
+        'parent_id',
         'name',
         'item_code',
         'sale_price',
@@ -40,7 +41,7 @@ class Item extends Model
         };
     }
 
-     public static function getItemTypes()
+    public static function getItemTypes()
     {
         return [
             self::SALE_ITEM      => 'Sale Item',
@@ -49,6 +50,16 @@ class Item extends Model
             self::FINISHED_GOOD  => 'Finished Good',
             self::SERVICE        => 'Service',
         ];
+    }
+
+    public function parent()
+    {
+        return $this->belongsTo(Item::class, 'parent_id');
+    }
+
+    public function children()
+    {
+        return $this->hasMany(Item::class, 'parent_id');
     }
 }
 
