@@ -57,25 +57,25 @@ class SupplierController extends Controller
             if ($supplier->supplier_type == 'Trading Goods') {
                 $subLedger = SubLedger::create([
 
-                    'ledger_id' => 7,
+                    'ledger_id' => 8,
                     'name'      => $supplier->name,
                 ]);
             } else if ($supplier->supplier_type == 'Packing Material') {
                 $subLedger = SubLedger::create([
 
-                    'ledger_id' => 7,
+                    'ledger_id' => 8,
                     'name'      => $supplier->name,
                 ]);
             } else if ($supplier->supplier_type == 'Asset Providers') {
                 $subLedger = SubLedger::create([
 
-                    'ledger_id' => 9,
+                    'ledger_id' => 10,
                     'name'      => $supplier->name,
                 ]);
             } else if ($supplier->supplier_type == 'Others') {
                 $subLedger = SubLedger::create([
 
-                    'ledger_id' => 7,
+                    'ledger_id' => 8,
                     'name'      => $supplier->name,
                 ]);
             }
