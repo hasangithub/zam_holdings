@@ -266,25 +266,12 @@
 
         <table class="table table-bordered summary-table">
 
-            {{-- Previous Outstanding --}}
-            <tr>
-
-                <th class="text-end">
-                    Previous Outstanding
-                </th>
-
-                <td class="text-right">
-                    {{ number_format($previousOutstanding, 2) }}
-                </td>
-
-            </tr>
-
 
             {{-- Current Purchase --}}
             <tr>
 
                 <th class="text-end">
-                    Current Purchase
+                    Grand Total
                 </th>
 
                 <td class="text-right">
@@ -292,54 +279,6 @@
                 </td>
 
             </tr>
-
-
-            {{-- Total Payable --}}
-            <tr class="total-row">
-
-                <th class="text-end">
-                    Total Payable
-                </th>
-
-                <td class="text-right">
-                    {{ number_format($totalPayable, 2) }}
-                </td>
-
-            </tr>
-
-
-            {{-- Paid --}}
-            <tr class="paid-row">
-
-                <th class="text-end">
-                    Payment Made
-                </th>
-
-                <td class="text-right">
-                    {{ number_format($currentPaid, 2) }}
-                </td>
-
-            </tr>
-
-
-            {{-- Current Balance --}}
-            <tr class="balance-row">
-
-                <th class="text-end">
-                    Outstanding Payable
-                </th>
-
-                <td class="text-right">
-
-                    {{ number_format(
-                            $previousOutstanding + $currentOutstanding,
-                            2
-                        ) }}
-
-                </td>
-
-            </tr>
-
         </table>
 
 
