@@ -429,6 +429,18 @@
 
                         </li>
 
+                         <li class="nav-item">
+
+                            <a href="{{ route('reports.general-ledger') }}"
+                                class="nav-link">
+
+                                <i class="far fa-circle nav-icon text-info"></i>
+                                <p>Ledger Report</p>
+
+                            </a>
+
+                        </li>
+
                         <li class="nav-item">
 
                             <a href="{{ route('reports.customer-summary') }}"

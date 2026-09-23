@@ -32,6 +32,7 @@ use App\Http\Controllers\SubLedgerController;
 use App\Http\Controllers\SalesProfitLossController;
 use App\Http\Controllers\CashbookController;
 use App\Http\Controllers\SalaryAdvanceController;
+use App\Http\Controllers\GeneralLedgerController;
 // Route::get('/', function () {
 //     return view('welcome');
 // });
@@ -82,15 +83,23 @@ Route::middleware(['auth'])->group(function () {
         [ItemController::class, 'updateParent']
     )->name('items.parent.update');
 
-    
 
-Route::resource('salary-advances', SalaryAdvanceController::class);
 
-Route::get('salary-advances/{salaryAdvance}/return', [SalaryAdvanceController::class, 'returnForm'])
-    ->name('salary-advances.return');
+    Route::resource('salary-advances', SalaryAdvanceController::class);
 
-Route::post('salary-advances/{salaryAdvance}/return', [SalaryAdvanceController::class, 'storeReturn'])
-    ->name('salary-advances.store-return');
+    Route::get('salary-advances/{salaryAdvance}/return', [SalaryAdvanceController::class, 'returnForm'])
+        ->name('salary-advances.return');
+
+    Route::post('salary-advances/{salaryAdvance}/return', [SalaryAdvanceController::class, 'storeReturn'])
+        ->name('salary-advances.store-return');
+
+
+
+    Route::get('reports/general-ledger', [GeneralLedgerController::class, 'index'])
+        ->name('reports.general-ledger');
+
+    Route::post('reports/general-ledger', [GeneralLedgerController::class, 'report'])
+        ->name('reports.general-ledger.report');
 
     Route::get('/dashboard', [App\Http\Controllers\DashboardController::class, 'index'])->name('dashboard');
     Route::resource('categories', CategoryController::class);
