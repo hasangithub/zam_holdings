@@ -521,13 +521,13 @@ class SaleController extends Controller
                     'description' =>'Credit Sale - Invoice '. $sale->invoice_id,
                     'entries' => [
                         //CUSTOMER RECEIVABLE
-                        ['ledger_id' =>3,'sub_ledger_id' =>$customer->receivable_sub_ledger_id,'debit' => $total, 'credit' => 0,],
+                        ['ledger_id' =>6,'sub_ledger_id' =>$customer->receivable_sub_ledger_id,'debit' => $total, 'credit' => 0,],
                         // SALES
-                        ['ledger_id' =>6,'sub_ledger_id' =>null,'debit' =>0,'credit' =>$total,],
+                        ['ledger_id' =>11,'sub_ledger_id' =>null,'debit' =>0,'credit' =>$total,],
                         // COGS
-                        ['ledger_id' => 8,'sub_ledger_id' =>null,'debit' =>$costOfGoodsSold,'credit' =>0,],
+                        ['ledger_id' => 13,'sub_ledger_id' =>null,'debit' =>$costOfGoodsSold,'credit' =>0,],
                         //INVENTORY
-                        ['ledger_id' => 4,'sub_ledger_id' =>1,'debit' =>0,'credit' =>$costOfGoodsSold,],
+                        ['ledger_id' => 7,'sub_ledger_id' =>1,'debit' =>0,'credit' =>$costOfGoodsSold,],
                     ],
 
                 ]);
@@ -736,13 +736,13 @@ class SaleController extends Controller
                     'description' => 'Export Sale - Invoice ' . $sale->invoice_id,
                     'entries' => [
                         // CUSTOMER RECEIVABLE
-                        ['ledger_id' => 3, 'sub_ledger_id' => $customer->receivable_sub_ledger_id, 'debit' => $totalLkr, 'credit' => 0,],
+                        ['ledger_id' => 6, 'sub_ledger_id' => $customer->receivable_sub_ledger_id, 'debit' => $totalLkr, 'credit' => 0,],
                         //SALES REVENUE
-                        ['ledger_id' => 7, 'sub_ledger_id' => null, 'debit' => 0, 'credit' => $totalLkr,],
+                        ['ledger_id' => 12, 'sub_ledger_id' => null, 'debit' => 0, 'credit' => $totalLkr,],
                         // COGS
-                        ['ledger_id' => 9, 'sub_ledger_id' => null, 'debit' => $totalCogs, 'credit' => 0,],
+                        ['ledger_id' => 14, 'sub_ledger_id' => null, 'debit' => $totalCogs, 'credit' => 0,],
                         // INVENTORY
-                        ['ledger_id' => 4, 'sub_ledger_id' => 1, 'debit' => 0, 'credit' => $totalCogs,],
+                        ['ledger_id' => 7, 'sub_ledger_id' => 1, 'debit' => 0, 'credit' => $totalCogs,],
                     ],
                 ]);
 
