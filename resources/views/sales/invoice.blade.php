@@ -435,42 +435,11 @@
     <div class="invoice-summary">
 
         <div class="d-flex justify-content-between">
-            <span>Previous Outstanding</span>
-            <strong>
-                {{ number_format($previousOutstanding, 2) }}
-            </strong>
-        </div>
-
-        <div class="d-flex justify-content-between">
-            <span>Current Invoice</span>
+            <span>Grand Total</span>
             <strong>
                 {{ number_format($currentInvoice, 2) }}
             </strong>
         </div>
-
-        <hr>
-
-        <div class="d-flex justify-content-between">
-            <strong>Total Payable</strong>
-            <strong>
-                {{ number_format($totalPayable, 2) }}
-            </strong>
-        </div>
-
-        <div class="d-flex justify-content-between text-success">
-            <span>Payment Received</span>
-            <strong>
-                {{ number_format($currentPayment, 2) }}
-            </strong>
-        </div>
-
-        <div class="d-flex justify-content-between">
-            <strong>Balance Due</strong>
-            <strong>
-                {{ number_format($previousOutstanding + $currentBalance, 2) }}
-            </strong>
-        </div>
-
     </div>
 
 
