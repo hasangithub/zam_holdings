@@ -26,4 +26,12 @@ class Supplier extends Model
             'liability_sub_ledger_id'
         );
     }
+
+    public function purchaseAmendments()
+    {
+        return $this->hasMany(
+            PurchaseAmendment::class,
+            'supplier_id'
+        );
+    }
 }

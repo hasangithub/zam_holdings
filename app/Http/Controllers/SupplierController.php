@@ -6,6 +6,7 @@ use App\Accounting\Accounting;
 use App\Models\FixedAssetPayment;
 use App\Models\FixedAsset;
 use App\Models\Purchase;
+use App\Models\PurchaseAmendment;
 use App\Models\PurchaseInventory;
 use App\Models\PurchaseInventoryPayment;
 use App\Models\PurchasePayment;
@@ -188,7 +189,9 @@ class SupplierController extends Controller
         );
 
         $ledger = collect();
+
         $openingBalance = 0;
+
 
         /*
     |--------------------------------------------------------------------------
@@ -198,59 +201,191 @@ class SupplierController extends Controller
 
         if ($supplier->supplier_type == 'Trading Goods') {
 
-            $purchases = Purchase::where('supplier_id', $id)->get();
+            /*
+        |--------------------------------------------------------------------------
+        | Purchases
+        |--------------------------------------------------------------------------
+        */
 
-            $payments = PurchasePayment::where('supplier_id', $id)->get();
+            $purchases = Purchase::where(
+                'supplier_id',
+                $id
+            )->get();
 
-            foreach ($purchases as $purchase) {
-
-                $ledger->push([
-                    'date' => $purchase->purchase_date,
-                    'module' => 'Purchase',
-                    'type' => 'Invoice',
-                    'debit' => $purchase->total,
-                    'credit' => 0,
-                ]);
-            }
-
-            foreach ($payments as $payment) {
-
-                $ledger->push([
-                    'date' => $payment->payment_date,
-                    'module' => 'Purchase',
-                    'type' => 'Payment',
-                    'debit' => 0,
-                    'credit' => $payment->amount,
-                ]);
-            }
-        } elseif ($supplier->supplier_type == 'Asset Providers') {
-
-            $purchases = FixedAsset::where('supplier_id', $id)->get();
-
-            $payments = FixedAssetPayment::where('supplier_id', $id)->get();
 
             foreach ($purchases as $purchase) {
 
                 $ledger->push([
+
                     'date' => $purchase->purchase_date,
-                    'module' => 'Fixed Asset',
+
+                    'module' => 'Purchase',
+
                     'type' => 'Invoice',
-                    'debit' => $purchase->amount,
+
+                    'debit' => (float) $purchase->total,
+
                     'credit' => 0,
+
                 ]);
             }
+
+
+            /*
+        |--------------------------------------------------------------------------
+        | Purchase Amendments
+        |--------------------------------------------------------------------------
+        */
+
+            $amendments = PurchaseAmendment::where(
+                'supplier_id',
+                $id
+            )
+                ->where('status', 'approved')
+                ->get();
+
+
+            foreach ($amendments as $amendment) {
+
+                $amount = (float) $amendment->amount;
+
+
+                /*
+            |--------------------------------------------------------------------------
+            | Positive Amendment
+            |--------------------------------------------------------------------------
+            |
+            | Supplier payable increases
+            |
+            */
+
+                if ($amount > 0) {
+
+                    $debit = $amount;
+
+                    $credit = 0;
+                }
+
+                /*
+            |--------------------------------------------------------------------------
+            | Negative Amendment
+            |--------------------------------------------------------------------------
+            |
+            | Supplier payable decreases
+            |
+            */ else {
+
+                    $debit = 0;
+
+                    $credit = abs($amount);
+                }
+
+
+                $ledger->push([
+
+                    'date' => $amendment->amendment_date,
+
+                    'module' => 'Purchase',
+
+                    'type' => 'Amendment',
+
+                    'reference' => 'AMD-' . $amendment->id,
+
+                    'description' => $amendment->reason,
+
+                    'debit' => $debit,
+
+                    'credit' => $credit,
+
+                ]);
+            }
+
+
+            /*
+        |--------------------------------------------------------------------------
+        | Payments
+        |--------------------------------------------------------------------------
+        */
+
+            $payments = PurchasePayment::where(
+                'supplier_id',
+                $id
+            )->get();
+
 
             foreach ($payments as $payment) {
 
                 $ledger->push([
+
                     'date' => $payment->payment_date,
-                    'module' => 'Fixed Asset',
+
+                    'module' => 'Purchase',
+
                     'type' => 'Payment',
+
                     'debit' => 0,
-                    'credit' => $payment->amount,
+
+                    'credit' => (float) $payment->amount,
+
                 ]);
             }
         }
+
+
+        /*
+    |--------------------------------------------------------------------------
+    | Asset Providers
+    |--------------------------------------------------------------------------
+    */ elseif ($supplier->supplier_type == 'Asset Providers') {
+
+            $purchases = FixedAsset::where(
+                'supplier_id',
+                $id
+            )->get();
+
+
+            $payments = FixedAssetPayment::where(
+                'supplier_id',
+                $id
+            )->get();
+
+
+            foreach ($purchases as $purchase) {
+
+                $ledger->push([
+
+                    'date' => $purchase->purchase_date,
+
+                    'module' => 'Fixed Asset',
+
+                    'type' => 'Invoice',
+
+                    'debit' => (float) $purchase->amount,
+
+                    'credit' => 0,
+
+                ]);
+            }
+
+
+            foreach ($payments as $payment) {
+
+                $ledger->push([
+
+                    'date' => $payment->payment_date,
+
+                    'module' => 'Fixed Asset',
+
+                    'type' => 'Payment',
+
+                    'debit' => 0,
+
+                    'credit' => (float) $payment->amount,
+
+                ]);
+            }
+        }
+
 
         /*
     |--------------------------------------------------------------------------
@@ -263,41 +398,71 @@ class SupplierController extends Controller
                 $id
             )->get();
 
+
             $payments = PurchaseInventoryPayment::where(
                 'supplier_id',
                 $id
             )->get();
 
+
             foreach ($purchases as $purchase) {
 
                 $ledger->push([
+
                     'date' => $purchase->purchase_date,
+
                     'module' => 'Inventory',
+
                     'type' => 'Invoice',
-                    'debit' => $purchase->total,
+
+                    'debit' => (float) $purchase->total,
+
                     'credit' => 0,
+
                 ]);
             }
+
 
             foreach ($payments as $payment) {
 
                 $ledger->push([
+
                     'date' => $payment->payment_date,
+
                     'module' => 'Inventory',
+
                     'type' => 'Payment',
+
                     'debit' => 0,
-                    'credit' => $payment->amount,
+
+                    'credit' => (float) $payment->amount,
+
                 ]);
             }
         }
+
 
         /*
     |--------------------------------------------------------------------------
     | Sort
     |--------------------------------------------------------------------------
+    |
+    | Date first.
+    | Reference/type gives deterministic ordering when two transactions
+    | have the same date.
+    |
     */
 
-        $ledger = $ledger->sortBy('date')->values();
+        $ledger = $ledger
+            ->sortBy(function ($row) {
+
+                return [
+                    $row['date'],
+                    $row['type'],
+                    $row['reference'] ?? '',
+                ];
+            })
+            ->values();
 
 
         /*
@@ -310,17 +475,27 @@ class SupplierController extends Controller
 
             $filtered = collect();
 
+
             foreach ($ledger as $row) {
 
-                // Before From Date = Opening Balance
+                /*
+            |--------------------------------------------------------------------------
+            | Before From Date
+            |--------------------------------------------------------------------------
+            */
+
                 if ($row['date'] < $fromDate) {
 
                     $openingBalance +=
                         $row['debit'] - $row['credit'];
                 }
 
-                // From Date to To Date = Transactions
-                elseif (
+
+                /*
+            |--------------------------------------------------------------------------
+            | From Date -> To Date
+            |--------------------------------------------------------------------------
+            */ elseif (
                     $row['date'] >= $fromDate &&
                     $row['date'] <= $toDate
                 ) {
@@ -328,6 +503,7 @@ class SupplierController extends Controller
                     $filtered->push($row);
                 }
             }
+
 
             $ledger = $filtered;
         }
@@ -341,11 +517,16 @@ class SupplierController extends Controller
 
         $running = $openingBalance;
 
+
         $ledger = $ledger->map(function ($row) use (&$running) {
 
-            $running += $row['debit'] - $row['credit'];
+            $running +=
+                $row['debit'] -
+                $row['credit'];
+
 
             $row['balance'] = $running;
+
 
             return $row;
         });
@@ -361,35 +542,53 @@ class SupplierController extends Controller
 
         $periodPaid = $ledger->sum('credit');
 
-        $balance = $openingBalance + $periodPurchase - $periodPaid;
+
+        $balance =
+            $openingBalance
+            + $periodPurchase
+            - $periodPaid;
 
 
         /*
     |--------------------------------------------------------------------------
-    | If All, balance is final balance
+    | All Transactions
     |--------------------------------------------------------------------------
     */
 
         if ($all) {
 
-            $balance = $ledger->last()['balance'] ?? 0;
+            $balance =
+                $ledger->last()['balance'] ?? 0;
         }
 
-        $paymentSubLedgers = SubLedger::where('ledger_id', 1)->get();
+
+        /*
+    |--------------------------------------------------------------------------
+    | Payment Sub Ledgers
+    |--------------------------------------------------------------------------
+    */
+
+        $paymentSubLedgers = SubLedger::where(
+            'ledger_id',
+            1
+        )->get();
 
 
-        return view('suppliers.statement', compact(
-            'supplier',
-            'ledger',
-            'balance',
-            'openingBalance',
-            'periodPurchase',
-            'periodPaid',
-            'fromDate',
-            'toDate',
-            'all',
-            'paymentSubLedgers'
-        ));
+        return view(
+            'suppliers.statement',
+            compact(
+                'supplier',
+                'ledger',
+                'balance',
+                'openingBalance',
+                'periodPurchase',
+                'periodPaid',
+                'fromDate',
+                'toDate',
+                'all',
+                'paymentSubLedgers'
+            )
+        );
     }
 
     public function storePayment(Request $request, $id)

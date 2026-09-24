@@ -7,6 +7,8 @@ use App\Models\Category;
 use App\Models\Customer;
 use App\Models\InvoiceProfitReport;
 use App\Models\InvoiceProfitReportItem;
+use App\Models\JournalEntryDetail;
+use App\Models\Ledger;
 use App\Models\Sale;
 use App\Models\SaleItem;
 use App\Models\Supplier;
@@ -498,6 +500,287 @@ class ReportController extends Controller
         return view(
             'reports.supplier-summary',
             compact('suppliers', 'type')
+        );
+    }
+
+    /**
+     * Trial Balance
+     */
+    public function trialBalance(Request $request)
+    {
+        /*
+    |--------------------------------------------------------------------------
+    | Dates
+    |--------------------------------------------------------------------------
+    */
+
+        $request->validate([
+            'from_date' => 'nullable|date',
+            'to_date'   => 'nullable|date|after_or_equal:from_date',
+        ]);
+
+        $fromDate = $request->from_date
+            ?? now()->startOfMonth()->format('Y-m-d');
+
+        $toDate = $request->to_date
+            ?? now()->format('Y-m-d');
+
+
+        /*
+    |--------------------------------------------------------------------------
+    | Get ALL Ledgers
+    |--------------------------------------------------------------------------
+    |
+    | Important:
+    | We start from Ledger, not JournalDetail.
+    | Therefore accounts with zero transactions are also displayed.
+    |
+    */
+
+        $ledgers = Ledger::with('subLedgers')
+            ->orderBy('id')
+            ->get();
+
+
+        /*
+    |--------------------------------------------------------------------------
+    | Get journal totals for selected period
+    |--------------------------------------------------------------------------
+    */
+
+        $journalTotals = JournalEntryDetail::query()
+            ->select(
+                'ledger_id',
+                'sub_ledger_id',
+
+                DB::raw(
+                    'COALESCE(SUM(debit), 0) as total_debit'
+                ),
+
+                DB::raw(
+                    'COALESCE(SUM(credit), 0) as total_credit'
+                )
+            )
+            ->whereHas('journalEntry', function ($query) use (
+                $fromDate,
+                $toDate
+            ) {
+
+                $query->whereDate(
+                    'journal_date',
+                    '>=',
+                    $fromDate
+                );
+
+                $query->whereDate(
+                    'journal_date',
+                    '<=',
+                    $toDate
+                );
+            })
+            ->groupBy(
+                'ledger_id',
+                'sub_ledger_id'
+            )
+            ->get();
+
+
+        /*
+    |--------------------------------------------------------------------------
+    | Create lookup
+    |--------------------------------------------------------------------------
+    */
+
+        $journalLookup = [];
+
+        foreach ($journalTotals as $row) {
+
+            $key =
+                $row->ledger_id .
+                '-' .
+                ($row->sub_ledger_id ?? 0);
+
+            $journalLookup[$key] = [
+                'debit'  => (float) $row->total_debit,
+                'credit' => (float) $row->total_credit,
+            ];
+        }
+
+
+        /*
+    |--------------------------------------------------------------------------
+    | Build Ledger Groups
+    |--------------------------------------------------------------------------
+    */
+
+        $ledgerGroups = collect();
+
+
+        foreach ($ledgers as $ledger) {
+
+            /*
+        |--------------------------------------------------------------------------
+        | Ledger's own journal entries
+        |--------------------------------------------------------------------------
+        |
+        | sub_ledger_id = NULL / 0
+        |
+        */
+
+            $ledgerKey = $ledger->id . '-0';
+
+            $ledgerOwnDebit =
+                $journalLookup[$ledgerKey]['debit'] ?? 0;
+
+            $ledgerOwnCredit =
+                $journalLookup[$ledgerKey]['credit'] ?? 0;
+
+
+            /*
+        |--------------------------------------------------------------------------
+        | Sub Ledgers
+        |--------------------------------------------------------------------------
+        */
+
+            $subLedgers = collect();
+
+            $subLedgerDebitTotal = 0;
+            $subLedgerCreditTotal = 0;
+
+
+            foreach ($ledger->subLedgers as $subLedger) {
+
+                $subLedgerKey =
+                    $ledger->id .
+                    '-' .
+                    $subLedger->id;
+
+
+                $debit =
+                    $journalLookup[$subLedgerKey]['debit'] ?? 0;
+
+                $credit =
+                    $journalLookup[$subLedgerKey]['credit'] ?? 0;
+
+
+                $subLedgerDebitTotal += $debit;
+                $subLedgerCreditTotal += $credit;
+
+
+                $subLedgers->push([
+
+                    'id' => $subLedger->id,
+
+                    /*
+                 * Change these column names if your table
+                 * uses another name.
+                 */
+
+                    'code' =>
+                    $subLedger->code
+                        ?? $subLedger->id,
+
+                    'name' =>
+                    $subLedger->name
+                        ?? $subLedger->title
+                        ?? 'Sub Ledger',
+
+                    'debit' => $debit,
+
+                    'credit' => $credit,
+                ]);
+            }
+
+
+            /*
+        |--------------------------------------------------------------------------
+        | Ledger Total
+        |--------------------------------------------------------------------------
+        |
+        | Ledger total =
+        | ledger's own entries
+        | +
+        | all sub-ledger entries
+        |
+        */
+
+            $ledgerDebit =
+                $ledgerOwnDebit +
+                $subLedgerDebitTotal;
+
+            $ledgerCredit =
+                $ledgerOwnCredit +
+                $subLedgerCreditTotal;
+
+
+            /*
+        |--------------------------------------------------------------------------
+        | Add Ledger
+        |--------------------------------------------------------------------------
+        */
+
+            $ledgerGroups->push([
+
+                'id' => $ledger->id,
+
+                /*
+             * Change "code" if your ledger table uses
+             * another field such as ledger_code.
+             */
+
+                'code' =>
+                $ledger->code
+                    ?? $ledger->ledger_code
+                    ?? $ledger->id,
+
+                'name' =>
+                $ledger->name
+                    ?? $ledger->title
+                    ?? 'Ledger',
+
+                'debit' => $ledgerDebit,
+
+                'credit' => $ledgerCredit,
+
+                'sub_ledgers' => $subLedgers->values()->all(),
+            ]);
+        }
+
+
+        /*
+    |--------------------------------------------------------------------------
+    | Grand Totals
+    |--------------------------------------------------------------------------
+    */
+
+        $totalDebit = $ledgerGroups->sum('debit');
+
+        $totalCredit = $ledgerGroups->sum('credit');
+
+
+        $totals = [
+
+            'debit' => $totalDebit,
+
+            'credit' => $totalCredit,
+
+        ];
+
+
+        /*
+    |--------------------------------------------------------------------------
+    | Return Report
+    |--------------------------------------------------------------------------
+    */
+
+        return view(
+            'reports.trial_balance',
+            compact(
+                'ledgerGroups',
+                'totals',
+                'fromDate',
+                'toDate'
+            )
         );
     }
 }

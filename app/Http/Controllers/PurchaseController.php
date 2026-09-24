@@ -9,6 +9,7 @@ use App\Models\Item;
 use Illuminate\Http\Request;
 use App\Accounting\Accounting;
 use App\Models\JournalEntryReference;
+use App\Models\PurchaseAmendment;
 use App\Models\PurchasePayment;
 use App\Models\SaleItemFifo;
 use Illuminate\Support\Facades\DB;
@@ -109,7 +110,13 @@ class PurchaseController extends Controller
 
     public function show($id)
     {
-        $purchase = Purchase::with('supplier')->findOrFail($id);
+        $purchase = Purchase::with([
+            'supplier',
+            'items.item',
+            'amendments' => function ($query) {
+                $query->latest('amendment_date');
+            },
+        ])->findOrFail($id);
 
         $supplierId = $purchase->supplier_id;
 
@@ -421,5 +428,64 @@ class PurchaseController extends Controller
         return $pdf->stream(
             'purchase-invoice-' . ($purchase->invoice_no ?? $purchase->id) . '.pdf'
         );
+    }
+
+    public function storeAmendment(Request $request, $purchaseId)
+    {
+        $purchase = Purchase::with('supplier')
+            ->findOrFail($purchaseId);
+
+
+        /*
+    |--------------------------------------------------------------------------
+    | Validate
+    |--------------------------------------------------------------------------
+    */
+
+        $validated = $request->validate([
+
+            'amendment_date' => [
+                'required',
+                'date',
+            ],
+
+            'amount' => [
+                'required',
+                'numeric',
+                'not_in:0',
+            ],
+
+            'reason' => [
+                'required',
+                'string',
+                'max:255',
+            ],
+
+            'notes' => [
+                'nullable',
+                'string',
+            ],
+
+        ]);
+
+        $amendment = PurchaseAmendment::create([
+
+            'purchase_id' => $purchase->id,
+            'supplier_id' => $purchase->supplier_id,
+            'amendment_date' => $validated['amendment_date'],
+            'amount' => $validated['amount'],
+            'reason' => $validated['reason'],
+            'notes' => $validated['notes'] ?? null,
+            'status' => 'approved',
+            'created_by' => auth()->id(),
+        ]);
+
+
+        return redirect()
+            ->back()
+            ->with(
+                'success',
+                'Purchase amendment added successfully.'
+            );
     }
 }

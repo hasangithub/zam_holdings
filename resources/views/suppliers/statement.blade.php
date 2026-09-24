@@ -1,95 +1,169 @@
 @extends('layouts.app')
 
-@section('title','Supplier Statement')
+@section('title', 'Supplier Statement')
 
 @section('content')
 
 <div class="container-fluid">
 
-    {{-- HEADER --}}
-    <div class="d-flex justify-content-between align-items-center mb-3">
-        <h3 class="mb-0">
-            {{ $supplier->name }} - Statement
-        </h3>
+    {{-- =========================================================
+         HEADER
+    ========================================================== --}}
 
-        @if($supplier->supplier_type == 'Trading Goods')
-        <button class="btn btn-primary"
-            data-toggle="modal"
-            data-target="#payModal">
-            + Purchase Payment
-        </button>
-        @elseif($supplier->supplier_type == 'Asset Providers')
-        <button class="btn btn-primary"
-            data-toggle="modal"
-            data-target="#payAssetModal">
-            + Fixed Asset Payment
-        </button>
-        @else
-        <button class="btn btn-primary"
-            data-toggle="modal"
-            data-target="#payInventoryModal">
-            + Inventory Payment
-        </button>
-        @endif
+    <div class="d-flex justify-content-between align-items-center mb-3">
+
+        <div>
+            <h3 class="mb-0">
+                {{ $supplier->name }} - Statement
+            </h3>
+
+            <small class="text-muted">
+                {{ $supplier->supplier_type }}
+            </small>
+        </div>
+
+
+        {{-- PAYMENT BUTTON --}}
+
+        <div>
+
+            @if($supplier->supplier_type == 'Trading Goods')
+
+                <button
+                    class="btn btn-primary"
+                    data-toggle="modal"
+                    data-target="#payModal">
+
+                    <i class="fas fa-plus"></i>
+                    Purchase Payment
+
+                </button>
+
+            @elseif($supplier->supplier_type == 'Asset Providers')
+
+                <button
+                    class="btn btn-primary"
+                    data-toggle="modal"
+                    data-target="#payAssetModal">
+
+                    <i class="fas fa-plus"></i>
+                    Fixed Asset Payment
+
+                </button>
+
+            @else
+
+                <button
+                    class="btn btn-primary"
+                    data-toggle="modal"
+                    data-target="#payInventoryModal">
+
+                    <i class="fas fa-plus"></i>
+                    Inventory Payment
+
+                </button>
+
+            @endif
+
+        </div>
+
     </div>
 
 
-    {{-- DATE FILTER --}}
+    {{-- =========================================================
+         DATE FILTER
+    ========================================================== --}}
+
     <div class="card shadow-sm border-0 mb-3">
 
         <div class="card-body py-2">
 
-            <form method="GET"
+            <form
+                method="GET"
                 action="{{ route('suppliers.statement', $supplier->id) }}">
 
                 <div class="form-row align-items-end">
 
-                    {{-- FROM --}}
-                    <div class="col-md-3">
-                        <label class="mb-1">From Date</label>
+                    {{-- FROM DATE --}}
 
-                        <input type="date"
+                    <div class="col-md-3">
+
+                        <label class="mb-1">
+                            From Date
+                        </label>
+
+                        <input
+                            type="date"
                             name="from_date"
                             class="form-control"
                             value="{{ $fromDate }}">
+
                     </div>
 
-                    {{-- TO --}}
-                    <div class="col-md-3">
-                        <label class="mb-1">To Date</label>
 
-                        <input type="date"
+                    {{-- TO DATE --}}
+
+                    <div class="col-md-3">
+
+                        <label class="mb-1">
+                            To Date
+                        </label>
+
+                        <input
+                            type="date"
                             name="to_date"
                             class="form-control"
                             value="{{ $toDate }}">
+
                     </div>
+
 
                     {{-- FILTER --}}
+
                     <div class="col-md-2">
-                        <button type="submit"
+
+                        <button
+                            type="submit"
                             class="btn btn-primary btn-block">
+
                             <i class="fas fa-filter"></i>
                             Filter
+
                         </button>
+
                     </div>
+
 
                     {{-- LAST 7 DAYS --}}
+
                     <div class="col-md-2">
-                        <a href="{{ route('suppliers.statement', $supplier->id) }}"
+
+                        <a
+                            href="{{ route('suppliers.statement', $supplier->id) }}"
                             class="btn btn-secondary btn-block">
+
                             Last 7 Days
+
                         </a>
+
                     </div>
 
+
                     {{-- ALL --}}
+
                     <div class="col-md-2">
-                        <a href="{{ route('suppliers.statement', [
-                            'id' => $supplier->id,
-                            'all' => 1
-                        ]) }}"
+
+                        <a
+                            href="{{ route('suppliers.statement', [
+                                'id' => $supplier->id,
+                                'all' => 1
+                            ]) }}"
                             class="btn btn-info btn-block">
+
                             All
+
                         </a>
+
                     </div>
 
                 </div>
@@ -101,36 +175,46 @@
     </div>
 
 
-    {{-- OPENING BALANCE --}}
+    {{-- =========================================================
+         OPENING BALANCE
+    ========================================================== --}}
+
     @if(!$all)
 
-    <div class="card shadow-sm border-0 mb-3">
+        <div class="card shadow-sm border-0 mb-3">
 
-        <div class="card-body py-2">
+            <div class="card-body py-2">
 
-            <div class="d-flex justify-content-between align-items-center">
+                <div class="d-flex justify-content-between align-items-center">
 
-                <strong>
-                    Opening Balance
-                </strong>
+                    <strong>
+                        Opening Balance
+                    </strong>
 
-                <strong class="{{ $openingBalance >= 0 ? 'text-danger' : 'text-success' }}">
-                    {{ number_format($openingBalance, 2) }}
-                </strong>
+                    <strong
+                        class="{{ $openingBalance >= 0 ? 'text-danger' : 'text-success' }}">
+
+                        {{ number_format($openingBalance, 2) }}
+
+                    </strong>
+
+                </div>
 
             </div>
 
         </div>
-
-    </div>
 
     @endif
 
 
-    {{-- SUMMARY CARDS --}}
+    {{-- =========================================================
+         SUMMARY
+    ========================================================== --}}
+
     <div class="row mb-4">
 
-        {{-- PERIOD PURCHASE --}}
+        {{-- DEBIT --}}
+
         <div class="col-md-4">
 
             <div class="card shadow-sm border-0">
@@ -138,11 +222,15 @@
                 <div class="card-body">
 
                     <h6 class="text-muted">
-                        {{ $all ? 'Total Purchases' : 'Period Purchases' }}
+
+                        {{ $all ? 'Total Debits' : 'Period Debits' }}
+
                     </h6>
 
                     <h4 class="text-dark">
+
                         {{ number_format($periodPurchase, 2) }}
+
                     </h4>
 
                 </div>
@@ -152,7 +240,8 @@
         </div>
 
 
-        {{-- PERIOD PAID --}}
+        {{-- CREDIT --}}
+
         <div class="col-md-4">
 
             <div class="card shadow-sm border-0">
@@ -160,11 +249,15 @@
                 <div class="card-body">
 
                     <h6 class="text-muted">
+
                         {{ $all ? 'Total Paid' : 'Period Paid' }}
+
                     </h6>
 
                     <h4 class="text-success">
+
                         {{ number_format($periodPaid, 2) }}
+
                     </h4>
 
                 </div>
@@ -174,7 +267,8 @@
         </div>
 
 
-        {{-- CURRENT OUTSTANDING --}}
+        {{-- OUTSTANDING --}}
+
         <div class="col-md-4">
 
             <div class="card shadow-sm border-0">
@@ -185,8 +279,11 @@
                         Current Outstanding
                     </h6>
 
-                    <h4 class="text-danger">
+                    <h4
+                        class="{{ $balance > 0 ? 'text-danger' : 'text-success' }}">
+
                         {{ number_format($balance, 2) }}
+
                     </h4>
 
                 </div>
@@ -198,7 +295,10 @@
     </div>
 
 
-    {{-- LEDGER --}}
+    {{-- =========================================================
+         STATEMENT
+    ========================================================== --}}
+
     <div class="card shadow-sm border-0">
 
         <div class="card-header bg-white">
@@ -209,14 +309,27 @@
                     Supplier Transaction Statement
                 </strong>
 
+
                 @if(!$all)
-                <span class="text-muted small">
-                    {{ $fromDate }} to {{ $toDate }}
-                </span>
+
+                    <span class="text-muted small">
+
+                        {{ \Carbon\Carbon::parse($fromDate)->format('d M Y') }}
+
+                        -
+
+                        {{ \Carbon\Carbon::parse($toDate)->format('d M Y') }}
+
+                    </span>
+
                 @else
-                <span class="badge badge-info">
-                    All Transactions
-                </span>
+
+                    <span class="badge badge-info">
+
+                        All Transactions
+
+                    </span>
+
                 @endif
 
             </div>
@@ -227,48 +340,57 @@
         <div class="card-body p-0">
 
 
-            {{-- ERRORS --}}
+            {{-- =================================================
+                 ERRORS
+            ================================================== --}}
+
             @if($errors->any())
 
-            <div class="alert alert-danger alert-dismissible fade show m-3"
-                role="alert">
+                <div
+                    class="alert alert-danger alert-dismissible fade show m-3"
+                    role="alert">
 
-                <strong>
-                    Please correct the following errors:
-                </strong>
+                    <strong>
+                        Please correct the following errors:
+                    </strong>
 
-                <ul class="mb-0 mt-2">
+                    <ul class="mb-0 mt-2">
 
-                    @foreach($errors->all() as $error)
+                        @foreach($errors->all() as $error)
 
-                    <li>
-                        {{ $error }}
-                    </li>
+                            <li>
+                                {{ $error }}
+                            </li>
 
-                    @endforeach
+                        @endforeach
 
-                </ul>
+                    </ul>
 
-                <button type="button"
-                    class="close"
-                    data-dismiss="alert"
-                    aria-label="Close">
 
-                    <span aria-hidden="true">
-                        &times;
-                    </span>
+                    <button
+                        type="button"
+                        class="close"
+                        data-dismiss="alert">
 
-                </button>
+                        <span>
+                            &times;
+                        </span>
 
-            </div>
+                    </button>
+
+                </div>
 
             @endif
 
 
-            {{-- TABLE --}}
+            {{-- =================================================
+                 TABLE
+            ================================================== --}}
+
             <div class="table-responsive">
 
-                <table class="table table-bordered table-sm mb-0 table-erp">
+                <table
+                    class="table table-bordered table-sm mb-0 table-erp">
 
                     <thead class="thead-light">
 
@@ -283,7 +405,15 @@
                             </th>
 
                             <th>
+                                Reference
+                            </th>
+
+                            <th>
                                 Type
+                            </th>
+
+                            <th>
+                                Description
                             </th>
 
                             <th class="text-right">
@@ -306,120 +436,222 @@
                     <tbody>
 
 
-                        {{-- OPENING BALANCE ROW --}}
+                        {{-- =================================================
+                             OPENING BALANCE
+                        ================================================== --}}
+
                         @if(!$all)
 
-                        <tr class="bg-light font-weight-bold">
+                            <tr class="bg-light font-weight-bold">
 
-                            <td>
-                                {{ $fromDate }}
-                            </td>
+                                <td>
+                                    {{ $fromDate }}
+                                </td>
 
-                            <td colspan="4">
-                                Opening Balance
-                            </td>
+                                <td colspan="6">
+                                    Opening Balance
+                                </td>
 
-                            <td class="text-right">
+                                <td class="text-right">
 
-                                {{ number_format($openingBalance, 2) }}
+                                    {{ number_format(
+                                        $openingBalance,
+                                        2
+                                    ) }}
 
-                            </td>
+                                </td>
 
-                        </tr>
+                            </tr>
 
                         @endif
 
 
-                        {{-- TRANSACTIONS --}}
+                        {{-- =================================================
+                             TRANSACTIONS
+                        ================================================== --}}
+
                         @forelse($ledger as $row)
 
-                        <tr>
-
-                            {{-- DATE --}}
-                            <td>
-                                {{ $row['date'] }}
-                            </td>
+                            <tr>
 
 
-                            {{-- MODULE --}}
-                            <td>
-                                {{ $row['module'] }}
-                            </td>
+                                {{-- DATE --}}
+
+                                <td>
+
+                                    {{ \Carbon\Carbon::parse(
+                                        $row['date']
+                                    )->format('d M Y') }}
+
+                                </td>
 
 
-                            {{-- TYPE --}}
-                            <td>
+                                {{-- MODULE --}}
 
-                                @if($row['type'] == 'Invoice')
+                                <td>
 
-                                <span class="badge badge-danger">
-                                    Invoice
-                                </span>
+                                    {{ $row['module'] }}
 
-                                @else
-
-                                <span class="badge badge-success">
-                                    Payment
-                                </span>
-
-                                @endif
-
-                            </td>
+                                </td>
 
 
-                            {{-- DEBIT --}}
-                            <td class="text-right text-danger">
+                                {{-- REFERENCE --}}
 
-                                @if($row['debit'] > 0)
+                                <td>
 
-                                {{ number_format($row['debit'], 2) }}
+                                    @if(!empty($row['reference']))
 
-                                @else
+                                        @if($row['type'] === 'Amendment')
 
-                                -
+                                            <span
+                                                class="text-warning font-weight-bold">
 
-                                @endif
+                                                {{ $row['reference'] }}
 
-                            </td>
+                                            </span>
 
+                                        @else
 
-                            {{-- CREDIT --}}
-                            <td class="text-right text-success">
+                                            {{ $row['reference'] }}
 
-                                @if($row['credit'] > 0)
+                                        @endif
 
-                                {{ number_format($row['credit'], 2) }}
+                                    @else
 
-                                @else
+                                        -
 
-                                -
+                                    @endif
 
-                                @endif
-
-                            </td>
+                                </td>
 
 
-                            {{-- BALANCE --}}
-                            <td class="text-right font-weight-bold">
+                                {{-- TYPE --}}
 
-                                {{ number_format($row['balance'], 2) }}
+                                <td>
 
-                            </td>
+                                    @if($row['type'] == 'Invoice')
 
-                        </tr>
+                                        <span
+                                            class="badge badge-danger">
+
+                                            Invoice
+
+                                        </span>
+
+
+                                    @elseif($row['type'] == 'Payment')
+
+                                        <span
+                                            class="badge badge-success">
+
+                                            Payment
+
+                                        </span>
+
+
+                                    @elseif($row['type'] == 'Amendment')
+
+                                        <span
+                                            class="badge badge-warning">
+
+                                            Amendment
+
+                                        </span>
+
+
+                                    @else
+
+                                        <span
+                                            class="badge badge-secondary">
+
+                                            {{ $row['type'] }}
+
+                                        </span>
+
+                                    @endif
+
+                                </td>
+
+
+                                {{-- DESCRIPTION --}}
+
+                                <td>
+
+                                    {{ $row['description'] ?? '-' }}
+
+                                </td>
+
+
+                                {{-- DEBIT --}}
+
+                                <td
+                                    class="text-right text-danger">
+
+                                    @if(($row['debit'] ?? 0) > 0)
+
+                                        {{ number_format(
+                                            $row['debit'],
+                                            2
+                                        ) }}
+
+                                    @else
+
+                                        -
+
+                                    @endif
+
+                                </td>
+
+
+                                {{-- CREDIT --}}
+
+                                <td
+                                    class="text-right text-success">
+
+                                    @if(($row['credit'] ?? 0) > 0)
+
+                                        {{ number_format(
+                                            $row['credit'],
+                                            2
+                                        ) }}
+
+                                    @else
+
+                                        -
+
+                                    @endif
+
+                                </td>
+
+
+                                {{-- BALANCE --}}
+
+                                <td
+                                    class="text-right font-weight-bold">
+
+                                    {{ number_format(
+                                        $row['balance'],
+                                        2
+                                    ) }}
+
+                                </td>
+
+                            </tr>
+
 
                         @empty
 
-                        <tr>
+                            <tr>
 
-                            <td colspan="6"
-                                class="text-center text-muted py-4">
+                                <td
+                                    colspan="8"
+                                    class="text-center text-muted py-4">
 
-                                No transactions found
+                                    No transactions found
 
-                            </td>
+                                </td>
 
-                        </tr>
+                            </tr>
 
                         @endforelse
 
@@ -427,44 +659,61 @@
                     </tbody>
 
 
-                    {{-- PERIOD TOTAL --}}
+                    {{-- =================================================
+                         TOTAL
+                    ================================================== --}}
+
                     @if($ledger->count())
 
-                    <tfoot class="font-weight-bold bg-light">
+                        <tfoot class="font-weight-bold bg-light">
 
-                        <tr>
+                            <tr>
 
-                            <td colspan="3"
-                                class="text-right">
+                                <td
+                                    colspan="5"
+                                    class="text-right">
 
-                                Total
+                                    Total
 
-                            </td>
+                                </td>
 
-                            <td class="text-right text-danger">
 
-                                {{ number_format($periodPurchase, 2) }}
+                                <td
+                                    class="text-right text-danger">
 
-                            </td>
+                                    {{ number_format(
+                                        $periodPurchase,
+                                        2
+                                    ) }}
 
-                            <td class="text-right text-success">
+                                </td>
 
-                                {{ number_format($periodPaid, 2) }}
 
-                            </td>
+                                <td
+                                    class="text-right text-success">
 
-                            <td class="text-right">
+                                    {{ number_format(
+                                        $periodPaid,
+                                        2
+                                    ) }}
 
-                                {{ number_format($ledger->last()['balance'], 2) }}
+                                </td>
 
-                            </td>
 
-                        </tr>
+                                <td class="text-right">
 
-                    </tfoot>
+                                    {{ number_format(
+                                        $ledger->last()['balance'],
+                                        2
+                                    ) }}
+
+                                </td>
+
+                            </tr>
+
+                        </tfoot>
 
                     @endif
-
 
                 </table>
 
@@ -477,23 +726,28 @@
 </div>
 
 
-{{-- ========================================================= --}}
-{{-- PURCHASE PAYMENT MODAL --}}
-{{-- ========================================================= --}}
+{{-- =============================================================
+     PURCHASE PAYMENT MODAL
+============================================================== --}}
 
-<div class="modal fade"
+<div
+    class="modal fade"
     id="payModal"
     tabindex="-1"
     role="dialog">
 
-    <div class="modal-dialog"
+    <div
+        class="modal-dialog"
         role="document">
 
         <div class="modal-content">
 
-
-            <form method="POST"
-                action="{{ route('suppliers.payment.store', $supplier->id) }}">
+            <form
+                method="POST"
+                action="{{ route(
+                    'suppliers.payment.store',
+                    $supplier->id
+                ) }}">
 
                 @csrf
 
@@ -504,7 +758,8 @@
                         Add Supplier Payment
                     </h5>
 
-                    <button type="button"
+                    <button
+                        type="button"
                         class="close"
                         data-dismiss="modal">
 
@@ -521,13 +776,15 @@
 
 
                     {{-- AMOUNT --}}
+
                     <div class="form-group">
 
                         <label>
                             Amount
                         </label>
 
-                        <input type="number"
+                        <input
+                            type="number"
                             name="amount"
                             class="form-control"
                             step="0.01"
@@ -538,13 +795,15 @@
 
 
                     {{-- DATE --}}
+
                     <div class="form-group">
 
                         <label>
                             Date
                         </label>
 
-                        <input type="date"
+                        <input
+                            type="date"
                             name="payment_date"
                             class="form-control"
                             value="{{ date('Y-m-d') }}"
@@ -553,40 +812,61 @@
                     </div>
 
 
+                    {{-- PAYMENT ACCOUNT --}}
+
                     <div class="form-group">
-                        <label>Payment Account</label>
-                        <select name="sub_ledger_id" class="form-control" required>
-                            <option value="">Select Cash / Bank Account</option>
+
+                        <label>
+                            Payment Account
+                        </label>
+
+                        <select
+                            name="sub_ledger_id"
+                            class="form-control"
+                            required>
+
+                            <option value="">
+                                Select Cash / Bank Account
+                            </option>
 
                             @foreach($paymentSubLedgers as $subLedger)
-                            <option value="{{ $subLedger->id }}">
-                                {{ $subLedger->name }}
-                            </option>
+
+                                <option
+                                    value="{{ $subLedger->id }}">
+
+                                    {{ $subLedger->name }}
+
+                                </option>
+
                             @endforeach
+
                         </select>
+
                     </div>
 
 
                     {{-- NOTE --}}
+
                     <div class="form-group">
 
                         <label>
                             Note
                         </label>
 
-                        <textarea name="note"
+                        <textarea
+                            name="note"
                             class="form-control"
                             rows="3"></textarea>
 
                     </div>
-
 
                 </div>
 
 
                 <div class="modal-footer">
 
-                    <button type="button"
+                    <button
+                        type="button"
                         class="btn btn-secondary"
                         data-dismiss="modal">
 
@@ -594,7 +874,9 @@
 
                     </button>
 
-                    <button type="submit"
+
+                    <button
+                        type="submit"
                         class="btn btn-primary">
 
                         Save Payment
@@ -602,7 +884,6 @@
                     </button>
 
                 </div>
-
 
             </form>
 
@@ -614,23 +895,28 @@
 
 
 
-{{-- ========================================================= --}}
-{{-- INVENTORY PAYMENT MODAL --}}
-{{-- ========================================================= --}}
+{{-- =============================================================
+     INVENTORY PAYMENT MODAL
+============================================================== --}}
 
-<div class="modal fade"
+<div
+    class="modal fade"
     id="payInventoryModal"
     tabindex="-1"
     role="dialog">
 
-    <div class="modal-dialog"
+    <div
+        class="modal-dialog"
         role="document">
 
         <div class="modal-content">
 
-
-            <form method="POST"
-                action="{{ route('suppliers.inventory.payment.store', $supplier->id) }}">
+            <form
+                method="POST"
+                action="{{ route(
+                    'suppliers.inventory.payment.store',
+                    $supplier->id
+                ) }}">
 
                 @csrf
 
@@ -641,7 +927,8 @@
                         Add Supplier Payment
                     </h5>
 
-                    <button type="button"
+                    <button
+                        type="button"
                         class="close"
                         data-dismiss="modal">
 
@@ -657,14 +944,14 @@
                 <div class="modal-body">
 
 
-                    {{-- AMOUNT --}}
                     <div class="form-group">
 
                         <label>
                             Amount
                         </label>
 
-                        <input type="number"
+                        <input
+                            type="number"
                             name="amount"
                             class="form-control"
                             step="0.01"
@@ -674,14 +961,14 @@
                     </div>
 
 
-                    {{-- DATE --}}
                     <div class="form-group">
 
                         <label>
                             Date
                         </label>
 
-                        <input type="date"
+                        <input
+                            type="date"
                             name="payment_date"
                             class="form-control"
                             value="{{ date('Y-m-d') }}"
@@ -691,38 +978,56 @@
 
 
                     <div class="form-group">
-                        <label>Payment Account</label>
-                        <select name="sub_ledger_id" class="form-control" required>
-                            <option value="">Select Cash / Bank Account</option>
+
+                        <label>
+                            Payment Account
+                        </label>
+
+                        <select
+                            name="sub_ledger_id"
+                            class="form-control"
+                            required>
+
+                            <option value="">
+                                Select Cash / Bank Account
+                            </option>
 
                             @foreach($paymentSubLedgers as $subLedger)
-                            <option value="{{ $subLedger->id }}">
-                                {{ $subLedger->name }}
-                            </option>
+
+                                <option
+                                    value="{{ $subLedger->id }}">
+
+                                    {{ $subLedger->name }}
+
+                                </option>
+
                             @endforeach
+
                         </select>
+
                     </div>
 
-                    {{-- NOTE --}}
+
                     <div class="form-group">
 
                         <label>
                             Note
                         </label>
 
-                        <textarea name="note"
+                        <textarea
+                            name="note"
                             class="form-control"
                             rows="3"></textarea>
 
                     </div>
-
 
                 </div>
 
 
                 <div class="modal-footer">
 
-                    <button type="button"
+                    <button
+                        type="button"
                         class="btn btn-secondary"
                         data-dismiss="modal">
 
@@ -730,7 +1035,9 @@
 
                     </button>
 
-                    <button type="submit"
+
+                    <button
+                        type="submit"
                         class="btn btn-primary">
 
                         Save Payment
@@ -738,7 +1045,6 @@
                     </button>
 
                 </div>
-
 
             </form>
 
@@ -748,23 +1054,30 @@
 
 </div>
 
-{{-- ========================================================= --}}
-{{-- Asset PAYMENT MODAL --}}
-{{-- ========================================================= --}}
 
-<div class="modal fade"
+
+{{-- =============================================================
+     FIXED ASSET PAYMENT MODAL
+============================================================== --}}
+
+<div
+    class="modal fade"
     id="payAssetModal"
     tabindex="-1"
     role="dialog">
 
-    <div class="modal-dialog"
+    <div
+        class="modal-dialog"
         role="document">
 
         <div class="modal-content">
 
-
-            <form method="POST"
-                action="{{ route('suppliers.asset.payment.store', $supplier->id) }}">
+            <form
+                method="POST"
+                action="{{ route(
+                    'suppliers.asset.payment.store',
+                    $supplier->id
+                ) }}">
 
                 @csrf
 
@@ -775,7 +1088,8 @@
                         Add Supplier Payment
                     </h5>
 
-                    <button type="button"
+                    <button
+                        type="button"
                         class="close"
                         data-dismiss="modal">
 
@@ -791,14 +1105,14 @@
                 <div class="modal-body">
 
 
-                    {{-- AMOUNT --}}
                     <div class="form-group">
 
                         <label>
                             Amount
                         </label>
 
-                        <input type="number"
+                        <input
+                            type="number"
                             name="amount"
                             class="form-control"
                             step="0.01"
@@ -808,14 +1122,14 @@
                     </div>
 
 
-                    {{-- DATE --}}
                     <div class="form-group">
 
                         <label>
                             Date
                         </label>
 
-                        <input type="date"
+                        <input
+                            type="date"
                             name="payment_date"
                             class="form-control"
                             value="{{ date('Y-m-d') }}"
@@ -825,38 +1139,56 @@
 
 
                     <div class="form-group">
-                        <label>Payment Account</label>
-                        <select name="sub_ledger_id" class="form-control" required>
-                            <option value="">Select Cash / Bank Account</option>
+
+                        <label>
+                            Payment Account
+                        </label>
+
+                        <select
+                            name="sub_ledger_id"
+                            class="form-control"
+                            required>
+
+                            <option value="">
+                                Select Cash / Bank Account
+                            </option>
 
                             @foreach($paymentSubLedgers as $subLedger)
-                            <option value="{{ $subLedger->id }}">
-                                {{ $subLedger->name }}
-                            </option>
+
+                                <option
+                                    value="{{ $subLedger->id }}">
+
+                                    {{ $subLedger->name }}
+
+                                </option>
+
                             @endforeach
+
                         </select>
+
                     </div>
 
-                    {{-- NOTE --}}
+
                     <div class="form-group">
 
                         <label>
                             Note
                         </label>
 
-                        <textarea name="note"
+                        <textarea
+                            name="note"
                             class="form-control"
                             rows="3"></textarea>
 
                     </div>
-
 
                 </div>
 
 
                 <div class="modal-footer">
 
-                    <button type="button"
+                    <button
+                        type="button"
                         class="btn btn-secondary"
                         data-dismiss="modal">
 
@@ -864,7 +1196,9 @@
 
                     </button>
 
-                    <button type="submit"
+
+                    <button
+                        type="submit"
                         class="btn btn-primary">
 
                         Save Payment
@@ -872,7 +1206,6 @@
                     </button>
 
                 </div>
-
 
             </form>
 

@@ -31,5 +31,12 @@ class Purchase extends Model
     {
         return $this->hasMany(PurchasePayment::class);
     }
-}
 
+    public function amendments()
+    {
+        return $this->hasMany(
+            PurchaseAmendment::class,
+            'purchase_id'
+        );
+    }
+}

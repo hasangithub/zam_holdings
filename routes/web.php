@@ -100,11 +100,16 @@ Route::middleware(['auth'])->group(function () {
 
     Route::post('reports/general-ledger', [GeneralLedgerController::class, 'report'])
         ->name('reports.general-ledger.report');
+    Route::get('/reports/trial-balance',[ReportController::class, 'trialBalance'])->name('reports.trial_balance');
 
     Route::get('/dashboard', [App\Http\Controllers\DashboardController::class, 'index'])->name('dashboard');
     Route::resource('categories', CategoryController::class);
     Route::resource('items', ItemController::class);
     Route::resource('purchases', PurchaseController::class);
+    Route::post(
+    '/purchases/{purchase}/amendment',
+    [PurchaseController::class, 'storeAmendment']
+)->name('purchases.amendment.store');
     Route::resource('sales', SaleController::class);
     Route::resource('suppliers', SupplierController::class);
     Route::resource('customers', CustomerController::class);
