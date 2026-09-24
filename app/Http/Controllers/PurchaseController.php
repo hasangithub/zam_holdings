@@ -468,6 +468,18 @@ class PurchaseController extends Controller
 
         ]);
 
+        $amount = (float) $request->amount;
+
+        $absoluteAmount = abs($amount);
+
+        if ($absoluteAmount <= 0) {
+            return back()
+                ->withErrors([
+                    'amount' => 'Amendment amount cannot be zero.'
+                ])
+                ->withInput();
+        }
+
         $amendment = PurchaseAmendment::create([
 
             'purchase_id' => $purchase->id,
@@ -478,6 +490,116 @@ class PurchaseController extends Controller
             'notes' => $validated['notes'] ?? null,
             'status' => 'approved',
             'created_by' => auth()->id(),
+        ]);
+
+        if ($amount > 0) {
+
+            /*
+    |--------------------------------------------------------------------------
+    | POSITIVE AMENDMENT
+    |--------------------------------------------------------------------------
+    |
+    | Supplier payable increases
+    |
+    | Debit  Purchase Adjustment
+    | Credit Supplier Payable
+    |
+    */
+
+            $journal = Accounting::postJournal([
+
+                'branch_id' => auth()->user()->branch_id,
+
+                'date' => $amendment->amendment_date,
+
+                'description' =>
+                'Supplier Amendment +' .
+                    number_format($absoluteAmount, 2) .
+                    ' - Supplier #' . $purchase->supplier->id,
+
+                'entries' => [
+
+                    [
+                        'ledger_id' => 4,
+
+                        'sub_ledger_id' => 1,
+
+                        'debit' => $absoluteAmount,
+
+                        'credit' => 0,
+                    ],
+
+                    [
+                        'ledger_id' => 5,
+
+                        'sub_ledger_id' =>
+                        $purchase->supplier->liability_sub_ledger_id,
+
+                        'debit' => 0,
+
+                        'credit' => $absoluteAmount,
+                    ],
+
+                ],
+            ]);
+        } else {
+
+            /*
+    |--------------------------------------------------------------------------
+    | NEGATIVE AMENDMENT
+    |--------------------------------------------------------------------------
+    |
+    | Supplier payable decreases
+    |
+    | Debit  Supplier Payable
+    | Credit Purchase Adjustment
+    |
+    */
+
+            $journal = Accounting::postJournal([
+
+                'branch_id' => auth()->user()->branch_id,
+                'date' => $amendment->amendment_date,
+                'description' =>
+                'Supplier Amendment -' .
+                    number_format($absoluteAmount, 2) .
+                    ' - Supplier #' . $purchase->supplier->id,
+
+                'entries' => [
+
+                    [
+                        'ledger_id' => 5,
+
+                        'sub_ledger_id' =>
+                        $purchase->supplier->liability_sub_ledger_id,
+
+                        'debit' => $absoluteAmount,
+
+                        'credit' => 0,
+                    ],
+
+                    [
+                        'ledger_id' => 4,
+
+                        'sub_ledger_id' => 1,
+
+                        'debit' => 0,
+
+                        'credit' => $absoluteAmount,
+                    ],
+
+                ],
+            ]);
+        }
+
+        JournalEntryReference::create([
+            'journal_entry_id' => $journal->id,
+
+            'model_type' => PurchaseAmendment::class,
+
+            'model_id' => $amendment->id,
+
+            'action' => 'created',
         ]);
 
 
