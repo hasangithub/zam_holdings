@@ -13,6 +13,7 @@ use App\Models\PurchasePayment;
 use App\Models\SaleItemFifo;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
+use Barryvdh\DomPDF\Facade\Pdf;
 
 class PurchaseController extends Controller
 {
@@ -133,110 +134,12 @@ class PurchaseController extends Controller
 
     public function invoice($id)
     {
-        $purchase = Purchase::with(['items.item', 'supplier'])
-            ->findOrFail($id);
-
-        $supplierId = $purchase->supplier_id;
-
-        /*
-    |--------------------------------------------------------------------------
-    | Previous Purchases
-    |--------------------------------------------------------------------------
-    */
-
-        $previousPurchasesTotal = Purchase::where('supplier_id', $supplierId)
-            ->where('id', '<', $purchase->id)
-            ->sum('total');
-
-
-        /*
-    |--------------------------------------------------------------------------
-    | All Supplier Payments
-    |--------------------------------------------------------------------------
-    */
-
-        $totalSupplierPaid = PurchasePayment::where(
-            'supplier_id',
-            $supplierId
-        )->sum('amount');
-
-
-        /*
-    |--------------------------------------------------------------------------
-    | Previous Outstanding
-    |--------------------------------------------------------------------------
-    |
-    | Previous purchases are settled first by supplier payments.
-    |
-    */
-
-        $previousPaid = min(
-            $totalSupplierPaid,
-            $previousPurchasesTotal
-        );
-
-        $previousOutstanding = max(
-            0,
-            $previousPurchasesTotal - $previousPaid
-        );
-
-
-        /*
-    |--------------------------------------------------------------------------
-    | Current Purchase
-    |--------------------------------------------------------------------------
-    */
-
+        $purchase = Purchase::with(['items.item', 'supplier'])->findOrFail($id);
         $currentPurchase = $purchase->total;
-
-
-        /*
-    |--------------------------------------------------------------------------
-    | Payment Available For Current Purchase
-    |--------------------------------------------------------------------------
-    */
-
-        $currentPaid = max(
-            0,
-            $totalSupplierPaid - $previousPurchasesTotal
-        );
-
-        $currentPaid = min(
-            $currentPaid,
-            $currentPurchase
-        );
-
-
-        /*
-    |--------------------------------------------------------------------------
-    | Current Outstanding
-    |--------------------------------------------------------------------------
-    */
-
-        $currentOutstanding = max(
-            0,
-            $currentPurchase - $currentPaid
-        );
-
-
-        /*
-    |--------------------------------------------------------------------------
-    | Total Payable
-    |--------------------------------------------------------------------------
-    */
-
-        $totalPayable =
-            $previousOutstanding +
-            $currentPurchase;
-
 
         return view('purchases.invoice', compact(
             'purchase',
-            'previousOutstanding',
             'currentPurchase',
-            'currentPaid',
-            'currentOutstanding',
-            'totalPayable'
         ));
     }
 
@@ -494,5 +397,29 @@ class PurchaseController extends Controller
                     'Unable to cancel the purchase. Please try again.'
                 );
         }
+    }
+
+    public function invoicePdf(int $purchaseId)
+    {
+        $purchase = Purchase::with([
+            'supplier',
+            'items.item',
+        ])->findOrFail($purchaseId);
+
+        $currentPurchase = $purchase->items->sum('subtotal');
+
+        $showRate = request()->boolean('show_rate', true);
+
+        $pdf = Pdf::loadView('purchases.invoice-pdf', [
+            'purchase' => $purchase,
+            'currentPurchase' => $currentPurchase,
+            'showRate' => $showRate,
+        ]);
+
+        $pdf->setPaper('a4', 'portrait');
+
+        return $pdf->stream(
+            'purchase-invoice-' . ($purchase->invoice_no ?? $purchase->id) . '.pdf'
+        );
     }
 }

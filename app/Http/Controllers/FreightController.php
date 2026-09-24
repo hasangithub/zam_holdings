@@ -7,6 +7,7 @@ use App\Models\Freight;
 use App\Models\FreightPayment;
 use App\Models\FreightService;
 use App\Models\Sale;
+use App\Models\SubLedger;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -119,12 +120,11 @@ class FreightController extends Controller
         ])
             ->where('branch_id', auth()->user()->branch_id)
             ->findOrFail($id);
+        $paymentSubLedgers = SubLedger::where('ledger_id', 1)->get();
 
 
 
-        return view('freight_expenses.show', compact(
-            'freight'
-        ));
+        return view('freight_expenses.show', compact('freight', 'paymentSubLedgers'));
     }
 
     public function payment(Request $request, $id)
@@ -133,6 +133,7 @@ class FreightController extends Controller
             'payment_date' => 'required|date',
             'amount' => 'required|numeric|gt:0',
             'note' => 'nullable|string',
+            'sub_ledger_id' => 'required|exists:sub_ledgers,id'
         ]);
 
         DB::transaction(function () use ($request, $id) {
@@ -170,13 +171,13 @@ class FreightController extends Controller
 
             Accounting::postJournal([
                 'branch_id' => auth()->user()->branch_id,
-                'date' => $request->purchase_date,
+                'date' => $request->payment_date,
                 'description' => 'Freight Payment: ' . $freight->service->name . ' for Sale ID: ' . $freight->sale_id,
 
                 'entries' => [
                     [
                         'ledger_id' => 1,
-                        'sub_ledger_id' => null,
+                        'sub_ledger_id' => $request->sub_ledger_id,
                         'debit' => 0,
                         'credit' => $request->amount,
                     ],

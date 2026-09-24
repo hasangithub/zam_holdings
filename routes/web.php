@@ -110,6 +110,7 @@ Route::middleware(['auth'])->group(function () {
     Route::resource('customers', CustomerController::class);
     Route::resource('fixed-assets', FixedAssetController::class);
     Route::get('/purchases/{purchase}/invoice', [PurchaseController::class, 'invoice'])->name('purchases.invoice');
+   Route::get('/purchases/{purchase}/invoice/pdf',  [PurchaseController::class, 'invoicePdf'])->name('purchases.invoice.pdf');
     Route::get('/sales/{sale}/invoice', [SaleController::class, 'invoice'])->name('sales.invoice');
     Route::get('/export-sales/{sale}/invoice', [SaleController::class, 'invoiceExport'])->name('export-sales.invoice');
     Route::get('/stock-summary', [StockController::class, 'summary'])->name('stock.summary');

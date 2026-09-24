@@ -112,10 +112,30 @@
 
     {{-- PRINT BUTTON --}}
     <div class="no-print mb-3">
-        <button onclick="window.print()" class="btn btn-dark btn-sm">
+
+        <a href="{{ route('purchases.invoice.pdf', [
+        'purchase' => $purchase->id,
+        'show_rate' => 1
+    ]) }}"
+            target="_blank"
+            class="btn btn-dark btn-sm">
+
             <i class="fas fa-print"></i>
-            Print Invoice
-        </button>
+            Print With Rate
+        </a>
+
+
+        <a href="{{ route('purchases.invoice.pdf', [
+        'purchase' => $purchase->id,
+        'show_rate' => 0
+    ]) }}"
+            target="_blank"
+            class="btn btn-secondary btn-sm">
+
+            <i class="fas fa-print"></i>
+            Print Without Rate
+        </a>
+
     </div>
 
 

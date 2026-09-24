@@ -230,6 +230,19 @@
                                required>
                     </div>
 
+                    <div class="form-group">
+                        <label>Payment Account</label>
+                        <select name="sub_ledger_id" class="form-control" required>
+                            <option value="">Select Cash / Bank Account</option>
+
+                            @foreach($paymentSubLedgers as $subLedger)
+                            <option value="{{ $subLedger->id }}">
+                                {{ $subLedger->name }}
+                            </option>
+                            @endforeach
+                        </select>
+                    </div>
+
                     <div class="form-group mb-0">
                         <label>Note</label>
                         <textarea name="note"
