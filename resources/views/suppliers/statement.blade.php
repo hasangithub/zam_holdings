@@ -5,7 +5,7 @@
 @section('content')
 
 <div class="container-fluid">
-
+@include('partials.alerts')
     {{-- =========================================================
          HEADER
     ========================================================== --}}
@@ -29,39 +29,39 @@
 
             @if($supplier->supplier_type == 'Trading Goods')
 
-                <button
-                    class="btn btn-primary"
-                    data-toggle="modal"
-                    data-target="#payModal">
+            <button
+                class="btn btn-primary"
+                data-toggle="modal"
+                data-target="#payModal">
 
-                    <i class="fas fa-plus"></i>
-                    Purchase Payment
+                <i class="fas fa-plus"></i>
+                Purchase Payment
 
-                </button>
+            </button>
 
             @elseif($supplier->supplier_type == 'Asset Providers')
 
-                <button
-                    class="btn btn-primary"
-                    data-toggle="modal"
-                    data-target="#payAssetModal">
+            <button
+                class="btn btn-primary"
+                data-toggle="modal"
+                data-target="#payAssetModal">
 
-                    <i class="fas fa-plus"></i>
-                    Fixed Asset Payment
+                <i class="fas fa-plus"></i>
+                Fixed Asset Payment
 
-                </button>
+            </button>
 
             @else
 
-                <button
-                    class="btn btn-primary"
-                    data-toggle="modal"
-                    data-target="#payInventoryModal">
+            <button
+                class="btn btn-primary"
+                data-toggle="modal"
+                data-target="#payInventoryModal">
 
-                    <i class="fas fa-plus"></i>
-                    Inventory Payment
+                <i class="fas fa-plus"></i>
+                Inventory Payment
 
-                </button>
+            </button>
 
             @endif
 
@@ -181,28 +181,28 @@
 
     @if(!$all)
 
-        <div class="card shadow-sm border-0 mb-3">
+    <div class="card shadow-sm border-0 mb-3">
 
-            <div class="card-body py-2">
+        <div class="card-body py-2">
 
-                <div class="d-flex justify-content-between align-items-center">
+            <div class="d-flex justify-content-between align-items-center">
 
-                    <strong>
-                        Opening Balance
-                    </strong>
+                <strong>
+                    Opening Balance
+                </strong>
 
-                    <strong
-                        class="{{ $openingBalance >= 0 ? 'text-danger' : 'text-success' }}">
+                <strong
+                    class="{{ $openingBalance >= 0 ? 'text-danger' : 'text-success' }}">
 
-                        {{ number_format($openingBalance, 2) }}
+                    {{ number_format($openingBalance, 2) }}
 
-                    </strong>
-
-                </div>
+                </strong>
 
             </div>
 
         </div>
+
+    </div>
 
     @endif
 
@@ -312,23 +312,23 @@
 
                 @if(!$all)
 
-                    <span class="text-muted small">
+                <span class="text-muted small">
 
-                        {{ \Carbon\Carbon::parse($fromDate)->format('d M Y') }}
+                    {{ \Carbon\Carbon::parse($fromDate)->format('d M Y') }}
 
-                        -
+                    -
 
-                        {{ \Carbon\Carbon::parse($toDate)->format('d M Y') }}
+                    {{ \Carbon\Carbon::parse($toDate)->format('d M Y') }}
 
-                    </span>
+                </span>
 
                 @else
 
-                    <span class="badge badge-info">
+                <span class="badge badge-info">
 
-                        All Transactions
+                    All Transactions
 
-                    </span>
+                </span>
 
                 @endif
 
@@ -346,39 +346,39 @@
 
             @if($errors->any())
 
-                <div
-                    class="alert alert-danger alert-dismissible fade show m-3"
-                    role="alert">
+            <div
+                class="alert alert-danger alert-dismissible fade show m-3"
+                role="alert">
 
-                    <strong>
-                        Please correct the following errors:
-                    </strong>
+                <strong>
+                    Please correct the following errors:
+                </strong>
 
-                    <ul class="mb-0 mt-2">
+                <ul class="mb-0 mt-2">
 
-                        @foreach($errors->all() as $error)
+                    @foreach($errors->all() as $error)
 
-                            <li>
-                                {{ $error }}
-                            </li>
+                    <li>
+                        {{ $error }}
+                    </li>
 
-                        @endforeach
+                    @endforeach
 
-                    </ul>
+                </ul>
 
 
-                    <button
-                        type="button"
-                        class="close"
-                        data-dismiss="alert">
+                <button
+                    type="button"
+                    class="close"
+                    data-dismiss="alert">
 
-                        <span>
-                            &times;
-                        </span>
+                    <span>
+                        &times;
+                    </span>
 
-                    </button>
+                </button>
 
-                </div>
+            </div>
 
             @endif
 
@@ -442,26 +442,26 @@
 
                         @if(!$all)
 
-                            <tr class="bg-light font-weight-bold">
+                        <tr class="bg-light font-weight-bold">
 
-                                <td>
-                                    {{ $fromDate }}
-                                </td>
+                            <td>
+                                {{ $fromDate }}
+                            </td>
 
-                                <td colspan="6">
-                                    Opening Balance
-                                </td>
+                            <td colspan="6">
+                                Opening Balance
+                            </td>
 
-                                <td class="text-right">
+                            <td class="text-right">
 
-                                    {{ number_format(
+                                {{ number_format(
                                         $openingBalance,
                                         2
                                     ) }}
 
-                                </td>
+                            </td>
 
-                            </tr>
+                        </tr>
 
                         @endif
 
@@ -472,186 +472,186 @@
 
                         @forelse($ledger as $row)
 
-                            <tr>
+                        <tr>
 
 
-                                {{-- DATE --}}
+                            {{-- DATE --}}
 
-                                <td>
+                            <td>
 
-                                    {{ \Carbon\Carbon::parse(
+                                {{ \Carbon\Carbon::parse(
                                         $row['date']
                                     )->format('d M Y') }}
 
-                                </td>
+                            </td>
 
 
-                                {{-- MODULE --}}
+                            {{-- MODULE --}}
 
-                                <td>
+                            <td>
 
-                                    {{ $row['module'] }}
+                                {{ $row['module'] }}
 
-                                </td>
-
-
-                                {{-- REFERENCE --}}
-
-                                <td>
-
-                                    @if(!empty($row['reference']))
-
-                                        @if($row['type'] === 'Amendment')
-
-                                            <span
-                                                class="text-warning font-weight-bold">
-
-                                                {{ $row['reference'] }}
-
-                                            </span>
-
-                                        @else
-
-                                            {{ $row['reference'] }}
-
-                                        @endif
-
-                                    @else
-
-                                        -
-
-                                    @endif
-
-                                </td>
+                            </td>
 
 
-                                {{-- TYPE --}}
+                            {{-- REFERENCE --}}
 
-                                <td>
+                            <td>
 
-                                    @if($row['type'] == 'Invoice')
+                                @if(!empty($row['reference']))
 
-                                        <span
-                                            class="badge badge-danger">
+                                @if($row['type'] === 'Amendment')
 
-                                            Invoice
+                                <span
+                                    class="text-warning font-weight-bold">
 
-                                        </span>
+                                    {{ $row['reference'] }}
 
+                                </span>
 
-                                    @elseif($row['type'] == 'Payment')
+                                @else
 
-                                        <span
-                                            class="badge badge-success">
+                                {{ $row['reference'] }}
 
-                                            Payment
+                                @endif
 
-                                        </span>
+                                @else
 
+                                -
 
-                                    @elseif($row['type'] == 'Amendment')
+                                @endif
 
-                                        <span
-                                            class="badge badge-warning">
-
-                                            Amendment
-
-                                        </span>
+                            </td>
 
 
-                                    @else
+                            {{-- TYPE --}}
 
-                                        <span
-                                            class="badge badge-secondary">
+                            <td>
 
-                                            {{ $row['type'] }}
+                                @if($row['type'] == 'Invoice')
 
-                                        </span>
+                                <span
+                                    class="badge badge-danger">
 
-                                    @endif
+                                    Invoice
 
-                                </td>
-
-
-                                {{-- DESCRIPTION --}}
-
-                                <td>
-
-                                    {{ $row['description'] ?? '-' }}
-
-                                </td>
+                                </span>
 
 
-                                {{-- DEBIT --}}
+                                @elseif($row['type'] == 'Payment')
 
-                                <td
-                                    class="text-right text-danger">
+                                <span
+                                    class="badge badge-success">
 
-                                    @if(($row['debit'] ?? 0) > 0)
+                                    Payment
 
-                                        {{ number_format(
+                                </span>
+
+
+                                @elseif($row['type'] == 'Amendment')
+
+                                <span
+                                    class="badge badge-warning">
+
+                                    Amendment
+
+                                </span>
+
+
+                                @else
+
+                                <span
+                                    class="badge badge-secondary">
+
+                                    {{ $row['type'] }}
+
+                                </span>
+
+                                @endif
+
+                            </td>
+
+
+                            {{-- DESCRIPTION --}}
+
+                            <td>
+
+                                {{ $row['description'] ?? '-' }}
+
+                            </td>
+
+
+                            {{-- DEBIT --}}
+
+                            <td
+                                class="text-right text-danger">
+
+                                @if(($row['debit'] ?? 0) > 0)
+
+                                {{ number_format(
                                             $row['debit'],
                                             2
                                         ) }}
 
-                                    @else
+                                @else
 
-                                        -
+                                -
 
-                                    @endif
+                                @endif
 
-                                </td>
+                            </td>
 
 
-                                {{-- CREDIT --}}
+                            {{-- CREDIT --}}
 
-                                <td
-                                    class="text-right text-success">
+                            <td
+                                class="text-right text-success">
 
-                                    @if(($row['credit'] ?? 0) > 0)
+                                @if(($row['credit'] ?? 0) > 0)
 
-                                        {{ number_format(
+                                {{ number_format(
                                             $row['credit'],
                                             2
                                         ) }}
 
-                                    @else
+                                @else
 
-                                        -
+                                -
 
-                                    @endif
+                                @endif
 
-                                </td>
+                            </td>
 
 
-                                {{-- BALANCE --}}
+                            {{-- BALANCE --}}
 
-                                <td
-                                    class="text-right font-weight-bold">
+                            <td
+                                class="text-right font-weight-bold">
 
-                                    {{ number_format(
+                                {{ number_format(
                                         $row['balance'],
                                         2
                                     ) }}
 
-                                </td>
+                            </td>
 
-                            </tr>
+                        </tr>
 
 
                         @empty
 
-                            <tr>
+                        <tr>
 
-                                <td
-                                    colspan="8"
-                                    class="text-center text-muted py-4">
+                            <td
+                                colspan="8"
+                                class="text-center text-muted py-4">
 
-                                    No transactions found
+                                No transactions found
 
-                                </td>
+                            </td>
 
-                            </tr>
+                        </tr>
 
                         @endforelse
 
@@ -665,53 +665,53 @@
 
                     @if($ledger->count())
 
-                        <tfoot class="font-weight-bold bg-light">
+                    <tfoot class="font-weight-bold bg-light">
 
-                            <tr>
+                        <tr>
 
-                                <td
-                                    colspan="5"
-                                    class="text-right">
+                            <td
+                                colspan="5"
+                                class="text-right">
 
-                                    Total
+                                Total
 
-                                </td>
+                            </td>
 
 
-                                <td
-                                    class="text-right text-danger">
+                            <td
+                                class="text-right text-danger">
 
-                                    {{ number_format(
+                                {{ number_format(
                                         $periodPurchase,
                                         2
                                     ) }}
 
-                                </td>
+                            </td>
 
 
-                                <td
-                                    class="text-right text-success">
+                            <td
+                                class="text-right text-success">
 
-                                    {{ number_format(
+                                {{ number_format(
                                         $periodPaid,
                                         2
                                     ) }}
 
-                                </td>
+                            </td>
 
 
-                                <td class="text-right">
+                            <td class="text-right">
 
-                                    {{ number_format(
+                                {{ number_format(
                                         $ledger->last()['balance'],
                                         2
                                     ) }}
 
-                                </td>
+                            </td>
 
-                            </tr>
+                        </tr>
 
-                        </tfoot>
+                    </tfoot>
 
                     @endif
 
@@ -783,6 +783,10 @@
                             Amount
                         </label>
 
+                         <input type="text"
+                            name="request_token"
+                            value="{{ \Illuminate\Support\Str::uuid() }}">
+
                         <input
                             type="number"
                             name="amount"
@@ -831,12 +835,12 @@
 
                             @foreach($paymentSubLedgers as $subLedger)
 
-                                <option
-                                    value="{{ $subLedger->id }}">
+                            <option
+                                value="{{ $subLedger->id }}">
 
-                                    {{ $subLedger->name }}
+                                {{ $subLedger->name }}
 
-                                </option>
+                            </option>
 
                             @endforeach
 
@@ -950,6 +954,10 @@
                             Amount
                         </label>
 
+                         <input type="text"
+                            name="request_token"
+                            value="{{ \Illuminate\Support\Str::uuid() }}">
+
                         <input
                             type="number"
                             name="amount"
@@ -994,12 +1002,12 @@
 
                             @foreach($paymentSubLedgers as $subLedger)
 
-                                <option
-                                    value="{{ $subLedger->id }}">
+                            <option
+                                value="{{ $subLedger->id }}">
 
-                                    {{ $subLedger->name }}
+                                {{ $subLedger->name }}
 
-                                </option>
+                            </option>
 
                             @endforeach
 
@@ -1111,6 +1119,10 @@
                             Amount
                         </label>
 
+                        <input type="text"
+                            name="request_token"
+                            value="{{ \Illuminate\Support\Str::uuid() }}">
+
                         <input
                             type="number"
                             name="amount"
@@ -1155,12 +1167,12 @@
 
                             @foreach($paymentSubLedgers as $subLedger)
 
-                                <option
-                                    value="{{ $subLedger->id }}">
+                            <option
+                                value="{{ $subLedger->id }}">
 
-                                    {{ $subLedger->name }}
+                                {{ $subLedger->name }}
 
-                                </option>
+                            </option>
 
                             @endforeach
 

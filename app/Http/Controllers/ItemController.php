@@ -5,21 +5,55 @@ namespace App\Http\Controllers;
 use App\Models\Item;
 use App\Models\Category;
 use Illuminate\Http\Request;
+use Yajra\DataTables\Facades\DataTables;
 
 class ItemController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        $items = Item::with(['category', 'parent', 'children'])
-            ->orderBy('name')
-            ->get();
+        if ($request->ajax()) {
 
-        $parentItems = Item::orderBy('name')->get();
+            $query = Item::with([
+                'category:id,name',
+                'parent:id,name',
+            ]);
 
-        return view('items.index', compact(
-            'items',
-            'parentItems'
-        ));
+            return DataTables::eloquent($query)
+
+                ->addColumn('category', function ($item) {
+                    return $item->category?->name ?? '-';
+                })
+
+                ->addColumn('type', function ($item) {
+                    return $item->item_type_name ?? '-';
+                })
+
+                ->addColumn('parent', function ($item) {
+
+                    return view(
+                        'items.parent-select',
+                        compact('item')
+                    )->render();
+                })
+
+                ->addColumn('action', function ($item) {
+
+                    return '<a href="' .
+                        route('items.edit', $item->id) .
+                        '" class="btn btn-warning btn-xs">
+                        Edit
+                    </a>';
+                })
+
+                ->rawColumns([
+                    'parent',
+                    'action'
+                ])
+
+                ->make(true);
+        }
+
+        return view('items.index');
     }
 
     public function create()

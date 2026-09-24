@@ -5,145 +5,290 @@
 @section('content')
 
 <div class="card">
+
     <div class="card-header">
-        <h3 class="card-title">Items</h3>
-        <a href="{{ route('items.create') }}" class="btn btn-primary btn-sm float-right">
+
+        <h3 class="card-title">
+            Items
+        </h3>
+
+        <a href="{{ route('items.create') }}"
+           class="btn btn-primary btn-sm float-right">
+
             + Add Item
+
         </a>
-    </div>
-
-    <div class="card-body table-responsive">
-
-        <table id="itemsTable" class="table table-bordered table-sm table-erp">
-            <thead>
-                <tr>
-                    <th>ItemCode</th>
-                    <th>Category</th>
-                    <th>Item Name</th>
-                    <th>Type</th>
-                    <th>Parent</th>
-                    <th>Action</th>
-                </tr>
-            </thead>
-
-            <tbody>
-                @foreach($items as $item)
-                <tr>
-                    <td>{{ $item->item_code?? '-' }}</td>
-                    <td>{{ $item->category->name }}</td>
-                    <td>{{ $item->name }}</td>
-                    <td>{{ $item->item_type_name }}</td>
-                    <td>
-                         <select class="form-control form-control-sm parent-item"
-                            data-id="{{ $item->id }}"
-                            data-parent-id="{{ $item->parent_id }}">
-
-                            @if($item->parent)
-                            <option value="{{ $item->parent->id }}" selected>
-                                {{ $item->parent->name }}
-                            </option>
-                            @endif
-
-                        </select>
-                    </td>
-                    <td>
-                        <a href="/items/{{ $item->id }}/edit" class="btn btn-warning btn-xs">Edit</a>
-                    </td>
-                </tr>
-                @endforeach
-            </tbody>
-
-        </table>
 
     </div>
+
+
+    <div class="card-body">
+
+        <div class="table-responsive">
+
+            <table id="itemsTable"
+                   class="table table-bordered table-sm table-erp w-100">
+
+                <thead>
+
+                    <tr>
+
+                        <th>
+                            Item Code
+                        </th>
+
+                        <th>
+                            Category
+                        </th>
+
+                        <th>
+                            Item Name
+                        </th>
+
+                        <th>
+                            Type
+                        </th>
+
+                        <th>
+                            Parent
+                        </th>
+
+                        <th>
+                            Action
+                        </th>
+
+                    </tr>
+
+                </thead>
+
+            </table>
+
+        </div>
+
+    </div>
+
 </div>
 
 @endsection
 
+
 @push('scripts')
+
 <script>
-    $(document).ready(function() {
-        $('#itemsTable').DataTable({
-            responsive: true,
-            pageLength: 10,
-            lengthChange: true,
-            autoWidth: false,
-            ordering: true,
-            searching: true
-        });
 
-          $('.parent-item').each(function() {
+$(document).ready(function () {
 
-                let select = this;
-                let itemId = $(select).data('id');
+    let table = $('#itemsTable').DataTable({
 
-                new TomSelect(select, {
-                    valueField: 'id',
-                    labelField: 'text',
-                    searchField: ['text'],
+        processing: true,
 
-                    placeholder: 'Search parent item',
-                    allowEmptyOption: true,
+        serverSide: true,
 
-                    maxOptions: 20,
+        responsive: true,
 
-                    loadThrottle: 300,
+        pageLength: 10,
 
-                    load: function(query, callback) {
+        lengthMenu: [
+            [10, 25, 50, 100],
+            [10, 25, 50, 100]
+        ],
 
-                        if (query.length < 2) {
-                            callback();
-                            return;
-                        }
+        searching: true,
 
-                        $.ajax({
-                            url: "{{ route('items.parent.search') }}",
-                            type: "GET",
-                            dataType: "json",
+        ordering: true,
 
-                            data: {
-                                search: query,
-                                item_id: itemId
-                            },
+        autoWidth: false,
 
-                            success: function(response) {
-                                callback(response.data);
-                            },
+        ajax: {
+            url: "{{ route('items.index') }}",
+            type: "GET"
+        },
 
-                            error: function() {
-                                callback();
-                            }
-                        });
+        columns: [
 
-                    },
+            {
+                data: 'item_code',
+                name: 'item_code',
+                defaultContent: '-'
+            },
 
-                    onChange: function(value) {
+            {
+                data: 'category',
+                name: 'category'
+            },
 
-                        $.ajax({
-                            url: "{{ route('items.parent.update') }}",
-                            type: "POST",
+            {
+                data: 'name',
+                name: 'name'
+            },
 
-                            data: {
-                                _token: "{{ csrf_token() }}",
-                                item_id: itemId,
-                                parent_id: value || null
-                            },
+            {
+                data: 'type',
+                name: 'item_type'
+            },
 
-                            success: function() {
-                                toastr.success('Parent updated');
-                            },
+            {
+                data: 'parent',
+                name: 'parent_id',
+                orderable: false,
+                searchable: false
+            },
 
-                            error: function() {
-                                toastr.error('Unable to update parent');
-                            }
-                        });
+            {
+                data: 'action',
+                name: 'action',
+                orderable: false,
+                searchable: false
+            }
 
+        ],
+
+        order: [
+            [2, 'asc']
+        ]
+
+    });
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Parent Item - TomSelect
+    |--------------------------------------------------------------------------
+    */
+
+    function initializeParentSelects() {
+
+        $('.parent-item').each(function () {
+
+            let select = this;
+
+            // Don't initialize twice
+            if (select.tomselect) {
+                return;
+            }
+
+            let itemId = $(select).data('id');
+
+            new TomSelect(select, {
+
+                valueField: 'id',
+
+                labelField: 'text',
+
+                searchField: ['text'],
+
+                placeholder: 'Search parent item',
+
+                allowEmptyOption: true,
+
+                maxOptions: 20,
+
+                loadThrottle: 300,
+
+                load: function (query, callback) {
+
+                    if (query.length < 2) {
+                        callback();
+                        return;
                     }
 
-                });
+                    $.ajax({
+
+                        url: "{{ route('items.parent.search') }}",
+
+                        type: "GET",
+
+                        dataType: "json",
+
+                        data: {
+                            search: query,
+                            item_id: itemId
+                        },
+
+                        success: function (response) {
+
+                            callback(response.data);
+
+                        },
+
+                        error: function () {
+
+                            callback();
+
+                        }
+
+                    });
+
+                },
+
+                onChange: function (value) {
+
+                    $.ajax({
+
+                        url: "{{ route('items.parent.update') }}",
+
+                        type: "POST",
+
+                        data: {
+
+                            _token: "{{ csrf_token() }}",
+
+                            item_id: itemId,
+
+                            parent_id: value || null
+
+                        },
+
+                        success: function () {
+
+                            toastr.success(
+                                'Parent updated'
+                            );
+
+                        },
+
+                        error: function () {
+
+                            toastr.error(
+                                'Unable to update parent'
+                            );
+
+                        }
+
+                    });
+
+                }
 
             });
 
+        });
+
+    }
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Initialize TomSelect after every DataTable draw
+    |--------------------------------------------------------------------------
+    */
+
+    table.on('draw', function () {
+
+        initializeParentSelects();
+
     });
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Initial draw
+    |--------------------------------------------------------------------------
+    */
+
+    initializeParentSelects();
+
+});
+
 </script>
+
 @endpush

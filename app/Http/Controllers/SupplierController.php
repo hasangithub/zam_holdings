@@ -10,6 +10,7 @@ use App\Models\PurchaseAmendment;
 use App\Models\PurchaseInventory;
 use App\Models\PurchaseInventoryPayment;
 use App\Models\PurchasePayment;
+use App\Models\RequestToken;
 use App\Models\SubLedger;
 use App\Models\Supplier;
 use Illuminate\Http\Request;
@@ -598,6 +599,7 @@ class SupplierController extends Controller
             'payment_date' => ['required', 'date',],
             'sub_ledger_id' => 'required|exists:sub_ledgers,id',
             'note' => ['nullable', 'string', 'max:1000',],
+            'request_token' => ['required', 'uuid'],
         ]);
 
         try {
@@ -608,9 +610,26 @@ class SupplierController extends Controller
                 $amount = (float) $request->amount;
                 $branchId = auth()->user()->branch_id;
 
+                 $existing = RequestToken::where(
+                    'token',
+                    $request->request_token
+                )->first();
+
+                if ($existing) {
+
+                    throw ValidationException::withMessages(['duplicate' => 'This transaction has already been processed.']);
+                }
+
                 if (!$supplier->liability_sub_ledger_id) {
                     throw ValidationException::withMessages(['amount' => 'This supplier does not have a liability sub-ledger.']);
                 }
+
+                 $token = RequestToken::create([
+                    'token' => $request->request_token,
+                    'module' => 'Supplier Payment',
+                    'action' => 'create',
+                    'user_id' => auth()->id(),
+                ]);
 
                 $payment = PurchasePayment::create([
 
@@ -661,6 +680,7 @@ class SupplierController extends Controller
             'payment_date' => ['required', 'date',],
             'sub_ledger_id' => 'required|exists:sub_ledgers,id',
             'note' => ['nullable', 'string', 'max:1000',],
+            'request_token' => ['required', 'uuid'],
         ]);
 
         try {
@@ -671,9 +691,26 @@ class SupplierController extends Controller
                 $amount = (float) $request->amount;
                 $branchId = auth()->user()->branch_id;
 
+                $existing = RequestToken::where(
+                    'token',
+                    $request->request_token
+                )->first();
+
+                if ($existing) {
+
+                    throw ValidationException::withMessages(['duplicate' => 'This transaction has already been processed.']);
+                }
+
                 if (!$supplier->liability_sub_ledger_id) {
                     throw ValidationException::withMessages(['amount' => 'This supplier does not have a liability sub-ledger.']);
                 }
+
+                $token = RequestToken::create([
+                    'token' => $request->request_token,
+                    'module' => 'Supplier Payment',
+                    'action' => 'create',
+                    'user_id' => auth()->id(),
+                ]);
 
                 $payment = PurchaseInventoryPayment::create([
 
@@ -725,6 +762,7 @@ class SupplierController extends Controller
             'payment_date' => ['required', 'date',],
             'sub_ledger_id' => 'required|exists:sub_ledgers,id',
             'note' => ['nullable', 'string', 'max:1000',],
+            'request_token' => ['required', 'uuid'],
         ]);
 
         try {
@@ -735,9 +773,26 @@ class SupplierController extends Controller
                 $amount = (float) $request->amount;
                 $branchId = auth()->user()->branch_id;
 
+                $existing = RequestToken::where(
+                    'token',
+                    $request->request_token
+                )->first();
+
+                if ($existing) {
+
+                    throw ValidationException::withMessages(['duplicate' => 'This transaction has already been processed.']);
+                }
+
                 if (!$supplier->liability_sub_ledger_id) {
                     throw ValidationException::withMessages(['amount' => 'This supplier does not have a non current liability sub-ledger.']);
                 }
+
+                 $token = RequestToken::create([
+                    'token' => $request->request_token,
+                    'module' => 'Supplier Payment',
+                    'action' => 'create',
+                    'user_id' => auth()->id(),
+                ]);
 
                 $payment = FixedAssetPayment::create([
 
