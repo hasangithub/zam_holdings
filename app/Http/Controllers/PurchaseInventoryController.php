@@ -21,7 +21,7 @@ class PurchaseInventoryController extends Controller
      */
     public function index()
     {
-        $purchases = PurchaseInventory::with('supplier')
+        $purchases = PurchaseInventory::where('branch_id', auth()->user()->branch_id)->with('supplier')
             ->get();
 
         return view('purchase_inventories.index', compact('purchases'));
@@ -235,53 +235,22 @@ class PurchaseInventoryController extends Controller
 
             $journal = Accounting::postJournal([
 
-                'branch_id' =>
-                $branchId,
-
-                'date' =>
-                $request->purchase_date,
-
+                'branch_id' => $branchId,
+                'date' => $request->purchase_date,
                 'description' => 'Purchase Packing Material - ' . $supplier->name,
-
                 'entries' => [
-
-                    /*
-                |--------------------------------------------------------------------------
-                | DEBIT Inventory
-                |--------------------------------------------------------------------------
-                */
-
                     [
-                        'ledger_id' =>
-                        4,
-
-                        'sub_ledger_id' =>
-                        2,
-
-                        'debit' =>
-                        $total,
-
-                        'credit' =>
-                        0,
+                        'ledger_id' => 7,
+                        'sub_ledger_id' => 2,
+                        'debit' => $total,
+                        'credit' => 0,
                     ],
 
-                    /*
-                |--------------------------------------------------------------------------
-                | CREDIT Supplier Payable
-                |--------------------------------------------------------------------------
-                */
-
                     [
-                        'ledger_id' =>
-                        5,
-
+                        'ledger_id' => 8,
                         'sub_ledger_id' => $supplier->liability_sub_ledger_id,
-
-                        'debit' =>
-                        0,
-
-                        'credit' =>
-                        $total,
+                        'debit' => 0,
+                        'credit' => $total,
                     ],
 
                 ],
@@ -320,6 +289,10 @@ class PurchaseInventoryController extends Controller
     {
         $purchaseInventory = PurchaseInventory::with('items')
             ->findOrFail($id);
+
+        if ((int) $purchaseInventory->branch_id !== (int) auth()->user()->branch_id) {
+            abort(403, 'You are not allowed to edit this purchase inventory.');
+        }
 
         $suppliers = Supplier::orderBy('name')->get();
 
@@ -382,6 +355,10 @@ class PurchaseInventoryController extends Controller
                     PurchaseInventory::lockForUpdate()
                     ->with('items.item')
                     ->findOrFail($id);
+
+                if ((int) $purchase->branch_id !== (int) auth()->user()->branch_id) {
+                    abort(403, 'You are not allowed to update this purchase inventory.');
+                }
 
                 $supplier = Supplier::lockForUpdate()->findOrFail($request->supplier_id);
 
@@ -647,20 +624,20 @@ class PurchaseInventoryController extends Controller
                     'description' => 'Purchase Invoice #' . $purchase->id . ' - Updated',
                     'entries' => [
                         [
-                            'ledger_id' => 4,
+                            'ledger_id' => 7,
                             'sub_ledger_id' => 2,
                             'debit' => $total,
                             'credit' => 0,
                         ],
                         [
-                            'ledger_id' => 5,
+                            'ledger_id' => 8,
                             'sub_ledger_id' => $supplier->liability_sub_ledger_id,
                             'debit' => 0,
                             'credit' => $total,
                         ],
                     ]
                 ]);
-                
+
                 JournalEntryReference::create([
                     'journal_entry_id' => $journal->id,
                     'model_type' => PurchaseInventory::class,
@@ -685,6 +662,10 @@ class PurchaseInventoryController extends Controller
         } catch (ValidationException $e) {
 
             throw $e;
+        } catch (\Symfony\Component\HttpKernel\Exception\HttpException $e) {
+
+            // Allow 403/404 etc. to reach Laravel's error handler
+            throw $e;
         } catch (\Throwable $e) {
             return back()
                 ->withInput()
@@ -708,6 +689,10 @@ class PurchaseInventoryController extends Controller
                 $purchase = PurchaseInventory::lockForUpdate()
                     ->with('items.item', 'supplier')
                     ->findOrFail($id);
+
+                if ((int) $purchase->branch_id !== (int) auth()->user()->branch_id) {
+                    abort(403, 'You are not allowed to cancel this purchase inventory.');
+                }
 
                 if ($purchase->status === 'cancelled') {
                     throw ValidationException::withMessages([
@@ -773,6 +758,10 @@ class PurchaseInventoryController extends Controller
         } catch (ValidationException $e) {
 
             throw $e;
+        } catch (\Symfony\Component\HttpKernel\Exception\HttpException $e) {
+
+            // Allow 403/404 etc. to reach Laravel's error handler
+            throw $e;
         } catch (\Throwable $e) {
 
             return back()
@@ -794,6 +783,9 @@ class PurchaseInventoryController extends Controller
         ")
             ->whereHas('item', function ($q) {
                 $q->where('item_type', Item::PACKAGING_ITEM);
+            })
+            ->whereHas('purchaseInventory', function ($q) {
+                $q->where('branch_id', auth()->user()->branch_id);
             })
             ->with('item')
             ->groupBy('item_id')

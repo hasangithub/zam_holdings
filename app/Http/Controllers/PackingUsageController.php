@@ -21,7 +21,7 @@ class PackingUsageController extends Controller
      */
     public function index()
     {
-        $expenses = Expense::whereNull('expense_category_id')
+        $expenses = Expense::whereNull('expense_category_id')->where('branch_id', auth()->user()->branch_id)
             ->latest()
             ->get();
 
@@ -232,6 +232,10 @@ class PackingUsageController extends Controller
             'details.item',
         ])->findOrFail($id);
 
+        if ((int) $expense->branch_id !== (int) auth()->user()->branch_id) {
+            abort(403, 'You are not allowed to edit this expense.');
+        }
+
         $items = Item::where('item_type', 2) // PACKAGING_ITEM
             ->orderBy('name')
             ->get();
@@ -269,6 +273,9 @@ class PackingUsageController extends Controller
                 $expense = Expense::lockForUpdate()
                     ->with('details.fifos')
                     ->findOrFail($id);
+                if ((int) $expense->branch_id !== (int) auth()->user()->branch_id) {
+                    abort(403, 'You are not allowed to update this expense.');
+                }
 
                 /*
             |--------------------------------------------------------------------------
@@ -534,8 +541,7 @@ class PackingUsageController extends Controller
                 ]);
             });
 
-            return redirect()
-                ->route('packing-usages.index')
+            return redirect()->route('packing-usages.index')
                 ->with(
                     'success',
                     'Packing Usage updated successfully.'
@@ -545,6 +551,10 @@ class PackingUsageController extends Controller
             return back()
                 ->withErrors($e->errors())
                 ->withInput();
+        } catch (\Symfony\Component\HttpKernel\Exception\HttpException $e) {
+
+            // Allow 403/404 etc. to reach Laravel's error handler
+            throw $e;
         } catch (\Throwable $e) {
 
 
@@ -569,17 +579,11 @@ class PackingUsageController extends Controller
 
                 $branchId = auth()->user()->branch_id;
 
-                /*
-            |--------------------------------------------------------------------------
-            | Lock Expense
-            |--------------------------------------------------------------------------
-            */
+                $expense = Expense::lockForUpdate()->with(['details.fifos'])->findOrFail($id);
 
-                $expense = Expense::lockForUpdate()
-                    ->with([
-                        'details.fifos',
-                    ])
-                    ->findOrFail($id);
+                if ((int) $expense->branch_id !== (int) auth()->user()->branch_id) {
+                    abort(403, 'You are not allowed to cancel this packing-usages.');
+                }
 
                 if ($expense->status === 'cancelled') {
 
@@ -677,9 +681,11 @@ class PackingUsageController extends Controller
                     'Packing Usage cancelled successfully.'
                 );
         } catch (ValidationException $e) {
+            return back()->withErrors($e->errors());
+        } catch (\Symfony\Component\HttpKernel\Exception\HttpException $e) {
 
-            return back()
-                ->withErrors($e->errors());
+            // Allow 403/404 etc. to reach Laravel's error handler
+            throw $e;
         } catch (\Throwable $e) {
 
             return back()

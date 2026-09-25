@@ -114,28 +114,11 @@
 
                     <div class="col-md-3">
 
-                        <div class="form-group">
-
-                            <label>
-                                Invoice No
-                            </label>
-
-                            <input
-                                type="text"
-                                name="invoice_no"
-                                class="form-control form-control-sm"
-                                value="{{ old('invoice_no', $purchase->invoice_no) }}"
-                                placeholder="Supplier Invoice No">
-
-                        </div>
-
                     </div>
 
                 </div>
 
-
                 <hr>
-
 
                 {{-- ITEMS TABLE --}}
                 <div class="table-responsive">
@@ -277,6 +260,7 @@
                 <button
                     type="button"
                     class="btn btn-primary btn-sm"
+                    style="display: none;"
                     id="addRow">
 
                     <i class="fas fa-plus"></i>

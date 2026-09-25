@@ -21,7 +21,7 @@ class SupplierController extends Controller
 {
     public function index()
     {
-        $suppliers = Supplier::latest()->get();
+        $suppliers = Supplier::where('branch_id', auth()->user()->branch_id)->latest()->get();
         return view('suppliers.index', compact('suppliers'));
     }
 
@@ -106,12 +106,22 @@ class SupplierController extends Controller
     public function edit($id)
     {
         $supplier = Supplier::findOrFail($id);
+        if ((int) $supplier->branch_id !== (int) auth()->user()->branch_id) {
+            abort(403, 'You are not allowed to edit this supplier.');
+        }
         return view('suppliers.edit', compact('supplier'));
     }
 
     public function update(Request $request, $id)
     {
-        Supplier::findOrFail($id)->update($request->all());
+        $supplier = Supplier::findOrFail($id);
+
+        if ((int) $supplier->branch_id !== (int) auth()->user()->branch_id) {
+            abort(403, 'You are not allowed to update this supplier.');
+        }
+
+        $supplier->update($request->all());
+
         return redirect()->route('suppliers.index');
     }
 
@@ -176,6 +186,10 @@ class SupplierController extends Controller
     public function statement(Request $request, $id)
     {
         $supplier = Supplier::findOrFail($id);
+
+        if ((int) $supplier->branch_id !== (int) auth()->user()->branch_id) {
+            abort(403, 'You are not allowed.');
+        }
 
         $all = $request->boolean('all');
 
@@ -610,7 +624,7 @@ class SupplierController extends Controller
                 $amount = (float) $request->amount;
                 $branchId = auth()->user()->branch_id;
 
-                 $existing = RequestToken::where(
+                $existing = RequestToken::where(
                     'token',
                     $request->request_token
                 )->first();
@@ -624,7 +638,7 @@ class SupplierController extends Controller
                     throw ValidationException::withMessages(['amount' => 'This supplier does not have a liability sub-ledger.']);
                 }
 
-                 $token = RequestToken::create([
+                $token = RequestToken::create([
                     'token' => $request->request_token,
                     'module' => 'Supplier Payment',
                     'action' => 'create',
@@ -649,7 +663,7 @@ class SupplierController extends Controller
 
                     'entries' => [
                         [
-                            'ledger_id' => 5,
+                            'ledger_id' => 8,
                             'sub_ledger_id' => $supplier->liability_sub_ledger_id,
                             'debit' => $amount,
                             'credit' => 0,
@@ -731,7 +745,7 @@ class SupplierController extends Controller
 
                     'entries' => [
                         [
-                            'ledger_id' => 5,
+                            'ledger_id' => 8,
                             'sub_ledger_id' => $supplier->liability_sub_ledger_id,
                             'debit' => $amount,
                             'credit' => 0,
@@ -787,7 +801,7 @@ class SupplierController extends Controller
                     throw ValidationException::withMessages(['amount' => 'This supplier does not have a non current liability sub-ledger.']);
                 }
 
-                 $token = RequestToken::create([
+                $token = RequestToken::create([
                     'token' => $request->request_token,
                     'module' => 'Supplier Payment',
                     'action' => 'create',
@@ -814,7 +828,7 @@ class SupplierController extends Controller
 
                     'entries' => [
                         [
-                            'ledger_id' => 9,
+                            'ledger_id' => 8,
                             'sub_ledger_id' => $supplier->liability_sub_ledger_id,
                             'debit' => $amount,
                             'credit' => 0,

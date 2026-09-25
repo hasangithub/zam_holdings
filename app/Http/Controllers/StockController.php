@@ -19,7 +19,7 @@ class StockController extends Controller
             END as avg_price,
             SUM(remaining_qty * price) as stock_value
         ')
-        ->whereHas('purchase', function ($query) { $query->where('status', '!=', 'cancelled'); })
+        ->whereHas('purchase', function ($query) { $query->where('status', '!=', 'cancelled')->where('branch_id', auth()->user()->branch_id); })
             ->with('item')
             ->groupBy('item_id')
             ->orderBy('item_id')

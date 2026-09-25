@@ -33,6 +33,7 @@ use App\Http\Controllers\SalesProfitLossController;
 use App\Http\Controllers\CashbookController;
 use App\Http\Controllers\SalaryAdvanceController;
 use App\Http\Controllers\GeneralLedgerController;
+use App\Http\Controllers\BranchController;
 // Route::get('/', function () {
 //     return view('welcome');
 // });
@@ -287,7 +288,7 @@ Route::middleware(['auth'])
         Route::resource(
             'journal-entries',
             JournalEntryController::class
-        )->except(['show']);
+        );
 
 
         /*
@@ -310,4 +311,68 @@ Route::middleware(['auth'])
             'journal-entries/sub-ledgers/{ledger}',
             [JournalEntryController::class, 'subLedgers']
         )->name('journal-entries.sub-ledgers');
+    });
+
+    Route::middleware(['auth', 'head.office'])
+    ->prefix('branches')
+    ->name('branches.')
+    ->group(function () {
+
+        // Branch management
+        Route::get('/', [BranchController::class, 'index'])
+            ->name('index');
+
+        Route::get('/create', [BranchController::class, 'create'])
+            ->name('create');
+
+        Route::post('/', [BranchController::class, 'store'])
+            ->name('store');
+
+        Route::get('/{branch}/edit', [BranchController::class, 'edit'])
+            ->name('edit');
+
+        Route::put('/{branch}', [BranchController::class, 'update'])
+            ->name('update');
+
+        Route::post('/{branch}/toggle-status', [
+            BranchController::class,
+            'toggleStatus'
+        ])->name('toggle-status');
+
+
+        // Branch users
+        Route::get('/{branch}/users', [
+            BranchController::class,
+            'users'
+        ])->name('users');
+
+        Route::get('/{branch}/users/create', [
+            BranchController::class,
+            'createUser'
+        ])->name('users.create');
+
+        Route::post('/{branch}/users', [
+            BranchController::class,
+            'storeUser'
+        ])->name('users.store');
+
+        Route::get('/{branch}/users/{user}/edit', [
+            BranchController::class,
+            'editUser'
+        ])->name('users.edit');
+
+        Route::put('/{branch}/users/{user}', [
+            BranchController::class,
+            'updateUser'
+        ])->name('users.update');
+
+        Route::post('/{branch}/users/{user}/toggle-status', [
+            BranchController::class,
+            'toggleUserStatus'
+        ])->name('users.toggle-status');
+
+        Route::delete('/{branch}/users/{user}', [
+            BranchController::class,
+            'destroyUser'
+        ])->name('users.destroy');
     });

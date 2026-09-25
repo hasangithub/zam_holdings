@@ -19,13 +19,15 @@ class SalesProfitLossController extends Controller
             'profitLoss',
         ]);
 
+         $query->where('branch_id', auth()->user()->branch_id);
+
         if ($request->filled('search')) {
 
             $search = $request->search;
 
             $query->where(function ($q) use ($search) {
 
-                $q->where('invoice_no', 'like', "%{$search}%")
+                $q->where('invoice_id', 'like', "%{$search}%")
 
                     ->orWhereHas('customer', function ($customer) use ($search) {
                         $customer->where(
@@ -56,7 +58,7 @@ class SalesProfitLossController extends Controller
     {  
         $sale = null;
 
-        $sales = Sale::with('customer')
+        $sales = Sale::with('customer')->where('branch_id', auth()->user()->branch_id)
             ->latest('id')
             ->get();
 

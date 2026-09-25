@@ -78,7 +78,7 @@ class JournalEntryController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-        
+
             'journal_date' => [
                 'required',
                 'date',
@@ -141,7 +141,7 @@ class JournalEntryController extends Controller
 
                 throw ValidationException::withMessages([
                     "details.$index.debit" =>
-                        'Each journal row must have a debit or credit amount.'
+                    'Each journal row must have a debit or credit amount.'
                 ]);
             }
 
@@ -156,7 +156,7 @@ class JournalEntryController extends Controller
 
                 throw ValidationException::withMessages([
                     "details.$index.debit" =>
-                        'A journal row cannot contain both debit and credit.'
+                    'A journal row cannot contain both debit and credit.'
                 ]);
             }
 
@@ -176,7 +176,7 @@ class JournalEntryController extends Controller
 
             throw ValidationException::withMessages([
                 'details' =>
-                    'Journal entry is not balanced. Total debit must equal total credit.'
+                'Journal entry is not balanced. Total debit must equal total credit.'
             ]);
         }
 
@@ -191,7 +191,7 @@ class JournalEntryController extends Controller
 
             throw ValidationException::withMessages([
                 'details' =>
-                    'Journal entry amount must be greater than zero.'
+                'Journal entry amount must be greater than zero.'
             ]);
         }
 
@@ -206,6 +206,7 @@ class JournalEntryController extends Controller
                 'journal_date' => $validated['journal_date'],
                 'description' => $validated['description'] ?? null,
                 'created_by' => auth()->id(),
+                'is_manual' => true
             ]);
 
 
@@ -226,17 +227,17 @@ class JournalEntryController extends Controller
                         'id',
                         $detail['sub_ledger_id']
                     )
-                    ->where(
-                        'ledger_id',
-                        $detail['ledger_id']
-                    )
-                    ->exists();
+                        ->where(
+                            'ledger_id',
+                            $detail['ledger_id']
+                        )
+                        ->exists();
 
                     if (!$validSubLedger) {
 
                         throw ValidationException::withMessages([
                             'details' =>
-                                'Invalid sub ledger selected for ledger.'
+                            'Invalid sub ledger selected for ledger.'
                         ]);
                     }
                 }
@@ -245,19 +246,19 @@ class JournalEntryController extends Controller
                 JournalEntryDetail::create([
 
                     'journal_entry_id' =>
-                        $journalEntry->id,
+                    $journalEntry->id,
 
                     'ledger_id' =>
-                        $detail['ledger_id'],
+                    $detail['ledger_id'],
 
                     'sub_ledger_id' =>
-                        $detail['sub_ledger_id'] ?? null,
+                    $detail['sub_ledger_id'] ?? null,
 
                     'debit' =>
-                        $debit,
+                    $debit,
 
                     'credit' =>
-                        $credit,
+                    $credit,
                 ]);
             }
         });
@@ -312,7 +313,7 @@ class JournalEntryController extends Controller
         JournalEntry $journalEntry
     ) {
         $validated = $request->validate([
-        
+
             'journal_date' => [
                 'required',
                 'date',
@@ -370,7 +371,7 @@ class JournalEntryController extends Controller
 
                 throw ValidationException::withMessages([
                     "details.$index.debit" =>
-                        'Each journal row must have a debit or credit amount.'
+                    'Each journal row must have a debit or credit amount.'
                 ]);
             }
 
@@ -379,7 +380,7 @@ class JournalEntryController extends Controller
 
                 throw ValidationException::withMessages([
                     "details.$index.debit" =>
-                        'A journal row cannot contain both debit and credit.'
+                    'A journal row cannot contain both debit and credit.'
                 ]);
             }
 
@@ -393,7 +394,7 @@ class JournalEntryController extends Controller
 
             throw ValidationException::withMessages([
                 'details' =>
-                    'Journal entry is not balanced.'
+                'Journal entry is not balanced.'
             ]);
         }
 
@@ -408,6 +409,7 @@ class JournalEntryController extends Controller
                 'branch_id' =>  auth()->user()->branch_id,
                 'journal_date' => $validated['journal_date'],
                 'description' => $validated['description'] ?? null,
+                'is_manual' => true
             ]);
 
 
@@ -443,7 +445,7 @@ class JournalEntryController extends Controller
 
                         throw ValidationException::withMessages([
                             'details' =>
-                                'Invalid sub ledger selected.'
+                            'Invalid sub ledger selected.'
                         ]);
                     }
                 }
@@ -453,7 +455,7 @@ class JournalEntryController extends Controller
                     'journal_entry_id' => $journalEntry->id,
                     'ledger_id' => $detail['ledger_id'],
                     'sub_ledger_id' =>
-                        $detail['sub_ledger_id'] ?? null,
+                    $detail['sub_ledger_id'] ?? null,
                     'debit' => $debit,
                     'credit' => $credit,
                 ]);
@@ -508,10 +510,10 @@ class JournalEntryController extends Controller
             'account_type_id',
             $accountType->id
         )
-        ->get([
-            'id',
-            'name',
-        ]);
+            ->get([
+                'id',
+                'name',
+            ]);
 
         return response()->json($groups);
     }
@@ -529,10 +531,10 @@ class JournalEntryController extends Controller
             'account_group_id',
             $accountGroup->id
         )
-        ->get([
-            'id',
-            'name',
-        ]);
+            ->get([
+                'id',
+                'name',
+            ]);
 
         return response()->json($ledgers);
     }
@@ -553,5 +555,17 @@ class JournalEntryController extends Controller
             ]);
 
         return response()->json($subLedgers);
+    }
+
+    public function show($id)
+    {
+        $journalEntry = JournalEntry::with([
+            'details.ledger',
+            'details.subLedger',
+            'branch',
+            'creator',
+        ])->findOrFail($id);
+
+        return view('accounting.journal-entries.show', compact('journalEntry'));
     }
 }

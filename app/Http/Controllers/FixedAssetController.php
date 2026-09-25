@@ -142,7 +142,7 @@ class FixedAssetController extends Controller
                         ],
 
                         [
-                            'ledger_id' => 7,
+                            'ledger_id' => 8,
                             'sub_ledger_id' => $supplier->liability_sub_ledger_id,
                             'debit' => 0,
                             'credit' => $request->amount,

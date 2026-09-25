@@ -10,6 +10,7 @@ class JournalEntry extends Model
         'branch_id',
         'journal_date',
         'description',
+        'is_manual',
         'created_by'
     ];
 
@@ -26,5 +27,10 @@ class JournalEntry extends Model
     public function references()
     {
         return $this->hasMany(JournalEntryReference::class);
+    }
+
+    public function creator()
+    {
+        return $this->belongsTo(User::class, 'created_by');
     }
 }

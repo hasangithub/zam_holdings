@@ -20,7 +20,7 @@ class PurchaseController extends Controller
 {
     public function index()
     {
-        $purchases = Purchase::with('supplier')->latest()->get();
+        $purchases = Purchase::where('branch_id', auth()->user()->branch_id)->with('supplier')->latest()->get();
         return view('purchases.index', compact('purchases'));
     }
 
@@ -84,13 +84,13 @@ class PurchaseController extends Controller
 
             'entries' => [
                 [
-                    'ledger_id' => 4,
+                    'ledger_id' => 7,
                     'sub_ledger_id' => 1,
                     'debit' => $total,
                     'credit' => 0,
                 ],
                 [
-                    'ledger_id' => 5,
+                    'ledger_id' => 8,
                     'sub_ledger_id' =>  $supplier->liability_sub_ledger_id,
                     'debit' => 0,
                     'credit' => $total,
@@ -118,6 +118,10 @@ class PurchaseController extends Controller
             },
         ])->findOrFail($id);
 
+        if ((int) $purchase->branch_id !== (int) auth()->user()->branch_id) {
+            abort(403, 'You are not allowed to view this purchase.');
+        }
+
         $supplierId = $purchase->supplier_id;
 
         $purchases = Purchase::where('supplier_id', $supplierId)->get();
@@ -142,6 +146,11 @@ class PurchaseController extends Controller
     public function invoice($id)
     {
         $purchase = Purchase::with(['items.item', 'supplier'])->findOrFail($id);
+
+        if ((int) $purchase->branch_id !== (int) auth()->user()->branch_id) {
+            abort(403, 'You are not allowed to view this purchase.');
+        }
+
         $currentPurchase = $purchase->total;
 
         return view('purchases.invoice', compact(
@@ -153,6 +162,10 @@ class PurchaseController extends Controller
     public function edit($id)
     {
         $purchase = Purchase::with('items')->findOrFail($id);
+
+        if ((int) $purchase->branch_id !== (int) auth()->user()->branch_id) {
+            abort(403, 'You are not allowed to edit this purchase.');
+        }
 
         return view('purchases.edit', [
             'purchase' => $purchase,
@@ -178,6 +191,10 @@ class PurchaseController extends Controller
                 $purchase = Purchase::lockForUpdate()
                     ->with('items.item')
                     ->findOrFail($id);
+
+                if ((int) $purchase->branch_id !== (int) auth()->user()->branch_id) {
+                    abort(403, 'You are not allowed to update this purchase.');
+                }
 
                 $supplier = Supplier::lockForUpdate()->findOrFail($request->supplier_id);
 
@@ -288,13 +305,13 @@ class PurchaseController extends Controller
                     'description' => 'Purchase Invoice #' . $purchase->id . ' - Updated',
                     'entries' => [
                         [
-                            'ledger_id' => 4,
-                            'sub_ledger_id' => null,
+                            'ledger_id' => 7,
+                            'sub_ledger_id' => 1,
                             'debit' => $total,
                             'credit' => 0,
                         ],
                         [
-                            'ledger_id' => 5,
+                            'ledger_id' => 8,
                             'sub_ledger_id' => $supplier->liability_sub_ledger_id,
                             'debit' => 0,
                             'credit' => $total,
@@ -315,6 +332,10 @@ class PurchaseController extends Controller
                 ->with('success', 'Purchase updated successfully.');
         } catch (ValidationException $e) {
             throw $e;
+        } catch (\Symfony\Component\HttpKernel\Exception\HttpException $e) {
+
+            // Allow 403/404 etc. to reach Laravel's error handler
+            throw $e;
         } catch (\Throwable $e) {
             return back()
                 ->withInput()
@@ -331,6 +352,10 @@ class PurchaseController extends Controller
                 $purchase = Purchase::lockForUpdate()
                     ->with('items.item', 'supplier')
                     ->findOrFail($id);
+
+                if ((int) $purchase->branch_id !== (int) auth()->user()->branch_id) {
+                    abort(403, 'You are not allowed to cancel this purchase.');
+                }
 
                 if ($purchase->status === 'cancelled') {
                     throw ValidationException::withMessages([
@@ -396,6 +421,10 @@ class PurchaseController extends Controller
         } catch (ValidationException $e) {
 
             throw $e;
+        } catch (\Symfony\Component\HttpKernel\Exception\HttpException $e) {
+
+            // Allow 403/404 etc. to reach Laravel's error handler
+            throw $e;
         } catch (\Throwable $e) {
 
             return back()
@@ -434,6 +463,10 @@ class PurchaseController extends Controller
     {
         $purchase = Purchase::with('supplier')
             ->findOrFail($purchaseId);
+
+        if ((int) $purchase->branch_id !== (int) auth()->user()->branch_id) {
+            abort(403, 'You are not allowed to update this purchase.');
+        }
 
 
         /*
@@ -520,23 +553,16 @@ class PurchaseController extends Controller
                 'entries' => [
 
                     [
-                        'ledger_id' => 4,
-
+                        'ledger_id' => 7,
                         'sub_ledger_id' => 1,
-
                         'debit' => $absoluteAmount,
-
                         'credit' => 0,
                     ],
 
                     [
-                        'ledger_id' => 5,
-
-                        'sub_ledger_id' =>
-                        $purchase->supplier->liability_sub_ledger_id,
-
+                        'ledger_id' => 8,
+                        'sub_ledger_id' => $purchase->supplier->liability_sub_ledger_id,
                         'debit' => 0,
-
                         'credit' => $absoluteAmount,
                     ],
 
@@ -568,7 +594,7 @@ class PurchaseController extends Controller
                 'entries' => [
 
                     [
-                        'ledger_id' => 5,
+                        'ledger_id' => 8,
 
                         'sub_ledger_id' =>
                         $purchase->supplier->liability_sub_ledger_id,
@@ -579,7 +605,7 @@ class PurchaseController extends Controller
                     ],
 
                     [
-                        'ledger_id' => 4,
+                        'ledger_id' => 7,
 
                         'sub_ledger_id' => 1,
 

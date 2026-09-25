@@ -364,6 +364,7 @@ class ReportController extends Controller
         $type = $request->type;
 
         $customers = Customer::query()
+            ->where('branch_id', auth()->user()->branch_id)
             ->when($type, function ($q) use ($type) {
                 $q->where('customer_type', $type);
             })

@@ -23,13 +23,13 @@ class SaleController extends Controller
 
     public function index()
     {
-        $sales = Sale::where('currency', 'LKR')->with('customer')->latest()->get();
+        $sales = Sale::where('currency', 'LKR')->where('branch_id', auth()->user()->branch_id)->with('customer')->latest()->get();
         return view('sales.index', compact('sales'));
     }
 
     public function indexExport()
     {
-        $sales = Sale::where('currency', 'USD')
+        $sales = Sale::where('currency', 'USD')->where('branch_id', auth()->user()->branch_id)
             ->with('freightService')
             ->latest()
             ->get();
@@ -171,15 +171,7 @@ class SaleController extends Controller
 
             $sale = DB::transaction(function () use ($request) {
 
-                $branchId =
-                    auth()->user()->branch_id;
-
-
-                /*
-            |--------------------------------------------------------------------------
-            | LOCK CUSTOMER
-            |--------------------------------------------------------------------------
-            */
+                $branchId = auth()->user()->branch_id;
 
                 $customer =
                     Customer::lockForUpdate()
@@ -472,11 +464,11 @@ class SaleController extends Controller
                             'sale_id' => $sale->id,
                             'item_id' => $itemId,
                             'qty' => $deductQty,
-                            'sale_price' =>$salePrice,
+                            'sale_price' => $salePrice,
                             'base_price' => $batch->price,
-                            'subtotal' =>$saleSubtotal,
-                            'sale_price_foreign' =>0,
-                            'sub_total_foreign' =>0,
+                            'subtotal' => $saleSubtotal,
+                            'sale_price_foreign' => 0,
+                            'sub_total_foreign' => 0,
                         ]);
 
                         SaleItemFifo::create([
@@ -494,11 +486,11 @@ class SaleController extends Controller
                     //SAFETY CHECK
 
                     if ($remainingToDeduct > 0) {
-                        throw ValidationException::withMessages(['items' =>'Stock deduction failed.']);
+                        throw ValidationException::withMessages(['items' => 'Stock deduction failed.']);
                     }
                 }
-               //UPDATE SALE TOTAL
-                $sale->update(['total' =>$total,'total_foreign' =>0,'balance_amount' =>$total,]);
+                //UPDATE SALE TOTAL
+                $sale->update(['total' => $total, 'total_foreign' => 0, 'balance_amount' => $total,]);
 
 
                 /*
@@ -516,18 +508,18 @@ class SaleController extends Controller
 
                 $journal = Accounting::postJournal([
 
-                    'branch_id' =>$branchId,
-                    'date' =>$sale->sale_date,
-                    'description' =>'Credit Sale - Invoice '. $sale->invoice_id,
+                    'branch_id' => $branchId,
+                    'date' => $sale->sale_date,
+                    'description' => 'Credit Sale - Invoice ' . $sale->invoice_id,
                     'entries' => [
                         //CUSTOMER RECEIVABLE
-                        ['ledger_id' =>6,'sub_ledger_id' =>$customer->receivable_sub_ledger_id,'debit' => $total, 'credit' => 0,],
+                        ['ledger_id' => 6, 'sub_ledger_id' => $customer->receivable_sub_ledger_id, 'debit' => $total, 'credit' => 0,],
                         // SALES
-                        ['ledger_id' =>11,'sub_ledger_id' =>null,'debit' =>0,'credit' =>$total,],
+                        ['ledger_id' => 11, 'sub_ledger_id' => null, 'debit' => 0, 'credit' => $total,],
                         // COGS
-                        ['ledger_id' => 13,'sub_ledger_id' =>null,'debit' =>$costOfGoodsSold,'credit' =>0,],
+                        ['ledger_id' => 13, 'sub_ledger_id' => null, 'debit' => $costOfGoodsSold, 'credit' => 0,],
                         //INVENTORY
-                        ['ledger_id' => 7,'sub_ledger_id' =>1,'debit' =>0,'credit' =>$costOfGoodsSold,],
+                        ['ledger_id' => 7, 'sub_ledger_id' => 1, 'debit' => 0, 'credit' => $costOfGoodsSold,],
                     ],
 
                 ]);
@@ -764,7 +756,7 @@ class SaleController extends Controller
                     'Export sale created successfully.'
                 );
         } catch (ValidationException $e) {
-           
+
             return back()
                 ->withErrors(
                     $e->errors()
@@ -772,7 +764,7 @@ class SaleController extends Controller
                 ->withInput();
         } catch (\Throwable $e) {
 
-    
+
             return back()
                 ->withInput()
                 ->with(
@@ -786,13 +778,20 @@ class SaleController extends Controller
     {
         $sale = Sale::with(['items'])->findOrFail($id);
 
+        if ((int) $sale->branch_id !== (int) auth()->user()->branch_id) {
+            abort(403, 'You are not allowed to view this sale.');
+        }
+
         return view('sales.show', compact('sale'));
     }
 
     public function invoice($id)
     {
-        $sale = Sale::with(['items.item', 'customer'])
-            ->findOrFail($id);
+        $sale = Sale::with(['items.item', 'customer'])->findOrFail($id);
+
+        if ((int) $sale->branch_id !== (int) auth()->user()->branch_id) {
+            abort(403, 'You are not allowed to view this sale.');
+        }
 
         /*
     |--------------------------------------------------------------------------
@@ -932,6 +931,10 @@ class SaleController extends Controller
             'items.item'
         ])->findOrFail($id);
 
+        if ((int) $sale->branch_id !== (int) auth()->user()->branch_id) {
+            abort(403, 'You are not allowed to view this sale.');
+        }
+
         $groupedItems = $sale->items
             ->groupBy('item_id')
             ->map(function ($rows) {
@@ -958,6 +961,10 @@ class SaleController extends Controller
     {
         $sale = Sale::with('items')->findOrFail($id);
 
+        if ((int) $sale->branch_id !== (int) auth()->user()->branch_id) {
+            abort(403, 'You are not allowed to edit this sale.');
+        }
+
         return view('sales.edit', [
             'sale' => $sale,
             'customers' => Customer::all(),
@@ -968,6 +975,10 @@ class SaleController extends Controller
     public function editExport($id)
     {
         $sale = Sale::with('items')->findOrFail($id);
+
+        if ((int) $sale->branch_id !== (int) auth()->user()->branch_id) {
+            abort(403, 'You are not allowed to edit this sale.');
+        }
 
         return view('sales.export_edit', [
             'sale' => $sale,
@@ -1004,57 +1015,60 @@ class SaleController extends Controller
 
                 $branchId = auth()->user()->branch_id;
                 $sale = Sale::lockForUpdate()->findOrFail($id);
+                if ((int) $sale->branch_id !== (int) auth()->user()->branch_id) {
+                    abort(403, 'You are not allowed to update this sale.');
+                }
                 $customer = Customer::lockForUpdate()->findOrFail($request->customer_id);
                 $oldSaleItems = SaleItem::where('sale_id', $sale->id)->lockForUpdate()->get();
 
                 foreach ($oldSaleItems as $oldItem) {
-                    $fifoItems = SaleItemFifo::where('sale_item_id',$oldItem->id)->lockForUpdate()->get();
+                    $fifoItems = SaleItemFifo::where('sale_item_id', $oldItem->id)->lockForUpdate()->get();
                     //FIFO RECORD SHOULD EXIST
                     if ($fifoItems->isEmpty()) {
-                        throw new \Exception('FIFO allocation not found for Sale Item ID '. $oldItem->id);
+                        throw new \Exception('FIFO allocation not found for Sale Item ID ' . $oldItem->id);
                     }
-                  //RESTORE EACH EXACT PURCHASE BATCH
+                    //RESTORE EACH EXACT PURCHASE BATCH
                     foreach ($fifoItems as $fifo) {
                         $purchaseItem = PurchaseItem::lockForUpdate()->find($fifo->purchase_item_id);
                         if (!$purchaseItem) {
-                            throw new \Exception('Purchase Item ID '. $fifo->purchase_item_id. ' not found.');
+                            throw new \Exception('Purchase Item ID ' . $fifo->purchase_item_id . ' not found.');
                         }
-                       //RESTORE EXACT FIFO QUANTITY
-                        $purchaseItem->remaining_qty =(float) $purchaseItem->remaining_qty + (float) $fifo->qty;
+                        //RESTORE EXACT FIFO QUANTITY
+                        $purchaseItem->remaining_qty = (float) $purchaseItem->remaining_qty + (float) $fifo->qty;
                         $purchaseItem->save();
                     }
                 }
 
 
-              //DELETE OLD FIFO RECORDS, We have already restored their quantities above. New FIFO records will be created below.
+                //DELETE OLD FIFO RECORDS, We have already restored their quantities above. New FIFO records will be created below.
 
-                SaleItemFifo::whereIn('sale_item_id',$oldSaleItems->pluck('id') )->delete();
-          //REVERSE OLD JOURNAL
-             Accounting::reverse(Sale::class, $sale->id);
-            //DELETE OLD SALE ITEMS
-            SaleItem::where('sale_id',$sale->id)->delete();
-               //RESET TOTALS
+                SaleItemFifo::whereIn('sale_item_id', $oldSaleItems->pluck('id'))->delete();
+                //REVERSE OLD JOURNAL
+                Accounting::reverse(Sale::class, $sale->id);
+                //DELETE OLD SALE ITEMS
+                SaleItem::where('sale_id', $sale->id)->delete();
+                //RESET TOTALS
                 $total = 0;
                 $costOfGoodsSold = 0;
-             //PROCESS NEW POS ITEMS
+                //PROCESS NEW POS ITEMS
 
                 foreach ($request->items as $row) {
 
-                   // Read group_key 5|100
-                    $parts = explode('|',$row['group_key']);
+                    // Read group_key 5|100
+                    $parts = explode('|', $row['group_key']);
 
                     if (count($parts) < 2) {
-                        throw ValidationException::withMessages(['items' =>'Invalid item selection.']);
+                        throw ValidationException::withMessages(['items' => 'Invalid item selection.']);
                     }
-                    $itemId =(int) $parts[0];
-                    $costPrice =(float) $parts[1];
+                    $itemId = (int) $parts[0];
+                    $costPrice = (float) $parts[1];
                     $qtyRequested = (float) $row['qty'];
                     $salePrice = (float) $row['sale_price'];
 
-                   //FIFO: Oldest purchase_item first
-                    $batches = PurchaseItem::query()->where('item_id',$itemId)
-                        ->where('price',$costPrice)
-                        ->where('remaining_qty','>',0)
+                    //FIFO: Oldest purchase_item first
+                    $batches = PurchaseItem::query()->where('item_id', $itemId)
+                        ->where('price', $costPrice)
+                        ->where('remaining_qty', '>', 0)
                         ->orderBy('id')
                         ->lockForUpdate()
                         ->get();
@@ -1064,13 +1078,16 @@ class SaleController extends Controller
                 |--------------------------------------------------------------------------
                 */
 
-                    $availableQty = $batches->sum(function ($batch) { return (float)$batch->remaining_qty;});
-                   // STOCK CHECK
+                    $availableQty = $batches->sum(function ($batch) {
+                        return (float)$batch->remaining_qty;
+                    });
+                    // STOCK CHECK
                     if ($availableQty < $qtyRequested) {
                         $itemName = optional(Item::find($itemId))->name ?? "Item ID {$itemId}";
-                        throw ValidationException::withMessages(['items' =>
-                            "Not enough stock for {$itemName} ". "at cost price "
-                                . number_format($costPrice, 2). ". Available: ". number_format($availableQty,3)
+                        throw ValidationException::withMessages([
+                            'items' =>
+                            "Not enough stock for {$itemName} " . "at cost price "
+                                . number_format($costPrice, 2) . ". Available: " . number_format($availableQty, 3)
                                 . ", Required: "
                                 . number_format(
                                     $qtyRequested,
@@ -1084,15 +1101,17 @@ class SaleController extends Controller
                     //DEDUCT FIFO STOCK
                     foreach ($batches as $batch) {
 
-                        if ($remainingToDeduct <= 0) {break;}
+                        if ($remainingToDeduct <= 0) {
+                            break;
+                        }
                         $batchRemaining = (float)$batch->remaining_qty;
                         //FIFO QUANTITY
-                        $deductQty = min($batchRemaining,$remainingToDeduct);
-                     //SALE SUBTOTAL
+                        $deductQty = min($batchRemaining, $remainingToDeduct);
+                        //SALE SUBTOTAL
                         $saleSubtotal = $deductQty * $salePrice;
-                     // COGS
+                        // COGS
                         $batchCost = $deductQty * (float) $batch->price;
-                    //UPDATE PURCHASE STOCK
+                        //UPDATE PURCHASE STOCK
                         $batch->remaining_qty = $batchRemaining - $deductQty;
                         $batch->save();
                         /*
@@ -1108,8 +1127,8 @@ class SaleController extends Controller
                             'sale_id' => $sale->id,
                             'item_id' => $itemId,
                             'qty' => $deductQty,
-                            'sale_price' =>$salePrice,
-                            'base_price' =>$batch->price,
+                            'sale_price' => $salePrice,
+                            'base_price' => $batch->price,
                             'subtotal' => $saleSubtotal,
                             'sale_price_foreign' => 0,
                             'sub_total_foreign' => 0,
@@ -1131,7 +1150,7 @@ class SaleController extends Controller
                             'purchase_item_id' => $batch->id,
                             'qty' => $deductQty,
                             'unit_cost' => $batch->price,
-                            'total_cost' =>$batch->price,
+                            'total_cost' => $batch->price,
                         ]);
 
                         $total += $saleSubtotal;
@@ -1159,26 +1178,27 @@ class SaleController extends Controller
                     }
                 }
 
-                $sale->update(['customer_id' =>$customer->id,
+                $sale->update([
+                    'customer_id' => $customer->id,
                     'total' => $total,
                     'total_foreign' => 0,
                     'balance_amount' => $total,
-                    'cost_of_goods_sold' =>$costOfGoodsSold,
+                    'cost_of_goods_sold' => $costOfGoodsSold,
                 ]);
 
                 $journal = Accounting::postJournal([
                     'branch_id' => $branchId,
                     'date' => $sale->sale_date,
-                    'description' => 'Credit Sale - Invoice '. $sale->invoice_id,
+                    'description' => 'Credit Sale - Invoice ' . $sale->invoice_id,
                     'entries' => [
-                    //CUSTOMER RECEIVABLE
-                        ['ledger_id' =>3,'sub_ledger_id' =>$customer->receivable_sub_ledger_id,'debit' =>$total,'credit' =>0,],
-                    //SALES
-                        ['ledger_id' =>6,'sub_ledger_id' => null,'debit' => 0,'credit' => $total,],
-                    // COGS
-                        ['ledger_id' => 8,'sub_ledger_id' => null,'debit' => $costOfGoodsSold,'credit' =>0,],
-                    //INVENTORY
-                        ['ledger_id' =>4,'sub_ledger_id' =>1, 'debit' =>0,'credit' =>$costOfGoodsSold,],
+                        //CUSTOMER RECEIVABLE
+                        ['ledger_id' => 3, 'sub_ledger_id' => $customer->receivable_sub_ledger_id, 'debit' => $total, 'credit' => 0,],
+                        //SALES
+                        ['ledger_id' => 6, 'sub_ledger_id' => null, 'debit' => 0, 'credit' => $total,],
+                        // COGS
+                        ['ledger_id' => 8, 'sub_ledger_id' => null, 'debit' => $costOfGoodsSold, 'credit' => 0,],
+                        //INVENTORY
+                        ['ledger_id' => 4, 'sub_ledger_id' => 1, 'debit' => 0, 'credit' => $costOfGoodsSold,],
                     ],
 
                 ]);
@@ -1190,11 +1210,15 @@ class SaleController extends Controller
                     'action' => 'updated',
                 ]);
             });
-            return redirect()->route('sales.index')->with('success','Sale updated successfully.');
+            return redirect()->route('sales.index')->with('success', 'Sale updated successfully.');
         } catch (ValidationException $e) {
-            return back() ->withErrors( $e->errors())->withInput();
+            return back()->withErrors($e->errors())->withInput();
+        } catch (\Symfony\Component\HttpKernel\Exception\HttpException $e) {
+
+            // Allow 403/404 etc. to reach Laravel's error handler
+            throw $e;
         } catch (\Throwable $e) {
-            return back()->withInput()->with('error','Unable to update sale. Please try again.');
+            return back()->withInput()->with('error', 'Unable to update sale. Please try again.');
         }
     }
 
@@ -1213,6 +1237,9 @@ class SaleController extends Controller
         try {
             DB::transaction(function () use ($request, $id) {
                 $sale = Sale::lockForUpdate()->findOrFail($id);
+                if ((int) $sale->branch_id !== (int) auth()->user()->branch_id) {
+                    abort(403, 'You are not allowed to update this sale.');
+                }
                 $customer = Customer::lockForUpdate()->findOrFail($request->customer_id);
                 $oldItems = $sale->items()->lockForUpdate()->get();
 
@@ -1308,7 +1335,7 @@ class SaleController extends Controller
                         ['ledger_id' => 4, 'sub_ledger_id' => 1, 'debit' => 0, 'credit' => $cogs],
                     ],
                 ]);
-                
+
                 JournalEntryReference::create([
                     'journal_entry_id' => $journal->id,
                     'model_type' => Sale::class,
@@ -1320,6 +1347,10 @@ class SaleController extends Controller
             return redirect()->route('export-sales.index')->with('success', 'Export sale updated successfully.');
         } catch (ValidationException $e) {
             return back()->withErrors($e->errors())->withInput();
+        } catch (\Symfony\Component\HttpKernel\Exception\HttpException $e) {
+
+            // Allow 403/404 etc. to reach Laravel's error handler
+            throw $e;
         } catch (\Throwable $e) {
             return back()->withInput()->with('error', 'Unable to update export sale.');
         }
@@ -1333,6 +1364,10 @@ class SaleController extends Controller
 
                 $sale = Sale::lockForUpdate()
                     ->findOrFail($id);
+
+                if ((int) $sale->branch_id !== (int) auth()->user()->branch_id) {
+                    abort(403, 'You are not allowed to cancel this sale.');
+                }
 
                 $saleItems = SaleItem::where('sale_id', $sale->id)->lockForUpdate()->get();
 
@@ -1374,6 +1409,10 @@ class SaleController extends Controller
 
 
             return redirect()->route('sales.index')->with('success', 'Sale cancelled successfully.');
+        } catch (\Symfony\Component\HttpKernel\Exception\HttpException $e) {
+
+            // Allow 403/404 etc. to reach Laravel's error handler
+            throw $e;
         } catch (\Throwable $e) {
             return back()
                 ->with(
@@ -1422,8 +1461,11 @@ class SaleController extends Controller
 
             DB::transaction(function () use ($id) {
 
-                $sale = Sale::lockForUpdate()
-                    ->findOrFail($id);
+                $sale = Sale::lockForUpdate()->findOrFail($id);
+
+                if ((int) $sale->branch_id !== (int) auth()->user()->branch_id) {
+                    abort(403, 'You are not allowed to cancel this sale.');
+                }
 
                 $saleItems = SaleItem::where('sale_id', $sale->id)->lockForUpdate()->get();
 

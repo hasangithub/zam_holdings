@@ -66,7 +66,7 @@
 <div class="table-responsive">
 
 <table class="table table-bordered"
-       id="journalDetailsTable">
+       id="journalDetailsTable table-sm">
 
     <thead class="thead-light">
 

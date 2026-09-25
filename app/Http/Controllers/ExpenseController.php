@@ -20,7 +20,7 @@ class ExpenseController extends Controller
      */
     public function index()
     {
-        $expenses = Expense::with('category')
+        $expenses = Expense::with('category')->where('branch_id', auth()->user()->branch_id)
             ->whereHas('category', function ($q) {
                 $q->where('type', 'fixed');
             })
@@ -170,6 +170,10 @@ class ExpenseController extends Controller
             'paymentSubLedger',
         ])->findOrFail($expense->id);
 
+        if ((int) $expense->branch_id !== (int) auth()->user()->branch_id) {
+            abort(403, 'You are not allowed to view this expense.');
+        }
+
         $paymentSubLedgers = SubLedger::where('ledger_id', 1)->get();
 
         return view('expenses.show', compact(
@@ -184,6 +188,9 @@ class ExpenseController extends Controller
     public function edit($id)
     {
         $expense = Expense::findOrFail($id);
+        if ((int) $expense->branch_id !== (int) auth()->user()->branch_id) {
+            abort(403, 'You are not allowed to edit this expense.');
+        }
         $categories = ExpenseCategory::all();
         $cashBankSubLedgers = SubLedger::where('ledger_id', 1)
             ->orderBy('name')
@@ -222,6 +229,10 @@ class ExpenseController extends Controller
                 $branchId = auth()->user()->branch_id;
 
                 $expense = Expense::lockForUpdate()->findOrFail($id);
+
+                if ((int) $expense->branch_id !== (int) auth()->user()->branch_id) {
+                    abort(403, 'You are not allowed to update this expense.');
+                }
 
                 $category = ExpenseCategory::lockForUpdate()
                     ->findOrFail($request->expense_category_id);
@@ -332,6 +343,10 @@ class ExpenseController extends Controller
             return back()
                 ->withErrors($e->errors())
                 ->withInput();
+        } catch (\Symfony\Component\HttpKernel\Exception\HttpException $e) {
+
+            // Allow 403/404 etc. to reach Laravel's error handler
+            throw $e;
         } catch (\Throwable $e) {
 
             return back()
@@ -355,6 +370,10 @@ class ExpenseController extends Controller
 
                 $expense = Expense::lockForUpdate()->findOrFail($id);
 
+                if ((int) $expense->branch_id !== (int) auth()->user()->branch_id) {
+                    abort(403, 'You are not allowed to cancel this expense.');
+                }
+
                 if ($expense->status === 'cancelled') {
                     throw ValidationException::withMessages([
                         'expense' => 'Expense is already cancelled.'
@@ -373,6 +392,10 @@ class ExpenseController extends Controller
                 ->with('success', 'Expense cancelled successfully.');
         } catch (ValidationException $e) {
             return back()->withErrors($e->errors());
+        } catch (\Symfony\Component\HttpKernel\Exception\HttpException $e) {
+
+            // Allow 403/404 etc. to reach Laravel's error handler
+            throw $e;
         } catch (\Throwable $e) {
             return back()->with('error', 'Unable to cancel expense.');
         }
@@ -388,6 +411,10 @@ class ExpenseController extends Controller
             DB::transaction(function () use ($request, $id) {
 
                 $expense = Expense::lockForUpdate()->findOrFail($id);
+
+                if ((int) $expense->branch_id !== (int) auth()->user()->branch_id) {
+                    abort(403, 'You are not allowed to update this expense.');
+                }
 
                 if ($expense->status === 'cancelled') {
                     throw ValidationException::withMessages([
@@ -449,6 +476,10 @@ class ExpenseController extends Controller
             return back()
                 ->withErrors($e->errors())
                 ->withInput();
+        } catch (\Symfony\Component\HttpKernel\Exception\HttpException $e) {
+
+            // Allow 403/404 etc. to reach Laravel's error handler
+            throw $e;
         } catch (\Throwable $e) {
             return back()
                 ->with('error', 'Unable to mark expense as paid.');

@@ -15,7 +15,7 @@ class CustomerController extends Controller
 {
     public function index()
     {
-        $customers = Customer::latest()->get();
+        $customers = Customer::where('branch_id', auth()->user()->branch_id)->latest()->get();
         return view('customers.index', compact('customers'));
     }
 
@@ -73,12 +73,24 @@ class CustomerController extends Controller
     public function edit($id)
     {
         $customer = Customer::findOrFail($id);
+
+        if ((int) $customer->branch_id !== (int) auth()->user()->branch_id) {
+            abort(403, 'You are not allowed to edit this customer.');
+        }
+
         return view('customers.edit', compact('customer'));
     }
 
     public function update(Request $request, $id)
     {
-        Customer::findOrFail($id)->update($request->all());
+        $customer = Customer::findOrFail($id);
+
+        if ((int) $customer->branch_id !== (int) auth()->user()->branch_id) {
+            abort(403, 'You are not allowed to update this customer.');
+        }
+
+        $customer->update($request->all());
+
         return redirect()->route('customers.index');
     }
 
@@ -91,6 +103,10 @@ class CustomerController extends Controller
     public function statement(Request $request, $id)
     {
         $customer = Customer::findOrFail($id);
+
+        if ((int) $customer->branch_id !== (int) auth()->user()->branch_id) {
+            abort(403, 'You are not allowed to edit this customer.');
+        }
 
         $all = $request->boolean('all');
 

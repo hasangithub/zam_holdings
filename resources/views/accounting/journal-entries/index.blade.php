@@ -6,62 +6,62 @@
 
 <section class="content">
 
-<div class="container-fluid">
+    <div class="container-fluid">
 
-    @include('partials.alerts')
+        @include('partials.alerts')
 
 
-    <div class="card">
+        <div class="card">
 
-        <div class="card-header">
+            <div class="card-header">
 
-            <h3 class="card-title">
-                Journal Entry List
-            </h3>
+                <h3 class="card-title">
+                    Journal Entry List
+                </h3>
 
-            <div class="card-tools">
+                <div class="card-tools">
 
-              
+
 
                     <a href="{{ route('accounting.journal-entries.create') }}"
-                       class="btn btn-primary btn-sm">
+                        class="btn btn-primary btn-sm">
 
                         <i class="fas fa-plus"></i>
                         New Journal Entry
 
                     </a>
 
-               
+
+
+                </div>
 
             </div>
 
-        </div>
+
+            <div class="card-body table-responsive p-0">
+
+                <table class="table table-bordered table-hover table-erp">
+
+                    <thead>
+
+                        <tr>
+
+                            <th>ID</th>
+                            <th>Date</th>
+                            <th>Reference</th>
+                            <th>Branch</th>
+                            <th>Rows</th>
+                            <th>Created</th>
+                            <th width="150">Actions</th>
+
+                        </tr>
+
+                    </thead>
 
 
-        <div class="card-body table-responsive p-0">
+                    <tbody>
 
-            <table class="table table-bordered table-hover table-erp">
-
-                <thead>
-
-                    <tr>
-
-                        <th>ID</th>
-                        <th>Date</th>
-                        <th>Reference</th>
-                        <th>Branch</th>
-                        <th>Rows</th>
-                        <th>Created</th>
-                        <th width="150">Actions</th>
-
-                    </tr>
-
-                </thead>
-
-
-                <tbody>
-
-                    @forelse($journalEntries as $entry)
+                        @forelse($journalEntries as $entry)
 
                         <tr>
 
@@ -91,36 +91,44 @@
 
                             <td>
 
-                              
+                                <a href="{{ route('accounting.journal-entries.show', $entry) }}"
+                                    class="btn btn-info btn-xs"
+                                    title="View Journal">
+                                    <i class="fas fa-eye"></i>
+                                </a>
 
-                                    <a href="{{ route('accounting.journal-entries.edit', $entry) }}"
-                                       class="btn btn-sm btn-primary">
+                                @if($entry->is_manual)
+                                <span class="badge badge-primary">Manual</span>
 
-                                        <i class="fas fa-edit"></i>
+                                <a href="{{ route('accounting.journal-entries.edit', $entry) }}"
+                                    class="btn btn-warning btn-xs">
+                                    <i class="fas fa-edit"></i>
+                                </a>
+                                @else
+                                <span class="badge badge-secondary">Automatic</span>
+                                @endif
 
-                                    </a>
 
-                             
 
 
                                 @can('journal_entry.delete')
 
-                                    <form
-                                        action="{{ route('accounting.journal-entries.destroy', $entry) }}"
-                                        method="POST"
-                                        class="d-inline"
-                                        onsubmit="return confirm('Delete this journal entry?')">
+                                <form
+                                    action="{{ route('accounting.journal-entries.destroy', $entry) }}"
+                                    method="POST"
+                                    class="d-inline"
+                                    onsubmit="return confirm('Delete this journal entry?')">
 
-                                        @csrf
-                                        @method('DELETE')
+                                    @csrf
+                                    @method('DELETE')
 
-                                        <button class="btn btn-sm btn-danger">
+                                    <button class="btn btn-sm btn-danger">
 
-                                            <i class="fas fa-trash"></i>
+                                        <i class="fas fa-trash"></i>
 
-                                        </button>
+                                    </button>
 
-                                    </form>
+                                </form>
 
                                 @endcan
 
@@ -128,7 +136,7 @@
 
                         </tr>
 
-                    @empty
+                        @empty
 
                         <tr>
 
@@ -141,22 +149,22 @@
 
                         </tr>
 
-                    @endforelse
+                        @endforelse
 
-                </tbody>
+                    </tbody>
 
-            </table>
+                </table>
 
-        </div>
+            </div>
 
 
-        <div class="card-footer">
+            <div class="card-footer">
+
+            </div>
 
         </div>
 
     </div>
-
-</div>
 
 </section>
 

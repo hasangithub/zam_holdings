@@ -3,7 +3,7 @@
 @section('title','Expenses')
 
 @section('content')
-
+@include('partials.alerts')
 <div class="card">
 
     <div class="card-header">
