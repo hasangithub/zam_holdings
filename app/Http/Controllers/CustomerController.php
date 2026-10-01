@@ -33,12 +33,7 @@ class CustomerController extends Controller
 
         DB::transaction(function () use ($request) {
 
-            /*
-        |--------------------------------------------------------------------------
-        | Create Supplier
-        |--------------------------------------------------------------------------
-        */
-
+            $request->merge(['branch_id' => auth()->user()->branch_id]);
             $customer = Customer::create($request->all());
 
 
