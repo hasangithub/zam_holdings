@@ -94,7 +94,7 @@
 
         .company-name {
 
-            font-size: 22px;
+            font-size: 18px;
 
             font-weight: bold;
 
@@ -118,7 +118,7 @@
 
         .invoice-title {
 
-            font-size: 25px;
+            font-size: 18px;
 
             font-weight: bold;
 
@@ -418,7 +418,7 @@
 
                 <div class="company-name">
 
-                    {{ $companyProfile->title }}
+                    {{ $companyProfile->title ?? 'MR - ZAM HOLDINGS (PVT) LTD' }}
 
                 </div>
 

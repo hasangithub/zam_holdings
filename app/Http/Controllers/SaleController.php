@@ -1514,7 +1514,7 @@ class SaleController extends Controller
     {
         $request->validate([
             'company_profile_id' => [
-                'required',
+                'nullable',
                 'integer',
                 'exists:invoice_company_profiles,id',
             ],
@@ -1543,8 +1543,17 @@ class SaleController extends Controller
     |--------------------------------------------------------------------------
     */
 
-        $companyProfile = InvoiceCompanyProfile::where('status', true)
-            ->findOrFail($request->company_profile_id);
+        if ($request->filled('company_profile_id')) {
+
+            $companyProfile = InvoiceCompanyProfile::where('status', true)
+                ->findOrFail($request->company_profile_id);
+        } else {
+
+            $companyProfile = (object) [
+                'title' => 'MR - ZAM HOLDINGS (PVT) LTD',
+                'address' => '',
+            ];
+        }
 
 
         /*
@@ -1691,7 +1700,7 @@ class SaleController extends Controller
     {
         $request->validate([
             'company_profile_id' => [
-                'required',
+                'nullable',
                 'integer',
                 'exists:invoice_company_profiles,id',
             ],
@@ -1727,8 +1736,17 @@ class SaleController extends Controller
     |--------------------------------------------------------------------------
     */
 
-        $companyProfile = InvoiceCompanyProfile::where('status', true)
-            ->findOrFail($request->company_profile_id);
+        if ($request->filled('company_profile_id')) {
+
+            $companyProfile = InvoiceCompanyProfile::where('status', true)
+                ->findOrFail($request->company_profile_id);
+        } else {
+
+            $companyProfile = (object) [
+                'title' => 'MR - ZAM HOLDINGS (PVT) LTD',
+                'address' => '',
+            ];
+        }
 
 
         /*

@@ -58,7 +58,7 @@
         }
 
         .company-name {
-            font-size: 22px;
+            font-size: 18px;
             font-weight: bold;
             letter-spacing: .5px;
             margin-bottom: 5px;
@@ -71,7 +71,7 @@
         }
 
         .invoice-title {
-            font-size: 26px;
+            font-size: 18px;
             font-weight: bold;
             letter-spacing: 1px;
         }

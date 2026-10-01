@@ -180,7 +180,7 @@
             name="company_profile_id"
             class="form-control form-control-sm mr-2"
             style="width:300px;"
-            required>
+            >
 
             <option value="">
                 Select Invoice Company
