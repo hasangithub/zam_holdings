@@ -188,32 +188,17 @@ class SaleController extends Controller
 
                 $sale = Sale::create([
 
-                    'branch_id' =>
-                    $branchId,
-
-                    'customer_id' =>
-                    $customer->id,
-
-                    'sale_date' =>
-                    now(),
-
-                    'currency' =>
-                    'LKR',
-
-                    'exchange_rate' =>
-                    1,
-
-                    'total' =>
-                    0,
-
-                    'total_foreign' =>
-                    0,
-
+                    'branch_id' => $branchId,
+                    'customer_id' => $customer->id,
+                    'sale_date' => now(),
+                    'currency' => 'LKR',
+                    'exchange_rate' => 1,
+                    'total' => 0,
+                    'total_foreign' => 0,
                     'invoice_id' =>
                     $this->generateInvoiceId(
                         $customer->name
                     ),
-
                 ]);
 
 

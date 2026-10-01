@@ -130,14 +130,9 @@ class PackingUsageController extends Controller
                         $batch->save();
 
                         ExpenseDetailFifo::create([
-                            'expense_detail_id' =>
-                            $expenseDetail->id,
-
-                            'purchase_inventory_item_id' =>
-                            $batch->id,
-
+                            'expense_detail_id' => $expenseDetail->id,
+                            'purchase_inventory_item_id' => $batch->id,
                             'qty' => $deductQty,
-
                             'unit_cost' => $batchCost,
                         ]);
 
@@ -169,14 +164,14 @@ class PackingUsageController extends Controller
                     'entries' => [
 
                         [
-                            'ledger_id' => 11, // COGS
+                            'ledger_id' => 16, // COGS
                             'sub_ledger_id' => null, // Packing Material Cost
                             'debit' => $totalAmount,
                             'credit' => 0,
                         ],
 
                         [
-                            'ledger_id' => 4, // Inventory
+                            'ledger_id' => 7, // Inventory
                             'sub_ledger_id' => 2, // Packing Material Inventory
                             'debit' => 0,
                             'credit' => $totalAmount,
@@ -524,14 +519,14 @@ class PackingUsageController extends Controller
                     'entries' => [
 
                         [
-                            'ledger_id' => 11,
+                            'ledger_id' => 16,
                             'sub_ledger_id' => null,
                             'debit' => $totalAmount,
                             'credit' => 0,
                         ],
 
                         [
-                            'ledger_id' => 4,
+                            'ledger_id' => 7,
                             'sub_ledger_id' => 2,
                             'debit' => 0,
                             'credit' => $totalAmount,
@@ -645,7 +640,7 @@ class PackingUsageController extends Controller
 
                         // Reverse COGS
                         [
-                            'ledger_id' => 11,
+                            'ledger_id' => 16,
                             'sub_ledger_id' => null,
                             'debit' => 0,
                             'credit' => $expense->total_amount,
@@ -653,7 +648,7 @@ class PackingUsageController extends Controller
 
                         // Restore Inventory
                         [
-                            'ledger_id' => 4,
+                            'ledger_id' => 7,
                             'sub_ledger_id' => 2,
                             'debit' => $expense->total_amount,
                             'credit' => 0,
