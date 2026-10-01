@@ -118,6 +118,14 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/purchases/{purchase}/invoice', [PurchaseController::class, 'invoice'])->name('purchases.invoice');
    Route::get('/purchases/{purchase}/invoice/pdf',  [PurchaseController::class, 'invoicePdf'])->name('purchases.invoice.pdf');
     Route::get('/sales/{sale}/invoice', [SaleController::class, 'invoice'])->name('sales.invoice');
+    Route::get(
+    '/sales/{id}/invoice-pdf',
+    [SaleController::class, 'invoicePdf']
+)->name('sales.invoice.pdf');
+Route::get(
+    '/sales/{id}/export-invoice-pdf',
+    [SaleController::class, 'invoiceExportPdf']
+)->name('sales.export.invoice.pdf');
     Route::get('/export-sales/{sale}/invoice', [SaleController::class, 'invoiceExport'])->name('export-sales.invoice');
     Route::get('/stock-summary', [StockController::class, 'summary'])->name('stock.summary');
     Route::resource('purchase-inventories', PurchaseInventoryController::class);

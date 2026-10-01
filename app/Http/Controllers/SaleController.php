@@ -7,6 +7,7 @@ use App\Models\Sale;
 use App\Models\SaleItem;
 use App\Models\Customer;
 use App\Models\FreightService;
+use App\Models\InvoiceCompanyProfile;
 use App\Models\Item;
 use App\Models\JournalEntry;
 use App\Models\JournalEntryDetail;
@@ -14,6 +15,7 @@ use App\Models\JournalEntryReference;
 use App\Models\PurchaseItem;
 use App\Models\SaleItemFifo;
 use App\Models\SalesPayment;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -898,6 +900,8 @@ class SaleController extends Controller
             ->values();
 
 
+        $invoiceCompanyProfiles = InvoiceCompanyProfile::where('status', true)->get();
+
         return view('sales.invoice', compact(
             'sale',
             'groupedItems',
@@ -905,7 +909,8 @@ class SaleController extends Controller
             'currentInvoice',
             'currentPayment',
             'currentBalance',
-            'totalPayable'
+            'totalPayable',
+            'invoiceCompanyProfiles'
         ));
     }
 
@@ -915,6 +920,10 @@ class SaleController extends Controller
             'customer',
             'items.item'
         ])->findOrFail($id);
+
+        $invoiceCompanyProfiles = InvoiceCompanyProfile::where('status', true)
+            ->orderBy('title')
+            ->get();
 
         if ((int) $sale->branch_id !== (int) auth()->user()->branch_id) {
             abort(403, 'You are not allowed to view this sale.');
@@ -937,7 +946,7 @@ class SaleController extends Controller
 
         return view(
             'sales.export_invoice',
-            compact('sale', 'groupedItems')
+            compact('sale', 'groupedItems', 'invoiceCompanyProfiles')
         );
     }
 
@@ -1499,5 +1508,278 @@ class SaleController extends Controller
                     'Unable to cancel sale. Please try again.'
                 );
         }
+    }
+
+    public function invoicePdf(Request $request, $id)
+    {
+        $request->validate([
+            'company_profile_id' => [
+                'required',
+                'integer',
+                'exists:invoice_company_profiles,id',
+            ],
+        ]);
+
+        $sale = Sale::with([
+            'items.item',
+            'customer'
+        ])->findOrFail($id);
+
+
+        /*
+    |--------------------------------------------------------------------------
+    | Branch Security
+    |--------------------------------------------------------------------------
+    */
+
+        if ((int) $sale->branch_id !== (int) auth()->user()->branch_id) {
+            abort(403, 'You are not allowed to view this sale.');
+        }
+
+
+        /*
+    |--------------------------------------------------------------------------
+    | Company Profile
+    |--------------------------------------------------------------------------
+    */
+
+        $companyProfile = InvoiceCompanyProfile::where('status', true)
+            ->findOrFail($request->company_profile_id);
+
+
+        /*
+    |--------------------------------------------------------------------------
+    | Previous Sales
+    |--------------------------------------------------------------------------
+    */
+
+        $previousSalesTotal = Sale::where('customer_id', $sale->customer_id)
+            ->where('id', '<', $sale->id)
+            ->sum('total');
+
+
+        /*
+    |--------------------------------------------------------------------------
+    | Customer Payments
+    |--------------------------------------------------------------------------
+    */
+
+        $customerPayments = SalesPayment::where(
+            'customer_id',
+            $sale->customer_id
+        )->sum('amount');
+
+
+        /*
+    |--------------------------------------------------------------------------
+    | Previous Payments
+    |--------------------------------------------------------------------------
+    */
+
+        $previousPaymentsTotal = min(
+            $customerPayments,
+            $previousSalesTotal
+        );
+
+
+        /*
+    |--------------------------------------------------------------------------
+    | Previous Outstanding
+    |--------------------------------------------------------------------------
+    */
+
+        $previousOutstanding = max(
+            0,
+            $previousSalesTotal - $previousPaymentsTotal
+        );
+
+
+        /*
+    |--------------------------------------------------------------------------
+    | Current Invoice
+    |--------------------------------------------------------------------------
+    */
+
+        $currentInvoice = $sale->total;
+
+
+        /*
+    |--------------------------------------------------------------------------
+    | Current Payment
+    |--------------------------------------------------------------------------
+    */
+
+        $currentPayment = max(
+            0,
+            $customerPayments - $previousSalesTotal
+        );
+
+        $currentPayment = min(
+            $currentPayment,
+            $currentInvoice
+        );
+
+
+        /*
+    |--------------------------------------------------------------------------
+    | Current Balance
+    |--------------------------------------------------------------------------
+    */
+
+        $currentBalance = max(
+            0,
+            $currentInvoice - $currentPayment
+        );
+
+
+        /*
+    |--------------------------------------------------------------------------
+    | Total Payable
+    |--------------------------------------------------------------------------
+    */
+
+        $totalPayable =
+            $previousOutstanding +
+            $currentInvoice;
+
+
+        /*
+    |--------------------------------------------------------------------------
+    | Group Same Items
+    |--------------------------------------------------------------------------
+    */
+
+        $groupedItems = $sale->items
+            ->groupBy('item_id')
+            ->map(function ($rows) {
+
+                return (object) [
+                    'item'       => $rows->first()->item,
+                    'qty'        => $rows->sum('qty'),
+                    'sale_price' => $rows->first()->sale_price,
+                    'subtotal'   => $rows->sum('subtotal'),
+                ];
+            })
+            ->values();
+
+
+        /*
+    |--------------------------------------------------------------------------
+    | Generate PDF
+    |--------------------------------------------------------------------------
+    */
+
+        $pdf = Pdf::loadView('sales.invoice-pdf', compact(
+            'sale',
+            'groupedItems',
+            'previousOutstanding',
+            'currentInvoice',
+            'currentPayment',
+            'currentBalance',
+            'totalPayable',
+            'companyProfile'
+        ));
+
+        $pdf->setPaper('A4', 'portrait');
+
+        return $pdf->stream(
+            'Invoice-' . $sale->id . '.pdf'
+        );
+    }
+
+    public function invoiceExportPdf(Request $request, $id)
+    {
+        $request->validate([
+            'company_profile_id' => [
+                'required',
+                'integer',
+                'exists:invoice_company_profiles,id',
+            ],
+        ]);
+
+
+        /*
+    |--------------------------------------------------------------------------
+    | Sale
+    |--------------------------------------------------------------------------
+    */
+
+        $sale = Sale::with([
+            'customer',
+            'items.item'
+        ])->findOrFail($id);
+
+
+        /*
+    |--------------------------------------------------------------------------
+    | Branch Security
+    |--------------------------------------------------------------------------
+    */
+
+        if ((int) $sale->branch_id !== (int) auth()->user()->branch_id) {
+            abort(403, 'You are not allowed to view this sale.');
+        }
+
+
+        /*
+    |--------------------------------------------------------------------------
+    | Company Profile
+    |--------------------------------------------------------------------------
+    */
+
+        $companyProfile = InvoiceCompanyProfile::where('status', true)
+            ->findOrFail($request->company_profile_id);
+
+
+        /*
+    |--------------------------------------------------------------------------
+    | Group Same Items
+    |--------------------------------------------------------------------------
+    */
+
+        $groupedItems = $sale->items
+            ->groupBy('item_id')
+            ->map(function ($rows) {
+
+                $first = $rows->first();
+
+                return (object) [
+                    'item' => $first->item,
+
+                    'qty' => $rows->sum('qty'),
+
+                    'sale_price_foreign' =>
+                    $rows->sum('sub_total_foreign')
+                        / max($rows->sum('qty'), 1),
+
+                    'sub_total_foreign' =>
+                    $rows->sum('sub_total_foreign'),
+                ];
+            })
+            ->values();
+
+
+        /*
+    |--------------------------------------------------------------------------
+    | Generate PDF
+    |--------------------------------------------------------------------------
+    */
+
+        $pdf = Pdf::loadView(
+            'sales.export-invoice-pdf',
+            compact(
+                'sale',
+                'groupedItems',
+                'companyProfile'
+            )
+        );
+
+
+        $pdf->setPaper('A4', 'portrait');
+
+
+        return $pdf->stream(
+            'Export-Invoice-' . $sale->id . '.pdf'
+        );
     }
 }

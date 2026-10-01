@@ -5,7 +5,6 @@
 @section('content')
 
 <style>
-
     body {
         background: #f4f6f9;
     }
@@ -15,7 +14,7 @@
         margin: 20px auto;
         background: #fff;
         padding: 40px;
-        box-shadow: 0 2px 10px rgba(0,0,0,.08);
+        box-shadow: 0 2px 10px rgba(0, 0, 0, .08);
     }
 
     .company-logo {
@@ -166,24 +165,50 @@
         }
 
     }
-
 </style>
 
 
 <div class="no-print mb-3">
 
-    <button
-        type="button"
-        onclick="window.print()"
-        class="btn btn-dark btn-sm">
+    <form
+        action="{{ route('sales.export.invoice.pdf', $sale->id) }}"
+        method="GET"
+        target="_blank"
+        class="d-flex align-items-center">
 
-        <i class="fas fa-print"></i>
-        Print Invoice
+        <select
+            name="company_profile_id"
+            class="form-control form-control-sm mr-2"
+            style="width:300px;"
+            required>
 
-    </button>
+            <option value="">
+                Select Invoice Company
+            </option>
+
+            @foreach($invoiceCompanyProfiles as $profile)
+
+            <option value="{{ $profile->id }}">
+                {{ $profile->title }}
+            </option>
+
+            @endforeach
+
+        </select>
+
+
+        <button
+            type="submit"
+            class="btn btn-dark btn-sm">
+
+            <i class="fas fa-file-pdf"></i>
+            Print Invoice
+
+        </button>
+
+    </form>
 
 </div>
-
 
 <div class="invoice-wrapper">
 
@@ -409,45 +434,45 @@
 
             @foreach($groupedItems as $key => $row)
 
-                <tr>
+            <tr>
 
-                    <td class="text-center">
-                        {{ $key + 1 }}
-                    </td>
+                <td class="text-center">
+                    {{ $key + 1 }}
+                </td>
 
-                    <td>
-                        {{ $row->item->code ?? '-' }}
-                    </td>
+                <td>
+                    {{ $row->item->code ?? '-' }}
+                </td>
 
-                    <td>
-                        <strong>
-                            {{ $row->item->name ?? '-' }}
-                        </strong>
-                    </td>
+                <td>
+                    <strong>
+                        {{ $row->item->name ?? '-' }}
+                    </strong>
+                </td>
 
-                    <td class="text-right">
-                        {{ number_format($row->qty, 3) }}
-                    </td>
+                <td class="text-right">
+                    {{ number_format($row->qty, 3) }}
+                </td>
 
-                    <td class="text-right">
+                <td class="text-right">
 
-                        {{ number_format(
+                    {{ number_format(
                             $row->sale_price_foreign,
                             2
                         ) }}
 
-                    </td>
+                </td>
 
-                    <td class="text-right">
+                <td class="text-right">
 
-                        {{ number_format(
+                    {{ number_format(
                             $row->sub_total_foreign,
                             2
                         ) }}
 
-                    </td>
+                </td>
 
-                </tr>
+            </tr>
 
             @endforeach
 

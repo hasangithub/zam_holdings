@@ -176,15 +176,44 @@
 
 <div class="no-print mb-3">
 
-    <button
-        type="button"
-        onclick="window.print()"
-        class="btn btn-dark btn-sm">
+    <form
+        action="{{ route('sales.invoice.pdf', $sale->id) }}"
+        method="GET"
+        target="_blank"
+        class="d-flex align-items-center"
+    >
 
-        <i class="fas fa-print"></i>
-        Print Invoice
+        <select
+            name="company_profile_id"
+            class="form-control form-control-sm mr-2"
+            style="width: 300px;"
+            required
+        >
 
-    </button>
+            <option value="">
+                Select Invoice Company
+            </option>
+
+            @foreach($invoiceCompanyProfiles as $profile)
+
+                <option value="{{ $profile->id }}">
+                    {{ $profile->title }}
+                </option>
+
+            @endforeach
+
+        </select>
+
+
+        <button
+            type="submit"
+            class="btn btn-dark btn-sm"
+        >
+            <i class="fas fa-file-pdf"></i>
+            Print Invoice
+        </button>
+
+    </form>
 
 </div>
 
