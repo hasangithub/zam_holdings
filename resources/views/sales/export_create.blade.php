@@ -100,17 +100,13 @@
                         <div class="row">
 
                             <div class="col-md-6">
-                                <label>consignor</label>
-                                <select name="consignor" class="form-control form-control-sm">
-                                    <option value="">Select Consignor</option>
-
-                                    @foreach(\App\Models\Sale::CONSIGNORS as $id => $name)
-                                    <option value="{{ $id }}"
-                                        {{ old('consignor') == $id ? 'selected' : '' }}>
-                                        {{ $name }}
-                                    </option>
-                                    @endforeach
-                                </select>
+                                <label for="airway_no">Airway Bill No</label>
+                                <input
+                                    type="text"
+                                    name="airway_no"
+                                    id="airway_no"
+                                    class="form-control form-control-sm"
+                                    value="{{ old('airway_no') }}">
                             </div>
 
 
@@ -140,7 +136,7 @@
                             <div class="col-md-6">
                                 <label>Country of Orgin</label>
                                 <input type="text"
-                                    name="country_of_orgin"
+                                    name="country_of_origin"
                                     class="form-control form-control-sm"
                                     required>
                             </div>
