@@ -14,7 +14,7 @@
     </div>
 
     <div class="card-body table-responsive">
-        <table id="categoriesTable" class="table table-bordered table-sm">
+        <table id="categoriesTable" class="table table-bordered table-sm table-erp">
             <thead>
                 <tr>
                     <th>#</th>

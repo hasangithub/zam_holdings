@@ -3,7 +3,7 @@
 @section('title', 'Create Category')
 
 @section('content')
-
+@include('partials.alerts')
 <div class="row justify-content-center">
 
     <div class="col-lg-12">

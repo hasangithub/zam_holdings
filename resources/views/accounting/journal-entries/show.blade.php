@@ -60,12 +60,16 @@
             {{-- JOURNAL DETAILS --}}
             <div class="table-responsive">
 
-                <table class="table table-bordered table-sm mb-0">
+                <table class="table table-bordered table-sm mb-0 table-erp">
 
                     <thead class="thead-dark">
                         <tr>
                             <th style="width: 5%;" class="text-center">
                                 #
+                            </th>
+
+                             <th style="width: 25%;">
+                                Account
                             </th>
 
                             <th style="width: 25%;">
@@ -106,6 +110,10 @@
                                     {{ $index + 1 }}
                                 </td>
 
+                                 <td>
+                                    {{ $detail->ledger->accountGroup->name ?? '-' }}
+                                </td>
+
                                 <td>
                                     {{ $detail->ledger->name ?? '-' }}
                                 </td>
@@ -132,7 +140,7 @@
 
                         <tr>
 
-                            <td colspan="3" class="text-right">
+                            <td colspan="4" class="text-right">
                                 Total
                             </td>
 
@@ -148,7 +156,7 @@
 
                         <tr>
 
-                            <td colspan="3" class="text-right">
+                            <td colspan="4" class="text-right">
                                 Difference
                             </td>
 

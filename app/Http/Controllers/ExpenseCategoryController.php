@@ -67,7 +67,7 @@ class ExpenseCategoryController extends Controller
                 $currentLiability = AccountGroup::where('account_type_id', $liabilityType->id)
                     ->where('name', 'Current Liabilities')->first();
 
-                $accruedExpense = Ledger::where('name', 'Accrued Expense')
+                $accruedExpense = Ledger::where('name', 'Accrued Expenses')
                     ->where('account_group_id', $currentLiability->id)->first();
 
 
@@ -90,6 +90,7 @@ class ExpenseCategoryController extends Controller
                     'account_group_id' => $operatingExpenses->id,
                     'name' => $request->name,
                 ]);
+
 
                 $currentLiabilitySubLedger = SubLedger::create([
                     'ledger_id' => $accruedExpense->id,

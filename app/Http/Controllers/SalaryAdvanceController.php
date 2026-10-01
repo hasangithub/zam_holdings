@@ -179,10 +179,7 @@ class SalaryAdvanceController extends Controller
         |--------------------------------------------------------------------------
         */
 
-        $cashBankLedger = Ledger::where(
-            'id',
-            '1'
-        )->firstOrFail();
+        $cashBankLedger = Ledger::where('id', '1')->firstOrFail();
 
         $paymentAccount = SubLedger::where(
             'id',
@@ -221,12 +218,8 @@ class SalaryAdvanceController extends Controller
 
             $journal = JournalEntry::create([
                 'branch_id' => auth()->user()->branch_id,
-
                 'journal_date' => $request->advance_date,
-
-                'description' =>
-                    'Salary Advance - Employee',
-
+                'description' => 'Salary Advance - Employee',
                 'created_by' => auth()->id(),
             ]);
 
@@ -268,42 +261,17 @@ class SalaryAdvanceController extends Controller
                 'credit' => $request->amount,
             ]);
 
-            /*
-            |--------------------------------------------------------------------------
-            | Salary Advance
-            |--------------------------------------------------------------------------
-            */
-
             SalaryAdvance::create([
-                'branch_id' =>
-                    auth()->user()->branch_id,
-
-                'user_id' =>
-                    $request->employee_id,
-
-                'advance_date' =>
-                    $request->advance_date,
-
-                'amount' =>
-                    $request->amount,
-
-                'salary_advance_sub_ledger_id' =>
-                    1,
-
-                'payment_sub_ledger_id' =>
-                    $paymentAccount->id,
-
-                'journal_entry_id' =>
-                    $journal->id,
-
-                'status' =>
-                    'pending',
-
-                'description' =>
-                    $request->description,
-
-                'created_by' =>
-                    auth()->id(),
+                'branch_id' => auth()->user()->branch_id,
+                'user_id' => $request->employee_id,
+                'advance_date' => $request->advance_date,
+                'amount' => $request->amount,
+                'salary_advance_sub_ledger_id' => null,
+                'payment_sub_ledger_id' => $paymentAccount->id,
+                'journal_entry_id' => $journal->id,
+                'status' => 'pending',
+                'description' => $request->description,
+                'created_by' => auth()->id(),
             ]);
         });
 
@@ -386,22 +354,10 @@ class SalaryAdvanceController extends Controller
         |--------------------------------------------------------------------------
         */
 
-        $cashBankLedger = Ledger::where(
-            'id',
-            1
-        )->firstOrFail();
+        $cashBankLedger = Ledger::where('id', 1)->firstOrFail();
 
-        $paymentAccounts = SubLedger::where(
-            'ledger_id',
-            $cashBankLedger->id
-        )
-        ->where(
-            'branch_id',
-            auth()->user()->branch_id
-        )
-       
-        ->orderBy('name')
-        ->get();
+        $paymentAccounts = SubLedger::where('ledger_id', $cashBankLedger->id)->where('branch_id', auth()->user()->branch_id)
+       ->orderBy('name')->get();
 
         return view(
             'salary-advances.return',
@@ -431,11 +387,8 @@ class SalaryAdvanceController extends Controller
             abort(403);
         }
 
-        $returnedAmount =
-            $salaryAdvance->payments()->sum('amount');
-
-        $outstanding =
-            $salaryAdvance->amount - $returnedAmount;
+        $returnedAmount = $salaryAdvance->payments()->sum('amount');
+        $outstanding = $salaryAdvance->amount - $returnedAmount;
 
         if ($outstanding <= 0) {
             return back()->withErrors([
@@ -474,42 +427,10 @@ class SalaryAdvanceController extends Controller
             ],
         ]);
 
-        /*
-        |--------------------------------------------------------------------------
-        | Salary Advance Account
-        |--------------------------------------------------------------------------
-        */
+        $cashBankLedger = Ledger::where('id', 1)->firstOrFail();
 
-        $salaryAdvanceSubLedger =
-            SubLedger::findOrFail(
-                $salaryAdvance->salary_advance_sub_ledger_id
-            );
-
-        /*
-        |--------------------------------------------------------------------------
-        | Payment Account Security
-        |--------------------------------------------------------------------------
-        */
-
-        $cashBankLedger = Ledger::where(
-            'id',
-            1
-        )->firstOrFail();
-
-        $paymentAccount = SubLedger::where(
-            'id',
-            $request->payment_sub_ledger_id
-        )
-        ->where(
-            'ledger_id',
-            $cashBankLedger->id
-        )
-        ->where(
-            'branch_id',
-            auth()->user()->branch_id
-        )
-       
-        ->first();
+        $paymentAccount = SubLedger::where('id', $request->payment_sub_ledger_id)
+        ->where('ledger_id', $cashBankLedger->id)->where('branch_id', auth()->user()->branch_id) ->first();
 
         if (!$paymentAccount) {
             return back()->withErrors([
@@ -521,7 +442,6 @@ class SalaryAdvanceController extends Controller
         DB::transaction(function () use (
             $request,
             $salaryAdvance,
-            $salaryAdvanceSubLedger,
             $paymentAccount,
             $outstanding
         ) {
@@ -554,18 +474,10 @@ class SalaryAdvanceController extends Controller
             */
 
             JournalEntryDetail::create([
-                'journal_entry_id' =>
-                    $journal->id,
-
-                'ledger_id' =>
-                    $paymentAccount->ledger_id,
-
-                'sub_ledger_id' =>
-                    $paymentAccount->id,
-
-                'debit' =>
-                    $request->amount,
-
+                'journal_entry_id' => $journal->id,
+                'ledger_id' => $paymentAccount->ledger_id,
+                'sub_ledger_id' => $paymentAccount->id,
+                'debit' => $request->amount,
                 'credit' => 0,
             ]);
 
@@ -576,19 +488,11 @@ class SalaryAdvanceController extends Controller
             */
 
             JournalEntryDetail::create([
-                'journal_entry_id' =>
-                    $journal->id,
-
-                'ledger_id' =>
-                    $salaryAdvanceSubLedger->ledger_id,
-
-                'sub_ledger_id' =>
-                    $salaryAdvanceSubLedger->id,
-
+                'journal_entry_id' => $journal->id,
+                'ledger_id' => 2,
+                'sub_ledger_id' => null,
                 'debit' => 0,
-
-                'credit' =>
-                    $request->amount,
+                'credit' => $request->amount,
             ]);
 
             /*
