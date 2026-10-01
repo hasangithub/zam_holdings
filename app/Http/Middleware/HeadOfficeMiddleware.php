@@ -14,7 +14,7 @@ class HeadOfficeMiddleware
             return redirect()->route('login');
         }
 
-        if ((int) auth()->user()->branch_id !== 3) {
+        if ((int) auth()->user()->branch_id !== 1) {
             abort(403, 'Only Head Office users can access this section.');
         }
 
