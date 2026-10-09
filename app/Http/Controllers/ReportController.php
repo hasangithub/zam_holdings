@@ -359,15 +359,11 @@ class ReportController extends Controller
         );
     }
 
-    public function customerSummary(Request $request)
+    public function customerSummaryLocal(Request $request)
     {
-        $type = $request->type;
-
         $customers = Customer::query()
             ->where('branch_id', auth()->user()->branch_id)
-            ->when($type, function ($q) use ($type) {
-                $q->where('customer_type', $type);
-            })
+            ->where('customer_type', 'local')
             ->withSum(['sales as total_sales' => function ($q) {
                 $q->where('status', '!=', 'cancelled');
             }], 'total')
@@ -384,9 +380,34 @@ class ReportController extends Controller
                 ($customer->total_paid ?? 0);
         });
 
-        return view('reports.customer-summary', compact(
-            'customers',
-            'type'
+        return view('reports.customer-summary-local', compact(
+            'customers'
+        ));
+    }
+
+    public function customerSummaryExport(Request $request)
+    {
+        $customers = Customer::query()
+            ->where('branch_id', auth()->user()->branch_id)
+           ->where('customer_type', 'export')
+            ->withSum(['sales as total_sales' => function ($q) {
+                $q->where('status', '!=', 'cancelled');
+            }], 'total')
+            ->withMax(['sales as last_sale_date' => function ($q) {
+                $q->where('status', '!=', 'cancelled');
+            }], 'sale_date')
+            ->withSum('payments as total_paid', 'amount')
+            ->orderBy('name')
+            ->get();
+
+        $customers->each(function ($customer) {
+            $customer->outstanding =
+                ($customer->total_sales ?? 0) -
+                ($customer->total_paid ?? 0);
+        });
+
+        return view('reports.customer-summary-export', compact(
+            'customers'
         ));
     }
 

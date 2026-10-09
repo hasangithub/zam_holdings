@@ -179,8 +179,7 @@
         <select
             name="company_profile_id"
             class="form-control form-control-sm mr-2"
-            style="width:300px;"
-            >
+            style="width:300px;">
 
             <option value="">
                 Select Invoice Company
@@ -223,9 +222,9 @@
             {{-- LOGO --}}
             <td style="width:20%; vertical-align:top;">
 
-                <img
-                    src="{{ asset('logo.png') }}"
-                    class="company-logo">
+                <img src="{{ asset('images/mrzam1.jpeg') }}"
+                    alt="Company Logo"
+                    style="width: 120px; height: auto;">
 
             </td>
 
@@ -441,7 +440,7 @@
                 </td>
 
                 <td>
-                    {{ $row->item->code ?? '-' }}
+                    {{ $row->item->item_code ?? '-' }}
                 </td>
 
                 <td>

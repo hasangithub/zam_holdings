@@ -104,7 +104,7 @@ class ExpenseController extends Controller
                         'payment_sub_ledger_id' => $request->payment_sub_ledger_id,
                     ]);
                 } else {
-                    $creditLedgerId = 16;
+                    $creditLedgerId = 9;
                     $creditSubLedgerId = $category->accrued_expense_sub_ledger_id;
                     $debitLedgerId = $category->ledger_id;
                     $debitSubLedgerId = null;
@@ -271,9 +271,8 @@ class ExpenseController extends Controller
                     $paymentSubLedgerId = $request->payment_sub_ledger_id;
                 } else {
 
-                    $creditLedgerId = 14;
-                    $creditSubLedgerId =
-                        $category->accrued_expense_sub_ledger_id;
+                    $creditLedgerId = 9;
+                    $creditSubLedgerId = $category->accrued_expense_sub_ledger_id;
 
                     $debitLedgerId = $category->ledger_id;
                     $debitSubLedgerId = null;
@@ -437,16 +436,14 @@ class ExpenseController extends Controller
                     'description' => 'Payment of Expense #' . $expense->id,
                     'entries' => [
                         [
-                            'ledger_id' => 16,
-                            'sub_ledger_id' =>
-                            $category->accrued_expense_sub_ledger_id,
+                            'ledger_id' => 9,
+                            'sub_ledger_id' => $category->accrued_expense_sub_ledger_id,
                             'debit' => $expense->total_amount,
                             'credit' => 0,
                         ],
                         [
                             'ledger_id' => 1,
-                            'sub_ledger_id' =>
-                            $request->payment_sub_ledger_id,
+                            'sub_ledger_id' => $request->payment_sub_ledger_id,
                             'debit' => 0,
                             'credit' => $expense->total_amount,
                         ],

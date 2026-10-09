@@ -109,19 +109,21 @@ Route::middleware(['auth'])->group(function () {
     Route::resource('purchases', PurchaseController::class);
     Route::post(
     '/purchases/{purchase}/amendment',
-    [PurchaseController::class, 'storeAmendment']
-)->name('purchases.amendment.store');
+    [PurchaseController::class, 'storeAmendment'])->name('purchases.amendment.store');
     Route::resource('sales', SaleController::class);
+    Route::get('suppliers/supplier-summary', [ReportController::class, 'supplierSummary'])->name('reports.supplier-summary');
     Route::resource('suppliers', SupplierController::class);
+    Route::get('/customers/local', [CustomerController::class, 'local'])->name('customers.local');
+    Route::get('/customers/export', [CustomerController::class, 'export'])->name('customers.export');
+    Route::get('customers/customer-summary-local', [ReportController::class, 'customerSummaryLocal'])->name('reports.customer-summary-local');
+    Route::get('customers/customer-summary-export', [ReportController::class, 'customerSummaryExport'])->name('reports.customer-summary-export');
     Route::resource('customers', CustomerController::class);
+
     Route::resource('fixed-assets', FixedAssetController::class);
     Route::get('/purchases/{purchase}/invoice', [PurchaseController::class, 'invoice'])->name('purchases.invoice');
    Route::get('/purchases/{purchase}/invoice/pdf',  [PurchaseController::class, 'invoicePdf'])->name('purchases.invoice.pdf');
     Route::get('/sales/{sale}/invoice', [SaleController::class, 'invoice'])->name('sales.invoice');
-    Route::get(
-    '/sales/{id}/invoice-pdf',
-    [SaleController::class, 'invoicePdf']
-)->name('sales.invoice.pdf');
+    Route::get('/sales/{id}/invoice-pdf',[SaleController::class, 'invoicePdf'])->name('sales.invoice.pdf');
 Route::get(
     '/sales/{id}/export-invoice-pdf',
     [SaleController::class, 'invoiceExportPdf']
@@ -172,9 +174,7 @@ Route::get(
         Route::post('/branch-comparison', [ReportController::class, 'generateBranchComparison'])
             ->name('reports.branch-comparison.generate');
 
-        Route::get('/customer-summary', [ReportController::class, 'customerSummary'])
-            ->name('reports.customer-summary');
-        Route::get('/supplier-summary', [ReportController::class, 'supplierSummary'])->name('reports.supplier-summary');
+       
     });
 
 

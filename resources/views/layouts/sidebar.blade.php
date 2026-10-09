@@ -13,7 +13,6 @@
                 data-widget="treeview"
                 role="menu"
                 data-accordion="false">
-
                 {{-- DASHBOARD --}}
                 <li class="nav-item">
                     <a href="/dashboard"
@@ -24,35 +23,115 @@
 
                     </a>
                 </li>
+                {{-- CUSTOMERS --}}
+                <li class="nav-item has-treeview
+                    {{ request()->is('customers*') || request()->is('customers*') ? 'menu-open' : '' }}">
 
+                    <a href="#"
+                        class="nav-link
+                       {{ request()->is('customers*') || request()->is('customers*') ? 'active' : '' }}">
+
+                        <i class="nav-icon fas fa-shopping-cart text-primary"></i>
+
+                        <p>
+                            Customers
+                            <i class="right fas fa-angle-left"></i>
+                        </p>
+
+                    </a>
+
+                    <ul class="nav nav-treeview">
+
+                        <li class="nav-item">
+
+                            <a href="/customers/export"
+                                class="nav-link {{ request()->is('customers/export') ? 'active' : '' }}">
+
+                                <i class="far fa-circle nav-icon text-primary"></i>
+                                <p>Export</p>
+
+                            </a>
+
+                        </li>
+
+                        <li class="nav-item">
+
+                            <a href="/customers/local"
+                                class="nav-link {{ request()->is('customers/local') ? 'active' : '' }}">
+
+                                <i class="far fa-circle nav-icon text-info"></i>
+                                <p>Local</p>
+
+                            </a>
+
+                        </li>
+
+                        <li class="nav-item">
+
+                            <a href="{{ route('reports.customer-summary-local') }}"
+                                class="nav-link {{ request()->routeIs('reports.customer-summary-local') ? 'active' : '' }}">
+
+                                <i class="far fa-circle nav-icon text-success"></i>
+                                <p>Customer Summary Local</p>
+
+                            </a>
+
+                        </li>
+
+                        <li class="nav-item">
+
+                            <a href="{{ route('reports.customer-summary-export') }}"
+                                class="nav-link {{ request()->routeIs('reports.customer-summary-export') ? 'active' : '' }}">
+
+                                <i class="far fa-circle nav-icon text-success"></i>
+                                <p>Customer Summary Export</p>
+
+                            </a>
+
+                        </li>
+
+                    </ul>
+
+                </li>
 
                 {{-- SUPPLIERS --}}
-                <li class="nav-item">
-                    <a href="/suppliers"
-                        class="nav-link {{ request()->is('suppliers*') ? 'active' : '' }}">
+                <li class="nav-item has-treeview
+                    {{ request()->is('suppliers*') || request()->is('reports.supplier-summary') ? 'menu-open' : '' }}">
 
-                        <i class="nav-icon fas fa-truck text-warning"></i>
-                        <p>Suppliers</p>
+                    <a href="#"
+                        class="nav-link
+                       {{ request()->is('suppliers*') || request()->is('reports.supplier-summary') ? 'active' : '' }}">
 
-                    </a>
-                </li>
+                        <i class="nav-icon fas fa-shopping-cart text-primary"></i>
 
-
-                {{-- CUSTOMERS --}}
-                <li class="nav-item">
-                    <a href="/customers"
-                        class="nav-link {{ request()->is('customers*') ? 'active' : '' }}">
-
-                        <i class="nav-icon fas fa-users text-success"></i>
-                        <p>Customers</p>
+                        <p>
+                            Suppliers
+                            <i class="right fas fa-angle-left"></i>
+                        </p>
 
                     </a>
+
+                    <ul class="nav nav-treeview">
+
+                        <li class="nav-item">
+                            <a href="/suppliers" class="nav-link {{ request()->is('suppliers') ? 'active' : '' }}">
+                                <i class="nav-icon fas fa-truck text-warning"></i>
+                                <p>Suppliers</p>
+                            </a>
+                        </li>
+
+                        <li class="nav-item">
+
+                            <a href="{{ route('reports.supplier-summary') }}"
+                                class="nav-link {{ request()->routeIs('reports.supplier-summary') ? 'active' : '' }}">
+
+                                <i class="far fa-circle nav-icon text-warning"></i>
+                                <p>Supplier Summary</p>
+                            </a>
+                        </li>
+                    </ul>
+
                 </li>
-
-
-                {{-- TRANSACTIONS --}}
-                <li class="nav-header">TRANSACTIONS</li>
-
 
                 {{-- PURCHASES --}}
                 <li class="nav-item has-treeview
@@ -97,6 +176,51 @@
 
                         </li>
 
+                    </ul>
+
+                </li>
+
+                {{-- SALES --}}
+                <li class="nav-item has-treeview
+                    {{ request()->is('sales*') || request()->is('export-sales*') ? 'menu-open' : '' }}">
+
+                    <a href="#"
+                        class="nav-link
+                       {{ request()->is('sales*') || request()->is('export-sales*') ? 'active' : '' }}">
+
+                        <i class="nav-icon fas fa-cash-register text-success"></i>
+
+                        <p>
+                            Sales
+                            <i class="right fas fa-angle-left"></i>
+                        </p>
+
+                    </a>
+
+                    <ul class="nav nav-treeview">
+
+                        <li class="nav-item">
+
+                            <a href="/sales"
+                                class="nav-link {{ request()->is('sales*') && !request()->is('export-sales*') ? 'active' : '' }}">
+
+                                <i class="fas fa-store nav-icon text-success"></i>
+                                <p>Local Sales</p>
+
+                            </a>
+
+                        </li>
+
+                        <li class="nav-item">
+
+                            <a href="/export-sales/"
+                                class="nav-link {{ request()->is('export-sales*') ? 'active' : '' }}">
+
+                                <i class="fas fa-globe nav-icon text-primary"></i>
+                                <p>Export Sales</p>
+
+                            </a>
+                        </li>
                     </ul>
 
                 </li>
@@ -149,6 +273,19 @@
 
                 </li>
 
+                {{-- PACKING --}}
+                <li class="nav-item">
+
+                    <a href="/packing-usages"
+                        class="nav-link {{ request()->is('packing-usages*') ? 'active' : '' }}">
+
+                        <i class="nav-icon fas fa-boxes text-warning"></i>
+                        <p>Inventory Usage (Packing)</p>
+
+                    </a>
+
+                </li>
+
 
                 {{-- EXPENSE --}}
                 <li class="nav-item has-treeview
@@ -197,115 +334,6 @@
 
                 </li>
 
-
-                {{-- SALES --}}
-                <li class="nav-item has-treeview
-                    {{ request()->is('sales*') || request()->is('export-sales*') ? 'menu-open' : '' }}">
-
-                    <a href="#"
-                        class="nav-link
-                       {{ request()->is('sales*') || request()->is('export-sales*') ? 'active' : '' }}">
-
-                        <i class="nav-icon fas fa-cash-register text-success"></i>
-
-                        <p>
-                            Sales
-                            <i class="right fas fa-angle-left"></i>
-                        </p>
-
-                    </a>
-
-                    <ul class="nav nav-treeview">
-
-                        <li class="nav-item">
-
-                            <a href="/sales"
-                                class="nav-link {{ request()->is('sales*') && !request()->is('export-sales*') ? 'active' : '' }}">
-
-                                <i class="fas fa-store nav-icon text-success"></i>
-                                <p>Local Sales</p>
-
-                            </a>
-
-                        </li>
-
-                        <li class="nav-item">
-
-                            <a href="/export-sales/"
-                                class="nav-link {{ request()->is('export-sales*') ? 'active' : '' }}">
-
-                                <i class="fas fa-globe nav-icon text-primary"></i>
-                                <p>Export Sales</p>
-
-                            </a>
-
-                        </li>
-
-                        <li class="nav-item">
-
-                            <a href="/sales-profit-loss/"
-                                class="nav-link {{ request()->is('sales-profit-loss*') ? 'active' : '' }}">
-
-                                <i class="fas fa-chart-line nav-icon text-warning"></i>
-                                <p>Profit Prediction</p>
-
-                            </a>
-
-                        </li>
-
-                    </ul>
-
-                </li>
-
-
-                {{-- SHIPMENT PLANS --}}
-                <li class="nav-item has-treeview
-                    {{ request()->is('shipment-plans*') || request()->is('packings*') ? 'menu-open' : '' }}">
-
-                    <a href="#"
-                        class="nav-link
-                       {{ request()->is('shipment-plans*') || request()->is('packings*') ? 'active' : '' }}">
-
-                        <i class="nav-icon fas fa-shipping-fast text-info"></i>
-
-                        <p>
-                            Shipment Plans
-                            <i class="right fas fa-angle-left"></i>
-                        </p>
-
-                    </a>
-
-                    <ul class="nav nav-treeview">
-
-                        <li class="nav-item">
-
-                            <a href="/shipment-plans"
-                                class="nav-link {{ request()->is('shipment-plans*') ? 'active' : '' }}">
-
-                                <i class="fas fa-clipboard-list nav-icon text-info"></i>
-                                <p>Shipment Plans</p>
-
-                            </a>
-
-                        </li>
-
-                        <li class="nav-item">
-
-                            <a href="/packings"
-                                class="nav-link {{ request()->is('packings*') ? 'active' : '' }}">
-
-                                <i class="fas fa-box-open nav-icon text-warning"></i>
-                                <p>Shipment Packing</p>
-
-                            </a>
-
-                        </li>
-
-                    </ul>
-
-                </li>
-
-
                 {{-- FREIGHT SERVICES --}}
                 <li class="nav-item has-treeview
                     {{ request()->is('freight-services*') || request()->is('freights*') ? 'menu-open' : '' }}">
@@ -317,7 +345,7 @@
                         <i class="nav-icon fas fa-ship text-primary"></i>
 
                         <p>
-                            Freight Services
+                            Freight Accounts
                             <i class="right fas fa-angle-left"></i>
                         </p>
 
@@ -353,24 +381,29 @@
 
                 </li>
 
-
-                {{-- PACKING --}}
                 <li class="nav-item">
-
-                    <a href="/packing-usages"
-                        class="nav-link {{ request()->is('packing-usages*') ? 'active' : '' }}">
-
-                        <i class="nav-icon fas fa-boxes text-warning"></i>
-                        <p>Packing</p>
-
+                    <a href="{{ route('salary-advances.index') }}"
+                        class="nav-link {{ request()->routeIs('salary-advances.*') ? 'active' : '' }}">
+                        <i class="nav-icon fas fa-hand-holding-usd"></i>
+                        <p>Salary Advances</p>
                     </a>
-
                 </li>
 
+                <li class="nav-item">
+                    <a href="{{ route('cashbooks.index') }}"
+                        class="nav-link {{ request()->routeIs('cashbooks.*') ? 'active' : '' }}">
+                        <i class="nav-icon fas fa-book"></i>
+                        <p>Cash Book</p>
+                    </a>
+                </li>
 
-                {{-- REPORTS --}}
-                <li class="nav-header">REPORTS</li>
-
+                <li class="nav-item">
+                    <a href="{{ route('fixed-assets.index') }}"
+                        class="nav-link {{ request()->routeIs('fixed-assets.*') ? 'active' : '' }}">
+                        <i class="nav-icon fas fa-building text-primary"></i>
+                        <p>Fixed Assets</p>
+                    </a>
+                </li>
 
                 {{-- REPORTS --}}
                 <li class="nav-item has-treeview
@@ -392,6 +425,55 @@
                     </a>
 
                     <ul class="nav nav-treeview">
+
+                        <li class="nav-item">
+
+                            <a href="/sales-profit-loss/"
+                                class="nav-link {{ request()->is('sales-profit-loss*') ? 'active' : '' }}">
+
+                                <i class="fas fa-chart-line nav-icon text-warning"></i>
+                                <p>Local Sales</p>
+
+                            </a>
+
+                        </li>
+
+                        <li class="nav-item">
+
+                            <a href="/reports/invoice-profit-analysis"
+                                class="nav-link {{ request()->is('reports/invoice-profit-analysis') ? 'active' : '' }}">
+
+                                <i class="nav-icon fas fa-file-invoice-dollar text-success"></i>
+                                <p>Export Sales</p>
+
+                            </a>
+
+                        </li>
+
+
+                        <li class="nav-item">
+
+                            <a href="/shipment-plans"
+                                class="nav-link {{ request()->is('shipment-plans*') ? 'active' : '' }}">
+
+                                <i class="fas fa-clipboard-list nav-icon text-info"></i>
+                                <p>Shipment Plans</p>
+
+                            </a>
+
+                        </li>
+
+                        <li class="nav-item">
+
+                            <a href="/packings"
+                                class="nav-link {{ request()->is('packings*') ? 'active' : '' }}">
+
+                                <i class="fas fa-box-open nav-icon text-warning"></i>
+                                <p>Shipment Weight Verification</p>
+
+                            </a>
+
+                        </li>
 
                         <li class="nav-item">
 
@@ -429,7 +511,7 @@
 
                         </li>
 
-                         <li class="nav-item">
+                        <li class="nav-item">
 
                             <a href="{{ route('reports.general-ledger') }}"
                                 class="nav-link">
@@ -440,54 +522,6 @@
                             </a>
 
                         </li>
-
-                        <li class="nav-item">
-
-                            <a href="{{ route('reports.customer-summary') }}"
-                                class="nav-link {{ request()->routeIs('reports.customer-summary') ? 'active' : '' }}">
-
-                                <i class="far fa-circle nav-icon text-success"></i>
-                                <p>Customer Summary</p>
-
-                            </a>
-
-                        </li>
-
-                        <li class="nav-item">
-
-                            <a href="{{ route('reports.supplier-summary') }}"
-                                class="nav-link {{ request()->routeIs('reports.supplier-summary') ? 'active' : '' }}">
-
-                                <i class="far fa-circle nav-icon text-warning"></i>
-                                <p>Supplier Summary</p>
-
-                            </a>
-
-                        </li>
-
-                    </ul>
-
-                </li>
-
-
-                {{-- FREIGHT MANAGEMENT --}}
-                <li class="nav-item has-treeview
-                    {{ request()->is('freight-records*') || request()->is('landing-costs*') ? 'menu-open' : '' }}">
-
-                    <a href="#"
-                        class="nav-link
-                       {{ request()->is('freight-records*') || request()->is('landing-costs*') ? 'active' : '' }}">
-
-                        <i class="nav-icon fas fa-anchor text-primary"></i>
-
-                        <p>
-                            Freight Management
-                            <i class="right fas fa-angle-left"></i>
-                        </p>
-
-                    </a>
-
-                    <ul class="nav nav-treeview">
 
                         <li class="nav-item">
 
@@ -513,38 +547,21 @@
 
                         </li>
 
+                        <li class="nav-item">
+
+                            <a href="/reports/branch-comparison"
+                                class="nav-link {{ request()->is('reports/branch-comparison') ? 'active' : '' }}">
+
+                                <i class="nav-icon fas fa-code-branch text-info"></i>
+                                <p>Branch Weight Comparison</p>
+
+                            </a>
+
+                        </li>
+
                     </ul>
 
                 </li>
-
-
-                {{-- BRANCH COMPARISON --}}
-                <li class="nav-item">
-
-                    <a href="/reports/branch-comparison"
-                        class="nav-link {{ request()->is('reports/branch-comparison') ? 'active' : '' }}">
-
-                        <i class="nav-icon fas fa-code-branch text-info"></i>
-                        <p>Branch Comparison</p>
-
-                    </a>
-
-                </li>
-
-
-                {{-- INVOICE PROFIT --}}
-                <li class="nav-item">
-
-                    <a href="/reports/invoice-profit-analysis"
-                        class="nav-link {{ request()->is('reports/invoice-profit-analysis') ? 'active' : '' }}">
-
-                        <i class="nav-icon fas fa-file-invoice-dollar text-success"></i>
-                        <p>Invoice Profit Analysis</p>
-
-                    </a>
-
-                </li>
-
 
                 {{-- ACCOUNTING --}}
                 <li class="nav-item has-treeview
@@ -705,30 +722,6 @@
                     </ul>
 
                 </li>
-
-                <li class="nav-item">
-                    <a href="{{ route('fixed-assets.index') }}"
-                        class="nav-link {{ request()->routeIs('fixed-assets.*') ? 'active' : '' }}">
-                        <i class="nav-icon fas fa-building text-primary"></i>
-                        <p>Fixed Assets</p>
-                    </a>
-                </li>
-
-                <li class="nav-item">
-                    <a href="{{ route('cashbooks.index') }}"
-                        class="nav-link {{ request()->routeIs('cashbooks.*') ? 'active' : '' }}">
-                        <i class="nav-icon fas fa-book"></i>
-                        <p>Cash Book</p>
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a href="{{ route('salary-advances.index') }}"
-                        class="nav-link {{ request()->routeIs('salary-advances.*') ? 'active' : '' }}">
-                        <i class="nav-icon fas fa-hand-holding-usd"></i>
-                        <p>Salary Advances</p>
-                    </a>
-                </li>
-
             </ul>
 
         </nav>

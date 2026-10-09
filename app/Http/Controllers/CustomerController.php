@@ -13,10 +13,26 @@ use Illuminate\Validation\ValidationException;
 
 class CustomerController extends Controller
 {
-    public function index()
+    // Local customers
+    public function local()
     {
-        $customers = Customer::where('branch_id', auth()->user()->branch_id)->latest()->get();
-        return view('customers.index', compact('customers'));
+        $customers = Customer::where('branch_id', auth()->user()->branch_id)
+            ->where('customer_type', 'local')
+            ->latest()
+            ->get();
+
+        return view('customers.local', compact('customers'));
+    }
+
+    // Export customers
+    public function export()
+    {
+        $customers = Customer::where('branch_id', auth()->user()->branch_id)
+            ->where('customer_type', 'export')
+            ->latest()
+            ->get();
+
+        return view('customers.export', compact('customers'));
     }
 
     public function create()
@@ -56,13 +72,10 @@ class CustomerController extends Controller
             ]);
         });
 
-
-        return redirect()
-            ->route('customers.index')
-            ->with(
-                'success',
-                'Customer created successfully.'
-            );
+        if ($request->customer_type == 'export') {
+             return redirect()->route('customers.export')->with('success', 'Export Customer created successfully.');
+        }
+        return redirect()->route('customers.local')->with('success', 'Local Customer created successfully.');
     }
 
     public function edit($id)

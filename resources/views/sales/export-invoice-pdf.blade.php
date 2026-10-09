@@ -404,10 +404,9 @@
 
             <td class="logo-cell">
 
-                <img
-                    src="{{ public_path('logo.png') }}"
-                    class="company-logo"
-                >
+                 <img src="{{ public_path('images/mrzam1.jpeg') }}"
+                    alt="Company Logo"
+                    style="width: 120px; height: auto;">
 
             </td>
 
@@ -444,7 +443,7 @@
 
                 <div class="invoice-title">
 
-                    EXPORT INVOICE
+                     INVOICE
 
                 </div>
 
@@ -681,7 +680,7 @@
 
                     <td>
 
-                        {{ $row->item->code ?? '-' }}
+                        {{ $row->item->item_code ?? '-' }}
 
                     </td>
 

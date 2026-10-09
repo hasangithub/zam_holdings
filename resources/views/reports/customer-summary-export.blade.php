@@ -15,45 +15,7 @@
         </div>
 
         <div class="card-body">
-
-            {{-- FILTER --}}
-            <form method="GET" action="{{ route('reports.customer-summary') }}" class="mb-3">
-
-                <div class="row">
-
-                    <div class="col-md-4">
-                        <label>Customer Type</label>
-
-                        <select name="type" class="form-control">
-                            <option value="">All Customers</option>
-
-                            <option value="local"
-                                {{ request('type') == 'local' ? 'selected' : '' }}>
-                                Local
-                            </option>
-
-                            <option value="export"
-                                {{ request('type') == 'export' ? 'selected' : '' }}>
-                                Export
-                            </option>
-                        </select>
-                    </div>
-
-                    <div class="col-md-3 d-flex align-items-end">
-                        <button class="btn btn-primary mr-2">
-                            <i class="fas fa-search"></i> Filter
-                        </button>
-
-                        <a href="{{ route('reports.customer-summary') }}"
-                           class="btn btn-secondary">
-                            Reset
-                        </a>
-                    </div>
-
-                </div>
-
-            </form>
-
+    
             <div class="table-responsive">
 
                 <table class="table table-bordered table-hover table-sm table-erp">

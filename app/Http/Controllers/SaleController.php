@@ -899,6 +899,71 @@ class SaleController extends Controller
             })
             ->values();
 
+        /*
+|--------------------------------------------------------------------------
+| Group Parent + Child Items
+|--------------------------------------------------------------------------
+*/
+
+        $groupedItems = $groupedItems
+            ->groupBy(function ($row) {
+
+                // Parent item
+                if (is_null($row->item->parent_id)) {
+                    return $row->item->id;
+                }
+
+                // Child item → group under parent
+                return $row->item->parent_id;
+            })
+            ->map(function ($rows) {
+
+                // Find the parent row
+                $parentRow = $rows->first(function ($row) {
+                    return is_null($row->item->parent_id);
+                });
+
+                /*
+        |--------------------------------------------------------------------------
+        | Parent exists
+        |--------------------------------------------------------------------------
+        */
+
+                if ($parentRow) {
+
+                    // Parent + all children weights
+                    $totalWeight = $rows->sum('qty');
+
+                    return (object) [
+                        'item'       => $parentRow->item,
+                        'qty'        => $rows->sum('qty'),
+
+
+                        // Parent rate
+                        'sale_price' => $parentRow->sale_price,
+
+                        // Parent rate × combined weight
+                        'subtotal'   => $totalWeight * $parentRow->sale_price,
+                    ];
+                }
+
+                /*
+        |--------------------------------------------------------------------------
+        | Child exists without parent in this sale
+        |--------------------------------------------------------------------------
+        */
+
+                $first = $rows->first();
+
+                return (object) [
+                    'item'       => $first->item,
+                    'qty'        => $rows->sum('qty'),
+                    'sale_price' => $first->sale_price,
+                    'subtotal'   => $rows->sum('subtotal'),
+                ];
+            })
+            ->values();
+
 
         $invoiceCompanyProfiles = InvoiceCompanyProfile::where('status', true)->get();
 
@@ -939,6 +1004,63 @@ class SaleController extends Controller
                     'item' => $first->item,
                     'qty' => $rows->sum('qty'),
                     'sale_price_foreign' => $rows->sum('sub_total_foreign') / max($rows->sum('qty'), 1),
+                    'sub_total_foreign' => $rows->sum('sub_total_foreign'),
+                ];
+            })
+            ->values();
+
+        /*
+|--------------------------------------------------------------------------
+| Group Parent + Child Items
+|--------------------------------------------------------------------------
+*/
+
+        $groupedItems = $groupedItems
+            ->groupBy(function ($row) {
+
+                // Parent item
+                if (is_null($row->item->parent_id)) {
+                    return $row->item->id;
+                }
+
+                // Child item → group under parent
+                return $row->item->parent_id;
+            })
+            ->map(function ($rows) {
+
+                // Find parent item
+                $parentRow = $rows->first(function ($row) {
+                    return is_null($row->item->parent_id);
+                });
+
+                if ($parentRow) {
+
+                    // Parent + all children quantity
+                    $totalQty = $rows->sum('qty');
+
+                    // Use parent's foreign rate
+                    $parentRate = $parentRow->sale_price_foreign;
+
+                    return (object) [
+                        'item' => $parentRow->item,
+                        'qty' => $totalQty,
+                        'sale_price_foreign' => $parentRate,
+                        'sub_total_foreign' => $totalQty * $parentRate,
+                    ];
+                }
+
+                /*
+        |--------------------------------------------------------------------------
+        | Child without parent in this sale
+        |--------------------------------------------------------------------------
+        */
+
+                $first = $rows->first();
+
+                return (object) [
+                    'item' => $first->item,
+                    'qty' => $rows->sum('qty'),
+                    'sale_price_foreign' => $first->sale_price_foreign,
                     'sub_total_foreign' => $rows->sum('sub_total_foreign'),
                 ];
             })
@@ -1511,7 +1633,7 @@ class SaleController extends Controller
     }
 
     public function invoicePdf(Request $request, $id)
-    {
+    {  
         $request->validate([
             'company_profile_id' => [
                 'nullable',
@@ -1671,6 +1793,186 @@ class SaleController extends Controller
             })
             ->values();
 
+        /*
+|--------------------------------------------------------------------------
+| Group Parent + Child Items
+|--------------------------------------------------------------------------
+*/
+
+        $groupedItems = $groupedItems
+            ->groupBy(function ($row) {
+
+                // Parent item
+                if (is_null($row->item->parent_id)) {
+                    return $row->item->id;
+                }
+
+                // Child item → group under parent
+                return $row->item->parent_id;
+            })
+            ->map(function ($rows) {
+
+                // Find the parent row
+                $parentRow = $rows->first(function ($row) {
+                    return is_null($row->item->parent_id);
+                });
+
+                /*
+        |--------------------------------------------------------------------------
+        | Parent exists
+        |--------------------------------------------------------------------------
+        */
+
+                if ($parentRow) {
+
+                    // Parent + all children weights
+                    $totalWeight = $rows->sum('qty');
+
+                    return (object) [
+                        'item'       => $parentRow->item,
+                        'qty'        => $rows->sum('qty'),
+
+
+                        // Parent rate
+                        'sale_price' => $parentRow->sale_price,
+
+                        // Parent rate × combined weight
+                        'subtotal'   => $totalWeight * $parentRow->sale_price,
+                    ];
+                }
+
+                /*
+        |--------------------------------------------------------------------------
+        | Child exists without parent in this sale
+        |--------------------------------------------------------------------------
+        */
+
+                $first = $rows->first();
+
+                return (object) [
+                    'item'       => $first->item,
+                    'qty'        => $rows->sum('qty'),
+                    'sale_price' => $first->sale_price,
+                    'subtotal'   => $rows->sum('subtotal'),
+                ];
+            })
+            ->values();
+
+
+        $invoiceCompanyProfiles = InvoiceCompanyProfile::where('status', true)->get();
+
+                /*
+    |--------------------------------------------------------------------------
+    | Generate PDF
+    |--------------------------------------------------------------------------
+    */
+
+        $pdf = Pdf::loadView('sales.invoice-pdf', compact(
+            'sale',
+            'groupedItems',
+            'previousOutstanding',
+            'currentInvoice',
+            'currentPayment',
+            'currentBalance',
+            'totalPayable',
+            'companyProfile'
+        ));
+
+        $pdf->setPaper('A4', 'portrait');
+
+        return $pdf->stream(
+            'Invoice-' . $sale->id . '.pdf'
+        );
+    }
+
+    public function invoiceExportold($id)
+    {
+        $sale = Sale::with([
+            'customer',
+            'items.item'
+        ])->findOrFail($id);
+
+        $invoiceCompanyProfiles = InvoiceCompanyProfile::where('status', true)
+            ->orderBy('title')
+            ->get();
+
+        if ((int) $sale->branch_id !== (int) auth()->user()->branch_id) {
+            abort(403, 'You are not allowed to view this sale.');
+        }
+
+        $groupedItems = $sale->items
+            ->groupBy('item_id')
+            ->map(function ($rows) {
+
+                $first = $rows->first();
+
+                return (object) [
+                    'item' => $first->item,
+                    'qty' => $rows->sum('qty'),
+                    'sale_price_foreign' => $rows->sum('sub_total_foreign') / max($rows->sum('qty'), 1),
+                    'sub_total_foreign' => $rows->sum('sub_total_foreign'),
+                ];
+            })
+            ->values();
+
+        /*
+|--------------------------------------------------------------------------
+| Group Parent + Child Items
+|--------------------------------------------------------------------------
+*/
+
+        $groupedItems = $groupedItems
+            ->groupBy(function ($row) {
+
+                // Parent item
+                if (is_null($row->item->parent_id)) {
+                    return $row->item->id;
+                }
+
+                // Child item → group under parent
+                return $row->item->parent_id;
+            })
+            ->map(function ($rows) {
+
+                // Find parent item
+                $parentRow = $rows->first(function ($row) {
+                    return is_null($row->item->parent_id);
+                });
+
+                if ($parentRow) {
+
+                    // Parent + all children quantity
+                    $totalQty = $rows->sum('qty');
+
+                    // Use parent's foreign rate
+                    $parentRate = $parentRow->sale_price_foreign;
+
+                    return (object) [
+                        'item' => $parentRow->item,
+                        'qty' => $totalQty,
+                        'sale_price_foreign' => $parentRate,
+                        'sub_total_foreign' => $totalQty * $parentRate,
+                    ];
+                }
+
+                /*
+        |--------------------------------------------------------------------------
+        | Child without parent in this sale
+        |--------------------------------------------------------------------------
+        */
+
+                $first = $rows->first();
+
+                return (object) [
+                    'item' => $first->item,
+                    'qty' => $rows->sum('qty'),
+                    'sale_price_foreign' => $first->sale_price_foreign,
+                    'sub_total_foreign' => $rows->sum('sub_total_foreign'),
+                ];
+            })
+            ->values();
+
+
 
         /*
     |--------------------------------------------------------------------------
@@ -1775,6 +2077,64 @@ class SaleController extends Controller
                 ];
             })
             ->values();
+
+        /*
+|--------------------------------------------------------------------------
+| Group Parent + Child Items
+|--------------------------------------------------------------------------
+*/
+
+        $groupedItems = $groupedItems
+            ->groupBy(function ($row) {
+
+                // Parent item
+                if (is_null($row->item->parent_id)) {
+                    return $row->item->id;
+                }
+
+                // Child item → group under parent
+                return $row->item->parent_id;
+            })
+            ->map(function ($rows) {
+
+                // Find parent item
+                $parentRow = $rows->first(function ($row) {
+                    return is_null($row->item->parent_id);
+                });
+
+                if ($parentRow) {
+
+                    // Parent + all children quantity
+                    $totalQty = $rows->sum('qty');
+
+                    // Use parent's foreign rate
+                    $parentRate = $parentRow->sale_price_foreign;
+
+                    return (object) [
+                        'item' => $parentRow->item,
+                        'qty' => $totalQty,
+                        'sale_price_foreign' => $parentRate,
+                        'sub_total_foreign' => $totalQty * $parentRate,
+                    ];
+                }
+
+                /*
+        |--------------------------------------------------------------------------
+        | Child without parent in this sale
+        |--------------------------------------------------------------------------
+        */
+
+                $first = $rows->first();
+
+                return (object) [
+                    'item' => $first->item,
+                    'qty' => $rows->sum('qty'),
+                    'sale_price_foreign' => $first->sale_price_foreign,
+                    'sub_total_foreign' => $rows->sum('sub_total_foreign'),
+                ];
+            })
+            ->values();
+
 
 
         /*
