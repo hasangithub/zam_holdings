@@ -129,10 +129,8 @@ class CashbookController extends Controller
             ->orderBy('name')
             ->get();
 
-        // All ledgers except Cash & Bank
-        $ledgers = Ledger::where('id', '!=', '1')
-            ->orderBy('name')
-            ->get();
+        // All ledgers 
+        $ledgers = Ledger::orderBy('name')->get();
 
         // All global subledgers
         // Cashbook subledgers are excluded.

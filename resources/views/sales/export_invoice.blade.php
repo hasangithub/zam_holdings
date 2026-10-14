@@ -222,10 +222,17 @@
             {{-- LOGO --}}
             <td style="width:20%; vertical-align:top;">
 
-                <img src="{{ asset('images/mrzam1.jpeg') }}"
-                    alt="Company Logo"
-                    style="width: 120px; height: auto;">
+                @php
+                $invoiceLogo = collect(['png', 'jpg', 'jpeg'])
+                ->map(fn ($ext) => public_path("images/invoice/logo.{$ext}"))
+                ->first(fn ($path) => file_exists($path));
+                @endphp
 
+                @if ($invoiceLogo)
+                <img src="{{ asset('images/invoice/' . basename($invoiceLogo)) }}"
+                    alt="Invoice Logo"
+                    style="width: 120px; height: auto;">
+                @endif
             </td>
 
 

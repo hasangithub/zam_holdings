@@ -34,6 +34,9 @@ use App\Http\Controllers\CashbookController;
 use App\Http\Controllers\SalaryAdvanceController;
 use App\Http\Controllers\GeneralLedgerController;
 use App\Http\Controllers\BranchController;
+use App\Http\Controllers\EmployeeController;
+use App\Http\Controllers\InvoiceCompanyProfileController;
+
 // Route::get('/', function () {
 //     return view('welcome');
 // });
@@ -53,6 +56,11 @@ require __DIR__ . '/auth.php';
 Route::middleware(['auth'])->group(function () {
 
 
+    Route::resource('employees', EmployeeController::class)->except(['show']);
+    Route::resource(
+    'invoice-company-profiles',
+    InvoiceCompanyProfileController::class
+)->only(['index', 'create', 'store', 'edit', 'update']);
 
     Route::get(
         'cashbooks',
@@ -101,15 +109,16 @@ Route::middleware(['auth'])->group(function () {
 
     Route::post('reports/general-ledger', [GeneralLedgerController::class, 'report'])
         ->name('reports.general-ledger.report');
-    Route::get('/reports/trial-balance',[ReportController::class, 'trialBalance'])->name('reports.trial_balance');
+    Route::get('/reports/trial-balance', [ReportController::class, 'trialBalance'])->name('reports.trial_balance');
 
     Route::get('/dashboard', [App\Http\Controllers\DashboardController::class, 'index'])->name('dashboard');
     Route::resource('categories', CategoryController::class);
     Route::resource('items', ItemController::class);
     Route::resource('purchases', PurchaseController::class);
     Route::post(
-    '/purchases/{purchase}/amendment',
-    [PurchaseController::class, 'storeAmendment'])->name('purchases.amendment.store');
+        '/purchases/{purchase}/amendment',
+        [PurchaseController::class, 'storeAmendment']
+    )->name('purchases.amendment.store');
     Route::resource('sales', SaleController::class);
     Route::get('suppliers/supplier-summary', [ReportController::class, 'supplierSummary'])->name('reports.supplier-summary');
     Route::resource('suppliers', SupplierController::class);
@@ -121,13 +130,13 @@ Route::middleware(['auth'])->group(function () {
 
     Route::resource('fixed-assets', FixedAssetController::class);
     Route::get('/purchases/{purchase}/invoice', [PurchaseController::class, 'invoice'])->name('purchases.invoice');
-   Route::get('/purchases/{purchase}/invoice/pdf',  [PurchaseController::class, 'invoicePdf'])->name('purchases.invoice.pdf');
+    Route::get('/purchases/{purchase}/invoice/pdf',  [PurchaseController::class, 'invoicePdf'])->name('purchases.invoice.pdf');
     Route::get('/sales/{sale}/invoice', [SaleController::class, 'invoice'])->name('sales.invoice');
-    Route::get('/sales/{id}/invoice-pdf',[SaleController::class, 'invoicePdf'])->name('sales.invoice.pdf');
-Route::get(
-    '/sales/{id}/export-invoice-pdf',
-    [SaleController::class, 'invoiceExportPdf']
-)->name('sales.export.invoice.pdf');
+    Route::get('/sales/{id}/invoice-pdf', [SaleController::class, 'invoicePdf'])->name('sales.invoice.pdf');
+    Route::get(
+        '/sales/{id}/export-invoice-pdf',
+        [SaleController::class, 'invoiceExportPdf']
+    )->name('sales.export.invoice.pdf');
     Route::get('/export-sales/{sale}/invoice', [SaleController::class, 'invoiceExport'])->name('export-sales.invoice');
     Route::get('/stock-summary', [StockController::class, 'summary'])->name('stock.summary');
     Route::resource('purchase-inventories', PurchaseInventoryController::class);
@@ -173,8 +182,6 @@ Route::get(
 
         Route::post('/branch-comparison', [ReportController::class, 'generateBranchComparison'])
             ->name('reports.branch-comparison.generate');
-
-       
     });
 
 
@@ -281,6 +288,7 @@ Route::middleware(['auth'])->prefix('accounting')->name('accounting.')->group(fu
 });
 
 use App\Http\Controllers\JournalEntryController;
+use App\Http\Controllers\RoleController;
 
 Route::middleware(['auth'])
     ->prefix('accounting')
@@ -321,7 +329,7 @@ Route::middleware(['auth'])
         )->name('journal-entries.sub-ledgers');
     });
 
-    Route::middleware(['auth', 'head.office'])
+Route::middleware(['auth', 'head.office'])
     ->prefix('branches')
     ->name('branches.')
     ->group(function () {
@@ -383,4 +391,50 @@ Route::middleware(['auth'])
             BranchController::class,
             'destroyUser'
         ])->name('users.destroy');
+    });
+
+
+Route::middleware(['auth', 'permission:roles.manage'])
+    ->prefix('roles')
+    ->name('roles.')
+    ->controller(RoleController::class)
+    ->group(function () {
+        Route::get('/', 'index')->name('index');
+        Route::get('/create', 'create')->name('create');
+        Route::post('/', 'store')->name('store');
+        Route::get('/{role}/edit', 'edit')->name('edit');
+        Route::put('/{role}', 'update')->name('update');
+        Route::delete('/{role}', 'destroy')->name('destroy');
+    });
+
+use App\Http\Controllers\SettingsController;
+
+Route::middleware(['auth'])
+    ->prefix('settings')
+    ->name('settings.')
+    ->controller(SettingsController::class)
+    ->group(function () {
+        Route::get('/invoice-logo', 'invoiceLogo')
+            ->name('invoice-logo');
+
+        Route::post('/invoice-logo', 'updateInvoiceLogo')
+            ->name('invoice-logo.update');
+    });
+
+Route::middleware(['auth', 'permission:accounting.chart-of-accounts'])
+    ->prefix('account-setup')
+    ->name('account-setup.')
+    ->controller(ChartOfAccountController::class)
+    ->group(function () {
+        Route::get('/', 'create')->name('create');
+        Route::post('/', 'store')->name('store');
+
+        Route::get('/account-types/{accountType}/groups', 'groups')
+            ->name('groups');
+
+        Route::get('/groups/{accountGroup}/ledgers', 'ledgers')
+            ->name('ledgers');
+
+        Route::get('/ledgers/{ledger}/subledgers', 'subLedgers')
+            ->name('subledgers');
     });

@@ -9,6 +9,8 @@ class InvoiceCompanyProfile extends Model
     protected $fillable = [
         'title',
         'address',
+        'sub_title_1',
+        'sub_title_2',
         'status',
     ];
 

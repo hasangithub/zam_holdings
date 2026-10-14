@@ -404,10 +404,17 @@
 
             <td class="logo-cell">
 
-                 <img src="{{ public_path('images/mrzam1.jpeg') }}"
-                    alt="Company Logo"
-                    style="width: 120px; height: auto;">
+             @php
+                $invoiceLogo = collect(['png', 'jpg', 'jpeg'])
+                ->map(fn ($ext) => public_path("images/invoice/logo.{$ext}"))
+                ->first(fn ($path) => file_exists($path));
+                @endphp
 
+                @if ($invoiceLogo)
+                <img src="{{ public_path('images/invoice/' . basename($invoiceLogo)) }}"
+                    alt="Invoice Logo"
+                    style="width: 120px; height: auto;">
+                @endif
             </td>
 
 

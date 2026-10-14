@@ -47,11 +47,7 @@ class SalaryAdvanceController extends Controller
 
     public function create()
     {
-        $employees = User::where(
-            'branch_id',
-            auth()->user()->branch_id
-        )
-        ->orderBy('name')
+        $employees = Employee::orderBy('name')
         ->get();
 
         /*
@@ -148,11 +144,7 @@ class SalaryAdvanceController extends Controller
         |--------------------------------------------------------------------------
         */
 
-        $employee = User::where('id', $request->employee_id)
-            ->where(
-                'branch_id',
-                auth()->user()->branch_id
-            )
+        $employee = Employee::where('id', $request->employee_id)
             ->firstOrFail();
 
         /*
@@ -263,7 +255,7 @@ class SalaryAdvanceController extends Controller
 
             SalaryAdvance::create([
                 'branch_id' => auth()->user()->branch_id,
-                'user_id' => $request->employee_id,
+                'employee_id' => $request->employee_id,
                 'advance_date' => $request->advance_date,
                 'amount' => $request->amount,
                 'salary_advance_sub_ledger_id' => null,

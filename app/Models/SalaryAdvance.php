@@ -8,7 +8,7 @@ class SalaryAdvance extends Model
 {
     protected $fillable = [
         'branch_id',
-        'user_id',
+        'employee_id',
         'advance_date',
         'amount',
         'salary_advance_sub_ledger_id',
@@ -24,9 +24,10 @@ class SalaryAdvance extends Model
         'amount' => 'decimal:2',
     ];
 
+
     public function employee()
     {
-        return $this->belongsTo(User::class, 'user_id');
+        return $this->belongsTo(Employee::class, 'employee_id');
     }
 
     public function branch()

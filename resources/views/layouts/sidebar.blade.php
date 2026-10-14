@@ -652,6 +652,13 @@
                             </a>
 
                         </li>
+                        <li class="nav-item">
+                            <a href="{{ route('account-setup.create') }}"
+                                class="nav-link {{ request()->routeIs('account-setup.*') ? 'active' : '' }}">
+                                <i class="nav-icon fas fa-sitemap"></i>
+                                <p>Account Setup</p>
+                            </a>
+                        </li>
 
                     </ul>
 
@@ -722,6 +729,56 @@
                     </ul>
 
                 </li>
+
+
+                {{-- ROLE MANAGEMENT --}}
+                @can('roles.manage')
+                <li class="nav-item">
+                    <a href="{{ route('roles.index') }}"
+                        class="nav-link {{ request()->routeIs('roles.*') ? 'active' : '' }}">
+
+                        <i class="nav-icon fas fa-user-shield text-warning"></i>
+                        <p>Role Management</p>
+                    </a>
+                </li>
+                @endcan
+
+                {{-- BRANCH MANAGEMENT --}}
+                @can('branches.manage')
+                <li class="nav-item">
+                    <a href="{{ route('branches.index') }}"
+                        class="nav-link {{ request()->routeIs('branches.*') ? 'active' : '' }}">
+
+                        <i class="nav-icon fas fa-building text-info"></i>
+                        <p>Branch Management</p>
+                    </a>
+                </li>
+                @endcan
+
+                <li class="nav-item">
+                    <a href="{{ route('settings.invoice-logo') }}"
+                        class="nav-link {{ request()->routeIs('settings.invoice-logo*') ? 'active' : '' }}">
+                        <i class="nav-icon fas fa-image"></i>
+                        <p>Invoice Logo Settings</p>
+                    </a>
+                </li>
+
+                <li class="nav-item">
+                    <a href="{{ route('employees.index') }}"
+                        class="nav-link {{ request()->routeIs('employees.*') ? 'active' : '' }}">
+                        <i class="nav-icon fas fa-users"></i>
+                        <p>Employees</p>
+                    </a>
+                </li>
+
+                <li class="nav-item">
+                    <a href="{{ route('invoice-company-profiles.index') }}"
+                        class="nav-link {{ request()->routeIs('invoice-company-profiles.*') ? 'active' : '' }}">
+                        <i class="nav-icon fas fa-file-invoice"></i>
+                        <p>Invoice Company Profiles</p>
+                    </a>
+                </li>
+
             </ul>
 
         </nav>
