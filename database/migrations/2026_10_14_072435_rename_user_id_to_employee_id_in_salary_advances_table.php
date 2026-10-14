@@ -10,10 +10,6 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('salary_advances', function (Blueprint $table) {
-            $table->dropForeign(['user_id']);
-        });
-
-        Schema::table('salary_advances', function (Blueprint $table) {
             $table->renameColumn('user_id', 'employee_id');
         });
 
