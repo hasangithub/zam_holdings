@@ -18,8 +18,7 @@ return new class extends Migration
             $table->foreignId('branch_id')
                 ->constrained('branches');
 
-            $table->foreignId('user_id')
-                ->constrained('users');
+            $table->foreignId('employee_id');
 
             $table->date('advance_date');
 
