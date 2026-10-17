@@ -9,227 +9,388 @@
     </title>
 
     <style>
+
         @page {
             size: A4;
             margin: 12mm;
         }
 
+
         body {
+
             font-family: DejaVu Sans, sans-serif;
+
             font-size: 12px;
+
             color: #222;
+
             margin: 0;
+
             padding: 0;
+
         }
+
 
         .invoice-wrapper {
+
             width: 100%;
+
         }
 
-        /* ---------------------------------------------------------
-           COMPANY HEADER
-        --------------------------------------------------------- */
+
+        /* =========================================================
+           HEADER
+        ========================================================= */
 
         .header-table {
             width: 100%;
             border-collapse: collapse;
+            table-layout: fixed;
         }
 
         .header-table td {
-            vertical-align: top;
+            padding: 3px 5px;
+            vertical-align: middle;
         }
 
         .logo-cell {
             width: 20%;
+            text-align: left;
+            vertical-align: top !important;
+            padding: 2px 10px 8px 0 !important;
         }
 
         .company-cell {
-            width: 50%;
+            width: 60%;
+            text-align: center;
+            vertical-align: top !important;
+            padding: 2px 4px 8px !important;
         }
 
-        .invoice-cell {
-            width: 30%;
-            text-align: right;
+        .header-spacer-cell {
+            width: 20%;
         }
 
         .company-logo {
-            max-height: 75px;
-            max-width: 180px;
+            display: block;
+            max-width: 145px;
+            max-height: 78px;
+            width: auto;
+            height: auto;
         }
 
         .company-name {
-            font-size: 18px;
+            font-size: 17px;
             font-weight: bold;
-            letter-spacing: .5px;
-            margin-bottom: 5px;
+            letter-spacing: .25px;
+            line-height: 1.3;
+            margin: 0 0 4px 0;
+            text-align: center;
         }
 
-        .company-address {
-            font-size: 11px;
+        .company-details {
+            font-size: 9.5px;
+            line-height: 1.4;
+            color: #444;
+            text-align: center;
+        }
+
+        .company-subtitle-1 {
+            font-size: 9.5px;
+            line-height: 1.4;
+            color: #333;
+            text-align: center;
+            font-weight: 600;
+        }
+
+        .company-subtitle-2 {
+            font-size: 9.5px;
+            line-height: 1.4;
+            color: #444;
+            text-align: center;
+        }
+
+        .invoice-cell {
+            text-align: right;
+            vertical-align: middle;
+        }
+
+        .invoice-details-row {
+            padding: 8px 5px 9px !important;
+            text-align: right;
+            border-top: 1px solid #b8b8b8;
+            border-bottom: 1px solid #b8b8b8;
+        }
+
+        .invoice-details-line {
+            width: 100%;
+            text-align: right;
+            font-size: 10.5px;
             line-height: 1.6;
-            color: #666;
         }
 
         .invoice-title {
-            font-size: 18px;
+            display: block;
+            margin: 0 0 3px 0;
+            font-size: 16px;
             font-weight: bold;
-            letter-spacing: 1px;
-        }
-
-        .invoice-meta {
-            font-size: 11px;
-            color: #555;
-            line-height: 1.8;
-        }
-
-        .divider {
-            border: 0;
-            border-top: 1px solid #999;
-            margin: 12px 0;
-        }
-
-
-        /* ---------------------------------------------------------
-           SECTION TITLE
-        --------------------------------------------------------- */
-
-        .section-title {
-            background: #343a40;
-            color: #fff;
-            font-size: 11px;
-            font-weight: bold;
-            padding: 7px 10px;
-            margin-top: 15px;
-        }
-
-
-        /* ---------------------------------------------------------
-           CUSTOMER DETAILS
-        --------------------------------------------------------- */
-
-        .customer-table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-
-        .customer-table td {
-            border: 1px solid #dee2e6;
-            padding: 7px 9px;
-            font-size: 11px;
-        }
-
-        .customer-label {
-            background: #f8f9fa;
-            font-weight: bold;
-            width: 18%;
-        }
-
-
-        /* ---------------------------------------------------------
-           ITEMS
-        --------------------------------------------------------- */
-
-        .items-table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 15px;
-        }
-
-        .items-table th {
-            background: #343a40;
-            color: #fff;
-            padding: 7px 6px;
-            font-size: 10px;
-            border: 1px solid #343a40;
-        }
-
-        .items-table td {
-            padding: 7px 6px;
-            font-size: 10px;
-            border: 1px solid #dee2e6;
-        }
-
-        .items-table tr:nth-child(even) {
-            background: #f8f9fa;
-        }
-
-
-        /* ---------------------------------------------------------
-           ALIGNMENTS
-        --------------------------------------------------------- */
-
-        .text-right {
+            letter-spacing: .8px;
+            color: #222;
             text-align: right;
         }
 
-        .text-center {
-            text-align: center;
+        .invoice-number {
+            display: block;
+            margin: 0;
+            font-size: 10.5px;
+            line-height: 1.6;
+            color: #444;
+            text-align: right;
+            white-space: nowrap;
+        }
+
+        .divider {
+
+            border: 0;
+
+            border-top: 1px solid #999;
+
+            margin: 12px 0;
+
         }
 
 
-        /* ---------------------------------------------------------
-           SUMMARY
-        --------------------------------------------------------- */
+        /* =========================================================
+           SECTION TITLE
+        ========================================================= */
 
-        .summary-table {
-            width: 380px;
-            margin-left: auto;
-            margin-top: 15px;
-            border-collapse: collapse;
-        }
+        .section-title {
 
-        .summary-table td {
-            border: 1px solid #dee2e6;
-            padding: 8px 10px;
-            font-size: 11px;
-        }
+            background: #343a40;
 
-        .summary-label {
+            color: #fff;
+
             font-weight: bold;
-            background: #f8f9fa;
+
+            padding: 7px 10px;
+
+            font-size: 11px;
+
+            margin-top: 15px;
+
         }
+
+
+        /* =========================================================
+           EXPORT INFORMATION
+        ========================================================= */
+
+        .info-table {
+
+            width: 100%;
+
+            border-collapse: collapse;
+
+        }
+
+
+        .info-table td {
+
+            padding: 7px 9px;
+
+            border: 1px solid #dee2e6;
+
+            font-size: 11px;
+
+        }
+
+
+        .info-label {
+
+            font-weight: bold;
+
+            background: #f8f9fa;
+
+            width: 18%;
+
+        }
+
+
+        /* =========================================================
+           ITEMS
+        ========================================================= */
+
+        .items-table {
+
+            width: 100%;
+
+            border-collapse: collapse;
+
+            margin-top: 15px;
+
+        }
+
+
+        .items-table th {
+
+            background: #343a40;
+
+            color: #fff;
+
+            padding: 7px 6px;
+
+            font-size: 10px;
+
+            border: 1px solid #343a40;
+
+        }
+
+
+        .items-table td {
+
+            padding: 7px 6px;
+
+            font-size: 10px;
+
+            border: 1px solid #dee2e6;
+
+        }
+
+
+        .items-table tr:nth-child(even) {
+
+            background: #f8f9fa;
+
+        }
+
+
+        /* =========================================================
+           ALIGNMENT
+        ========================================================= */
+
+        .text-right {
+
+            text-align: right;
+
+        }
+
+
+        .text-center {
+
+            text-align: center;
+
+        }
+
+
+        /* =========================================================
+           TOTAL
+        ========================================================= */
+
+        .total-table {
+
+            width: 360px;
+
+            margin-left: auto;
+
+            margin-top: 15px;
+
+            border-collapse: collapse;
+
+        }
+
+
+        .total-table td {
+
+            padding: 8px 10px;
+
+            border: 1px solid #dee2e6;
+
+            font-size: 11px;
+
+        }
+
 
         .grand-total {
+
             font-size: 14px;
+
             font-weight: bold;
+
             background: #343a40;
+
             color: #fff;
+
         }
 
 
-        /* ---------------------------------------------------------
+        /* =========================================================
+           REMARKS
+        ========================================================= */
+
+        .footer-section {
+
+            margin-top: 35px;
+
+            font-size: 11px;
+
+            color: #666;
+
+        }
+
+
+        /* =========================================================
            SIGNATURES
-        --------------------------------------------------------- */
+        ========================================================= */
 
         .signature-table {
+
             width: 100%;
+
             border-collapse: collapse;
-            margin-top: 65px;
+
+            margin-top: 60px;
+
         }
+
 
         .signature-table td {
+
             width: 33.33%;
+
             text-align: center;
+
             padding: 0 15px;
+
         }
 
-        .signature-line {
+
+        .signature-box {
+
             border-top: 1px solid #555;
+
             padding-top: 7px;
+
             font-size: 10px;
+
         }
 
 
-        /* ---------------------------------------------------------
+        /* =========================================================
            FOOTER
-        --------------------------------------------------------- */
+        ========================================================= */
 
-        .footer {
+        .thank-you {
+
             margin-top: 35px;
+
             text-align: center;
+
             font-size: 10px;
-            color: #777;
+
+            color: #888;
+
         }
+
     </style>
 
 </head>
@@ -245,12 +406,13 @@
     ========================================================== --}}
 
         <table class="header-table">
-
+            <colgroup>
+                <col style="width: 20%;">
+                <col style="width: 60%;">
+                <col style="width: 20%;">
+            </colgroup>
             <tr>
-
-                {{-- LOGO --}}
                 <td class="logo-cell">
-
                     @php
                     $invoiceLogo = collect(['png', 'jpg', 'jpeg'])
                     ->map(fn ($ext) => public_path("images/invoice/logo.{$ext}"))
@@ -260,73 +422,46 @@
                     @if ($invoiceLogo)
                     <img src="{{ public_path('images/invoice/' . basename($invoiceLogo)) }}"
                         alt="Invoice Logo"
-                        style="width: 120px; height: auto;">
+                        class="company-logo">
                     @endif
-
                 </td>
 
-
-                {{-- COMPANY --}}
                 <td class="company-cell">
-
                     <div class="company-name">
-
-                        {{ $companyProfile->title }}
-
+                        {{ $companyProfile->title ?? 'MR - ZAM HOLDINGS (PVT) LTD' }}
                     </div>
-
 
                     @if($companyProfile->address)
-
-                    <div class="company-address">
-
+                    <div class="company-details">
                         {!! nl2br(e($companyProfile->address)) !!}
-
                     </div>
-
                     @endif
 
+                    @if(!empty($companyProfile->sub_title_1))
+                    <div class="company-subtitle-1">
+                        {{ $companyProfile->sub_title_1 }}
+                    </div>
+                    @endif
+
+                    @if(!empty($companyProfile->sub_title_2))
+                    <div class="company-subtitle-2">
+                        {{ $companyProfile->sub_title_2 }}
+                    </div>
+                    @endif
                 </td>
 
-
-                {{-- INVOICE --}}
-                <td class="invoice-cell">
-
-                    <div class="invoice-title">
-
-                        INVOICE
-
-                    </div>
-
-
-                    <div class="invoice-meta">
-
-                        <strong>
-                            Invoice No:
-                        </strong>
-
-                        {{ $sale->invoice_id }}
-
-                        <br>
-
-
-                        <strong>
-                            Date:
-                        </strong>
-
-                        {{ date(
-                        'd M Y',
-                        strtotime(
-                            $sale->sale_date ?? $sale->created_at
-                        )
-                    ) }}
-
-                    </div>
-
-                </td>
-
+                <td class="header-spacer-cell"></td>
             </tr>
 
+            <tr>
+                <td colspan="3" class="invoice-cell invoice-details-row">
+                    <div class="invoice-details-line">
+                        <div class="invoice-title"></div>
+                        <div class="invoice-number">Invoice#: <strong>{{ $sale->invoice_id }}</strong></div>
+                        <div class="invoice-number">Date: <strong>{{ date('d M Y', strtotime($sale->sale_date ?? $sale->created_at)) }}</strong></div>
+                    </div>
+                </td>
+            </tr>
         </table>
 
 
@@ -525,7 +660,7 @@
          BILL SUMMARY
     ========================================================== --}}
 
-        <table class="summary-table">
+        <table class="total-table">
             <tr>
 
                 <td class="grand-total">
@@ -544,58 +679,6 @@
             </tr>
 
         </table>
-
-
-        {{-- =========================================================
-         SIGNATURES
-    ========================================================== --}}
-
-        <table class="signature-table">
-
-            <tr>
-
-                <td>
-
-                    <div class="signature-line">
-                        Prepared By
-                    </div>
-
-                </td>
-
-
-                <td>
-
-                    <div class="signature-line">
-                        Authorized Signature
-                    </div>
-
-                </td>
-
-
-                <td>
-
-                    <div class="signature-line">
-                        Customer Signature
-                    </div>
-
-                </td>
-
-            </tr>
-
-        </table>
-
-
-        {{-- =========================================================
-         FOOTER
-    ========================================================== --}}
-
-        <div class="footer">
-
-            Thank you for your business!
-
-        </div>
-
-
     </div>
 
 </body>

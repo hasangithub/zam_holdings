@@ -45,98 +45,111 @@
         ========================================================= */
 
         .header-table {
-
             width: 100%;
-
             border-collapse: collapse;
-
+            table-layout: fixed;
         }
-
 
         .header-table td {
-
-            vertical-align: top;
-
+            padding: 3px 5px;
+            vertical-align: middle;
         }
-
 
         .logo-cell {
-
             width: 20%;
-
+            text-align: left;
+            vertical-align: top !important;
+            padding: 2px 10px 8px 0 !important;
         }
-
 
         .company-cell {
-
-            width: 50%;
-
+            width: 60%;
+            text-align: center;
+            vertical-align: top !important;
+            padding: 2px 4px 8px !important;
         }
 
-
-        .invoice-cell {
-
-            width: 30%;
-
-            text-align: right;
-
+        .header-spacer-cell {
+            width: 20%;
         }
-
 
         .company-logo {
-
-            max-height: 75px;
-
-            max-width: 180px;
-
+            display: block;
+            max-width: 145px;
+            max-height: 78px;
+            width: auto;
+            height: auto;
         }
-
 
         .company-name {
-
-            font-size: 18px;
-
+            font-size: 17px;
             font-weight: bold;
-
-            letter-spacing: .5px;
-
-            margin-bottom: 5px;
-
+            letter-spacing: .25px;
+            line-height: 1.3;
+            margin: 0 0 4px 0;
+            text-align: center;
         }
-
 
         .company-details {
-
-            font-size: 11px;
-
-            line-height: 1.6;
-
-            color: #555;
-
+            font-size: 9.5px;
+            line-height: 1.4;
+            color: #444;
+            text-align: center;
         }
 
+        .company-subtitle-1 {
+            font-size: 9.5px;
+            line-height: 1.4;
+            color: #333;
+            text-align: center;
+            font-weight: 600;
+        }
+
+        .company-subtitle-2 {
+            font-size: 9.5px;
+            line-height: 1.4;
+            color: #444;
+            text-align: center;
+        }
+
+        .invoice-cell {
+            text-align: right;
+            vertical-align: middle;
+        }
+
+        .invoice-details-row {
+            padding: 8px 5px 9px !important;
+            text-align: right;
+            border-top: 1px solid #b8b8b8;
+            border-bottom: 1px solid #b8b8b8;
+        }
+
+        .invoice-details-line {
+            width: 100%;
+            text-align: right;
+            font-size: 10.5px;
+            line-height: 1.6;
+        }
 
         .invoice-title {
-
-            font-size: 18px;
-
+            display: block;
+            margin: 0 0 3px 0;
+            font-size: 16px;
             font-weight: bold;
-
-            letter-spacing: 1px;
-
+            letter-spacing: .8px;
+            color: #222;
+            text-align: right;
         }
-
 
         .invoice-number {
-
-            font-size: 11px;
-
-            color: #555;
-
-            line-height: 1.8;
-
+            display: block;
+            margin: 0;
+            font-size: 10.5px;
+            line-height: 1.6;
+            color: #444;
+            text-align: right;
+            white-space: nowrap;
         }
-
 
         .divider {
 
@@ -396,98 +409,62 @@
     ========================================================== --}}
 
     <table class="header-table">
-
+        <colgroup>
+            <col style="width: 20%;">
+            <col style="width: 60%;">
+            <col style="width: 20%;">
+        </colgroup>
         <tr>
-
-
-            {{-- LOGO --}}
-
             <td class="logo-cell">
-
-             @php
-                $invoiceLogo = collect(['png', 'jpg', 'jpeg'])
-                ->map(fn ($ext) => public_path("images/invoice/logo.{$ext}"))
-                ->first(fn ($path) => file_exists($path));
+                @php
+                    $invoiceLogo = collect(['png', 'jpg', 'jpeg'])
+                    ->map(fn ($ext) => public_path("images/invoice/logo.{$ext}"))
+                    ->first(fn ($path) => file_exists($path));
                 @endphp
 
                 @if ($invoiceLogo)
-                <img src="{{ public_path('images/invoice/' . basename($invoiceLogo)) }}"
-                    alt="Invoice Logo"
-                    style="width: 120px; height: auto;">
+                    <img src="{{ public_path('images/invoice/' . basename($invoiceLogo)) }}"
+                         alt="Invoice Logo"
+                         class="company-logo">
                 @endif
             </td>
-
-
-            {{-- COMPANY --}}
 
             <td class="company-cell">
-
                 <div class="company-name">
-
                     {{ $companyProfile->title ?? 'MR - ZAM HOLDINGS (PVT) LTD' }}
-
                 </div>
-
 
                 @if($companyProfile->address)
-
                     <div class="company-details">
-
-                        {!! nl2br(
-                            e($companyProfile->address)
-                        ) !!}
-
+                        {!! nl2br(e($companyProfile->address)) !!}
                     </div>
-
                 @endif
 
+                @if(!empty($companyProfile->sub_title_1))
+                    <div class="company-subtitle-1">
+                        {{ $companyProfile->sub_title_1 }}
+                    </div>
+                @endif
+
+                @if(!empty($companyProfile->sub_title_2))
+                    <div class="company-subtitle-2">
+                        {{ $companyProfile->sub_title_2 }}
+                    </div>
+                @endif
             </td>
 
-
-            {{-- INVOICE --}}
-
-            <td class="invoice-cell">
-
-                <div class="invoice-title">
-
-                     INVOICE
-
-                </div>
-
-
-                <div class="invoice-number">
-
-                    Invoice No:
-
-                    <strong>
-                        {{ $sale->invoice_id }}
-                    </strong>
-
-                </div>
-
-
-                <div class="invoice-number">
-
-                    Date:
-
-                    <strong>
-
-                        {{ date(
-                            'd M Y',
-                            strtotime(
-                                $sale->sale_date
-                                ?? $sale->created_at
-                            )
-                        ) }}
-
-                    </strong>
-
-                </div>
-
-            </td>
-
+            <td class="header-spacer-cell"></td>
         </tr>
 
+        <tr>
+            <td colspan="3" class="invoice-cell invoice-details-row">
+                <div class="invoice-details-line">
+                    <div class="invoice-title"></div>
+                    <div class="invoice-number">Invoice#: <strong>{{ $sale->invoice_id }}</strong></div>
+                    <div class="invoice-number">Date: <strong>{{ date('d M Y', strtotime($sale->sale_date ?? $sale->created_at)) }}</strong></div>
+                </div>
+            </td>
+        </tr>
     </table>
 
 
