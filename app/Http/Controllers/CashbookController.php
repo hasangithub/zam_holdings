@@ -227,13 +227,13 @@ class CashbookController extends Controller
         $ledger = Ledger::findOrFail($request->ledger_id);
 
         // Do not allow another CASH_BANK account
-        if ($ledger->id === 1) {
-            return back()
-                ->withInput()
-                ->withErrors([
-                    'ledger_id' => 'Cash / Bank cannot be selected as the other account.'
-                ]);
-        }
+        // if ($ledger->id === 1) {
+        //     return back()
+        //         ->withInput()
+        //         ->withErrors([
+        //             'ledger_id' => 'Cash / Bank cannot be selected as the other account.'
+        //         ]);
+        // }
 
 
         /*
@@ -251,14 +251,14 @@ class CashbookController extends Controller
                 ->whereNull('branch_id')
                 ->first();
 
-            if (!$subLedger) {
-                return back()
-                    ->withInput()
-                    ->withErrors([
-                        'sub_ledger_id' =>
-                        'Selected subledger does not belong to the selected ledger.'
-                    ]);
-            }
+            // if (!$subLedger) {
+            //     return back()
+            //         ->withInput()
+            //         ->withErrors([
+            //             'sub_ledger_id' =>
+            //             'Selected subledger does not belong to the selected ledger.'
+            //         ]);
+            // }
         }
 
 

@@ -27,7 +27,7 @@
 
                             @foreach($sales as $sale)
                                 <option value="{{ $sale->id }}"
-                                    data-airway="{{ $sale->airway_number }}"
+                                    data-airway="{{ $sale->airway_no}}"
                                     data-consignor="{{ $sale->consignor }}">
                                     {{ $sale->invoice_id }}
                                 </option>

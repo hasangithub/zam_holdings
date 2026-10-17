@@ -47,6 +47,8 @@ class FreightController extends Controller
             ->latest()
             ->get();
 
+
+
         $services = FreightService::where('active', true)
             ->orderBy('name')
             ->get();
