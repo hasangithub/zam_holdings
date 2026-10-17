@@ -8,6 +8,7 @@ use App\Models\Supplier;
 use App\Models\Item;
 use Illuminate\Http\Request;
 use App\Accounting\Accounting;
+use App\Models\InvoiceCompanyProfile;
 use App\Models\JournalEntryReference;
 use App\Models\PurchaseAmendment;
 use App\Models\PurchasePayment;
@@ -147,6 +148,8 @@ class PurchaseController extends Controller
     {
         $purchase = Purchase::with(['items.item', 'supplier'])->findOrFail($id);
 
+        $invoiceCompanyProfiles = InvoiceCompanyProfile::orderBy('title')->get();
+
         if ((int) $purchase->branch_id !== (int) auth()->user()->branch_id) {
             abort(403, 'You are not allowed to view this purchase.');
         }
@@ -156,6 +159,7 @@ class PurchaseController extends Controller
         return view('purchases.invoice', compact(
             'purchase',
             'currentPurchase',
+            'invoiceCompanyProfiles'
         ));
     }
 
@@ -435,12 +439,24 @@ class PurchaseController extends Controller
         }
     }
 
-    public function invoicePdf(int $purchaseId)
+    public function invoicePdf(Request $request, int $purchaseId)
     {
         $purchase = Purchase::with([
             'supplier',
             'items.item',
         ])->findOrFail($purchaseId);
+
+        if ($request->filled('company_profile_id')) {
+
+            $companyProfile = InvoiceCompanyProfile::where('status', true)
+                ->findOrFail($request->company_profile_id);
+        } else {
+
+            $companyProfile = (object) [
+                'title' => 'MR - ZAM HOLDINGS (PVT) LTD',
+                'address' => '',
+            ];
+        }
 
         $currentPurchase = $purchase->items->sum('subtotal');
 
@@ -450,6 +466,7 @@ class PurchaseController extends Controller
             'purchase' => $purchase,
             'currentPurchase' => $currentPurchase,
             'showRate' => $showRate,
+            'companyProfile' => $companyProfile
         ]);
 
         $pdf->setPaper('a4', 'portrait');

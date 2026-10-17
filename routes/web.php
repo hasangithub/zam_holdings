@@ -417,7 +417,7 @@ Route::middleware(['auth'])
         Route::get('/invoice-logo', 'invoiceLogo')
             ->name('invoice-logo');
 
-        Route::post('/invoice-logo', 'updateInvoiceLogo')
+        Route::post('/invoice-logo/{type}', 'updateInvoiceLogo')
             ->name('invoice-logo.update');
     });
 

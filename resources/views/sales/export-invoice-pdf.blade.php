@@ -418,12 +418,12 @@
             <td class="logo-cell">
                 @php
                     $invoiceLogo = collect(['png', 'jpg', 'jpeg'])
-                    ->map(fn ($ext) => public_path("images/invoice/logo.{$ext}"))
+                    ->map(fn ($ext) => public_path("images/invoice/export-sales/logo.{$ext}"))
                     ->first(fn ($path) => file_exists($path));
                 @endphp
 
                 @if ($invoiceLogo)
-                    <img src="{{ public_path('images/invoice/' . basename($invoiceLogo)) }}"
+                    <img src="{{ public_path('images/invoice/export-sales/' . basename($invoiceLogo)) }}"
                          alt="Invoice Logo"
                          class="company-logo">
                 @endif

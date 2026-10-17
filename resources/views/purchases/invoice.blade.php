@@ -110,33 +110,50 @@
 
 <div class="container">
 
-    {{-- PRINT BUTTON --}}
     <div class="no-print mb-3">
 
-        <a href="{{ route('purchases.invoice.pdf', [
-        'purchase' => $purchase->id,
-        'show_rate' => 1
-    ]) }}"
+        <form action="{{ route('purchases.invoice.pdf', ['purchase' => $purchase->id]) }}"
+            method="GET"
             target="_blank"
-            class="btn btn-dark btn-sm">
+            class="d-flex align-items-center flex-wrap">
 
-            <i class="fas fa-print"></i>
-            Print With Rate
-        </a>
+            <div class="mr-2 mb-2">
+                <select name="company_profile_id"
+                    class="form-control form-control-sm"
+                    style="width: 250px;"
+                    required>
 
+                    <option value="">Select Invoice Company</option>
 
-        <a href="{{ route('purchases.invoice.pdf', [
-        'purchase' => $purchase->id,
-        'show_rate' => 0
-    ]) }}"
-            target="_blank"
-            class="btn btn-secondary btn-sm">
+                    @foreach($invoiceCompanyProfiles as $profile)
+                    <option value="{{ $profile->id }}">
+                        {{ $profile->title }}
+                    </option>
+                    @endforeach
 
-            <i class="fas fa-print"></i>
-            Print Without Rate
-        </a>
+                </select>
+            </div>
+
+            <button type="submit"
+                name="show_rate"
+                value="1"
+                class="btn btn-dark btn-sm mr-2 mb-2">
+                <i class="fas fa-print"></i>
+                Print With Rate
+            </button>
+
+            <button type="submit"
+                name="show_rate"
+                value="0"
+                class="btn btn-secondary btn-sm mb-2">
+                <i class="fas fa-print"></i>
+                Print Without Rate
+            </button>
+
+        </form>
 
     </div>
+
 
 
     <div class="invoice-box">

@@ -224,12 +224,12 @@
 
                 @php
                 $invoiceLogo = collect(['png', 'jpg', 'jpeg'])
-                ->map(fn ($ext) => public_path("images/invoice/logo.{$ext}"))
+                ->map(fn ($ext) => public_path("images/invoice/export-sales/logo.{$ext}"))
                 ->first(fn ($path) => file_exists($path));
                 @endphp
 
                 @if ($invoiceLogo)
-                <img src="{{ asset('images/invoice/' . basename($invoiceLogo)) }}"
+                <img src="{{ asset('images/invoice/export-sales/' . basename($invoiceLogo)) }}"
                     alt="Invoice Logo"
                     style="width: 120px; height: auto;">
                 @endif
