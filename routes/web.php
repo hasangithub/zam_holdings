@@ -145,6 +145,7 @@ Route::middleware(['auth'])->group(function () {
         ->name('expenses.mark-paid');
     Route::resource('packing-usages', PackingUsageController::class);
     Route::resource('expense-categories', ExpenseCategoryController::class);
+    Route::get('/expense-categories/{id}/statement', [ExpenseCategoryController::class, 'statement'])->name('expense-categories.statement');
     Route::get('/inventory-summary', [PurchaseInventoryController::class, 'inventorySummary'])->name('inventory.summary');
     Route::get('/export-sales/create', [SaleController::class, 'createExport'])->name('export-sales.create');
     Route::post('/export-sales/store', [SaleController::class, 'storeExport'])->name('export-sales.store');

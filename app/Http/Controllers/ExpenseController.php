@@ -459,6 +459,7 @@ class ExpenseController extends Controller
 
                 $expense->update([
                     'is_paid' => true,
+                    'paid_date' => now()->toDateString(),
                     'payment_sub_ledger_id' =>
                     $request->payment_sub_ledger_id,
                 ]);

@@ -29,6 +29,10 @@
                     <td>{{ $cat->id }}</td>
                     <td>{{ $cat->name }}</td>
                     <td>
+                        <a href="{{ route('expense-categories.statement', $cat->id) }}"
+                            class="btn btn-info btn-sm">
+                            <i class="fas fa-file-invoice"></i> Statement
+                        </a>
                         <a href="/expense-categories/{{ $cat->id }}/edit" class="btn btn-warning btn-xs">Edit</a>
                     </td>
                 </tr>

@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\AccountGroup;
 use App\Models\AccountType;
+use App\Models\Expense;
 use App\Models\ExpenseCategory;
 use App\Models\Ledger;
 use App\Models\SubLedger;
@@ -34,7 +35,7 @@ class ExpenseCategoryController extends Controller
      * Store a newly created resource in storage.
      */
     public function store(Request $request)
-    {  
+    {
         $request->validate([
             'name' => [
                 'required',
@@ -62,7 +63,7 @@ class ExpenseCategoryController extends Controller
                     ]);
                 }
 
-                 $liabilityType = AccountType::where('name', 'Liability')->firstOrFail();
+                $liabilityType = AccountType::where('name', 'Liability')->firstOrFail();
 
                 $currentLiability = AccountGroup::where('account_type_id', $liabilityType->id)
                     ->where('name', 'Current Liabilities')->first();
@@ -165,5 +166,56 @@ class ExpenseCategoryController extends Controller
     public function destroy(ExpenseCategory $expenseCategory)
     {
         //
+    }
+
+    public function statement($id)
+    {
+        $category = ExpenseCategory::findOrFail($id);
+
+        $expenses = Expense::where('expense_category_id', $category->id)
+            ->where('status', '!=', 'cancelled')
+            ->orderBy('expense_date')
+            ->orderBy('id')
+            ->get();
+
+        $statement = collect();
+        $balance = 0;
+
+        foreach ($expenses as $expense) {
+
+            // Expense recorded: Debit
+            $statement->push([
+                'date' => $expense->expense_date,
+                'description' => $expense->description ?? 'Expense',
+                'debit' => $expense->total_amount,
+                'credit' => 0,
+            ]);
+
+            // Expense paid: Credit
+            if ($expense->is_paid && $expense->paid_date) {
+                $statement->push([
+                    'date' => $expense->paid_date ?? $expense->expense_date,
+                    'description' => 'Payment - ' . ($expense->description ?? 'Expense'),
+                    'debit' => 0,
+                    'credit' => $expense->total_amount,
+                ]);
+            }
+        }
+
+        // Sort transactions by date and calculate running balance
+        $statement = $statement
+            ->sortBy('date')
+            ->values()
+            ->map(function ($row) use (&$balance) {
+                $balance += $row['debit'] - $row['credit'];
+                $row['balance'] = $balance;
+
+                return $row;
+            });
+
+        return view('expense_categories.statement', compact(
+            'category',
+            'statement'
+        ));
     }
 }

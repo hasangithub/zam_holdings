@@ -13,6 +13,7 @@ class Expense extends Model
         'expense_date',
         'total_amount',
         'is_paid',
+        'paid_date',
         'remarks',
         'status'
     ];
