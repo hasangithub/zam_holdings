@@ -123,8 +123,12 @@ Route::middleware(['auth'])->group(function () {
     Route::resource('sales', SaleController::class);
     Route::get('suppliers/supplier-summary', [ReportController::class, 'supplierSummary'])->name('reports.supplier-summary');
     Route::resource('suppliers', SupplierController::class);
-    Route::get('/customers/local', [CustomerController::class, 'local'])->name('customers.local');
-    Route::get('/customers/export', [CustomerController::class, 'export'])->name('customers.export');
+    Route::get('/customers/local', [CustomerController::class, 'local'])
+    ->middleware('permission:sales.local')
+    ->name('customers.local');
+    Route::get('/customers/export', [CustomerController::class, 'export'])
+    ->middleware('permission:sales.export')
+    ->name('customers.export');
     Route::get('customers/customer-summary-local', [ReportController::class, 'customerSummaryLocal'])->name('reports.customer-summary-local');
     Route::get('customers/customer-summary-export', [ReportController::class, 'customerSummaryExport'])->name('reports.customer-summary-export');
     Route::resource('customers', CustomerController::class);

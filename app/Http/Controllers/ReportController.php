@@ -672,22 +672,40 @@ class ReportController extends Controller
         ));
     }
 
+
     public function balanceSheet(Request $request)
     {
-        $asOfDate = $request->input('as_of_date', now()->toDateString());
+        $asOfDate = $request->input(
+            'as_of_date',
+            now()->toDateString()
+        );
 
         $branchId = (int) auth()->user()->branch_id;
 
-        // Branch visibility rules
+        // Only Branch 1 can select the report scope.
+        $request->validate([
+            'as_of_date' => ['nullable', 'date'],
+            'branch_scope' => ['nullable', 'in:own,all'],
+        ]);
+
         if ($branchId === 1) {
-            $branchIds = Branch::pluck('id');
-        } elseif ($branchId === 2) {
-            $branchIds = Branch::where('id', '!=', 1)->pluck('id');
+            $branchScope = $request->input('branch_scope', 'all');
+
+            if ($branchScope === 'own') {
+                $branchIds = collect([1]);
+            } else {
+                $branchIds = Branch::pluck('id');
+                $branchScope = 'all';
+            }
         } else {
+            // All other branches can only see their own data.
             $branchIds = collect([$branchId]);
+            $branchScope = 'own';
         }
 
-        $accountTypes = AccountType::with('accountGroups.ledgers')->get();
+        $accountTypes = AccountType::with(
+            'accountGroups.ledgers'
+        )->get();
 
         $assets = [];
         $liabilities = [];
@@ -707,15 +725,19 @@ class ReportController extends Controller
 
                 foreach ($group->ledgers as $ledger) {
 
-                    // Get journal details for this ledger and visible branches
-                    $details = JournalEntryDetail::where('ledger_id', $ledger->id)
-                        ->whereHas('journalEntry', function ($query) use (
-                            $asOfDate,
-                            $branchIds
-                        ) {
-                            $query->whereDate('journal_date', '<=', $asOfDate)
-                                ->whereIn('branch_id', $branchIds);
-                        });
+                    $details = JournalEntryDetail::where(
+                        'ledger_id',
+                        $ledger->id
+                    )->whereHas('journalEntry', function ($query) use (
+                        $asOfDate,
+                        $branchIds
+                    ) {
+                        $query->whereDate(
+                            'journal_date',
+                            '<=',
+                            $asOfDate
+                        )->whereIn('branch_id', $branchIds);
+                    });
 
                     $debit = (clone $details)->sum('debit');
                     $credit = (clone $details)->sum('credit');
@@ -728,29 +750,40 @@ class ReportController extends Controller
 
                     if (in_array($typeName, ['assets', 'asset'])) {
                         $row['balance'] = $debit - $credit;
+
                         $assets[] = $row;
                         $assetsTotal += $row['balance'];
-                    } elseif (in_array($typeName, ['liabilities', 'liability'])) {
-
+                    } elseif (in_array(
+                        $typeName,
+                        ['liabilities', 'liability']
+                    )) {
                         if ($groupName === 'equity') {
                             $row['balance'] = $credit - $debit;
+
                             $equity[] = $row;
                             $equityTotal += $row['balance'];
                         } else {
                             $row['balance'] = $credit - $debit;
+
                             $liabilities[] = $row;
                             $liabilitiesTotal += $row['balance'];
                         }
-                    } elseif (in_array($typeName, ['income', 'incomes'])) {
+                    } elseif (in_array(
+                        $typeName,
+                        ['income', 'incomes']
+                    )) {
                         $incomeTotal += $credit - $debit;
-                    } elseif (in_array($typeName, ['expenses', 'expense'])) {
+                    } elseif (in_array(
+                        $typeName,
+                        ['expenses', 'expense']
+                    )) {
                         $expensesTotal += $debit - $credit;
                     }
                 }
             }
         }
 
-        // Net profit / loss up to the selected date
+        // Accumulated profit/loss up to the selected date.
         $profitLoss = $incomeTotal - $expensesTotal;
 
         $equity[] = [
@@ -763,6 +796,7 @@ class ReportController extends Controller
 
         return view('reports.balance-sheet', compact(
             'asOfDate',
+            'branchScope',
             'assets',
             'liabilities',
             'equity',

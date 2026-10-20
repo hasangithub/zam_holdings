@@ -5,25 +5,53 @@
 @section('content')
 
 <div class="card">
+   
     <div class="card-header">
         <form method="GET"
-              action="{{ route('reports.balance-sheet') }}"
-              class="form-inline">
+            action="{{ route('reports.balance-sheet') }}"
+            class="form-inline">
 
             <label for="as_of_date" class="mr-2">As of Date</label>
 
             <input type="date"
-                   name="as_of_date"
-                   id="as_of_date"
-                   class="form-control form-control-sm mr-2"
-                   value="{{ $asOfDate }}"
-                   required>
+                name="as_of_date"
+                id="as_of_date"
+                class="form-control form-control-sm mr-3"
+                value="{{ $asOfDate }}"
+                required>
+
+            @if((int) auth()->user()->branch_id === 1)
+            <label for="branch_scope" class="mr-2">
+                Report Scope
+            </label>
+
+            <select name="branch_scope"
+                id="branch_scope"
+                class="form-control form-control-sm mr-3">
+                <option value="all"
+                    {{ $branchScope === 'all' ? 'selected' : '' }}>
+                    All Branches
+                </option>
+
+                <option value="own"
+                    {{ $branchScope === 'own' ? 'selected' : '' }}>
+                    Head Office Only
+                </option>
+            </select>
+            @endif
 
             <button type="submit" class="btn btn-primary btn-sm">
                 <i class="fas fa-search"></i> Generate
             </button>
+
+            <button type="button"
+                onclick="window.print()"
+                class="btn btn-secondary btn-sm ml-2">
+                <i class="fas fa-print"></i> Print
+            </button>
         </form>
     </div>
+
 
     <div class="card-body">
 
@@ -52,21 +80,21 @@
                     </tr>
 
                     @forelse($assets as $row)
-                        <tr>
-                            <td class="pl-4">
-                                {{ $row['group'] }} -
-                                {{ $row['ledger'] }}
-                            </td>
-                            <td class="text-right">
-                                {{ number_format($row['balance'], 2) }}
-                            </td>
-                        </tr>
+                    <tr>
+                        <td class="pl-4">
+                            {{ $row['group'] }} -
+                            {{ $row['ledger'] }}
+                        </td>
+                        <td class="text-right">
+                            {{ number_format($row['balance'], 2) }}
+                        </td>
+                    </tr>
                     @empty
-                        <tr>
-                            <td colspan="2" class="text-center text-muted">
-                                No asset balances found.
-                            </td>
-                        </tr>
+                    <tr>
+                        <td colspan="2" class="text-center text-muted">
+                            No asset balances found.
+                        </td>
+                    </tr>
                     @endforelse
 
                     <tr class="font-weight-bold">
@@ -84,21 +112,21 @@
                     </tr>
 
                     @forelse($liabilities as $row)
-                        <tr>
-                            <td class="pl-4">
-                                {{ $row['group'] }} -
-                                {{ $row['ledger'] }}
-                            </td>
-                            <td class="text-right">
-                                {{ number_format($row['balance'], 2) }}
-                            </td>
-                        </tr>
+                    <tr>
+                        <td class="pl-4">
+                            {{ $row['group'] }} -
+                            {{ $row['ledger'] }}
+                        </td>
+                        <td class="text-right">
+                            {{ number_format($row['balance'], 2) }}
+                        </td>
+                    </tr>
                     @empty
-                        <tr>
-                            <td colspan="2" class="text-center text-muted">
-                                No liability balances found.
-                            </td>
-                        </tr>
+                    <tr>
+                        <td colspan="2" class="text-center text-muted">
+                            No liability balances found.
+                        </td>
+                    </tr>
                     @endforelse
 
                     <tr class="font-weight-bold">
@@ -116,23 +144,23 @@
                     </tr>
 
                     @forelse($equity as $row)
-                        <tr>
-                            <td class="pl-4">
-                                {{ $row['group'] }}
-                                @if(!empty($row['ledger']))
-                                    - {{ $row['ledger'] }}
-                                @endif
-                            </td>
-                            <td class="text-right">
-                                {{ number_format($row['balance'], 2) }}
-                            </td>
-                        </tr>
+                    <tr>
+                        <td class="pl-4">
+                            {{ $row['group'] }}
+                            @if(!empty($row['ledger']))
+                            - {{ $row['ledger'] }}
+                            @endif
+                        </td>
+                        <td class="text-right">
+                            {{ number_format($row['balance'], 2) }}
+                        </td>
+                    </tr>
                     @empty
-                        <tr>
-                            <td colspan="2" class="text-center text-muted">
-                                No equity balances found.
-                            </td>
-                        </tr>
+                    <tr>
+                        <td colspan="2" class="text-center text-muted">
+                            No equity balances found.
+                        </td>
+                    </tr>
                     @endforelse
 
                     <tr class="font-weight-bold">
@@ -178,6 +206,7 @@
 @section('css')
 <style>
     @media print {
+
         .main-header,
         .main-sidebar,
         .main-footer,
