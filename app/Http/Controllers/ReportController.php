@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\AccountType;
 use App\Models\Branch;
 use App\Models\Category;
 use App\Models\Customer;
@@ -389,7 +390,7 @@ class ReportController extends Controller
     {
         $customers = Customer::query()
             ->where('branch_id', auth()->user()->branch_id)
-           ->where('customer_type', 'export')
+            ->where('customer_type', 'export')
             ->withSum(['sales as total_sales' => function ($q) {
                 $q->where('status', '!=', 'cancelled');
             }], 'total')
@@ -528,14 +529,10 @@ class ReportController extends Controller
     /**
      * Trial Balance
      */
+
+
     public function trialBalance(Request $request)
     {
-        /*
-    |--------------------------------------------------------------------------
-    | Dates
-    |--------------------------------------------------------------------------
-    */
-
         $request->validate([
             'from_date' => 'nullable|date',
             'to_date'   => 'nullable|date|after_or_equal:from_date',
@@ -547,262 +544,231 @@ class ReportController extends Controller
         $toDate = $request->to_date
             ?? now()->format('Y-m-d');
 
-
-        /*
-    |--------------------------------------------------------------------------
-    | Get ALL Ledgers
-    |--------------------------------------------------------------------------
-    |
-    | Important:
-    | We start from Ledger, not JournalDetail.
-    | Therefore accounts with zero transactions are also displayed.
-    |
-    */
-
+        // Get all ledgers, including ledgers without transactions
         $ledgers = Ledger::with('subLedgers')
             ->orderBy('id')
             ->get();
 
-
-        /*
-    |--------------------------------------------------------------------------
-    | Get journal totals for selected period
-    |--------------------------------------------------------------------------
-    */
-
+        // Get journal totals for the selected period
         $journalTotals = JournalEntryDetail::query()
             ->select(
                 'ledger_id',
                 'sub_ledger_id',
-
-                DB::raw(
-                    'COALESCE(SUM(debit), 0) as total_debit'
-                ),
-
-                DB::raw(
-                    'COALESCE(SUM(credit), 0) as total_credit'
-                )
+                DB::raw('COALESCE(SUM(debit), 0) as total_debit'),
+                DB::raw('COALESCE(SUM(credit), 0) as total_credit')
             )
             ->whereHas('journalEntry', function ($query) use (
                 $fromDate,
                 $toDate
             ) {
-
-                $query->whereDate(
-                    'journal_date',
-                    '>=',
-                    $fromDate
-                );
-
-                $query->whereDate(
-                    'journal_date',
-                    '<=',
-                    $toDate
-                );
+                $query->whereDate('journal_date', '>=', $fromDate)
+                    ->whereDate('journal_date', '<=', $toDate);
             })
-            ->groupBy(
-                'ledger_id',
-                'sub_ledger_id'
-            )
+            ->groupBy('ledger_id', 'sub_ledger_id')
             ->get();
 
-
-        /*
-    |--------------------------------------------------------------------------
-    | Create lookup
-    |--------------------------------------------------------------------------
-    */
-
+        // Build lookup and combine NULL/0 subledger IDs as ledger-own entries
         $journalLookup = [];
 
         foreach ($journalTotals as $row) {
+            $subLedgerId = $row->sub_ledger_id ?? 0;
 
-            $key =
-                $row->ledger_id .
-                '-' .
-                ($row->sub_ledger_id ?? 0);
+            $key = $row->ledger_id . '-' . $subLedgerId;
 
-            $journalLookup[$key] = [
-                'debit'  => (float) $row->total_debit,
-                'credit' => (float) $row->total_credit,
-            ];
+            if (!isset($journalLookup[$key])) {
+                $journalLookup[$key] = [
+                    'debit'  => 0,
+                    'credit' => 0,
+                ];
+            }
+
+            $journalLookup[$key]['debit'] += (float) $row->total_debit;
+            $journalLookup[$key]['credit'] += (float) $row->total_credit;
         }
-
-
-        /*
-    |--------------------------------------------------------------------------
-    | Build Ledger Groups
-    |--------------------------------------------------------------------------
-    */
 
         $ledgerGroups = collect();
 
-
         foreach ($ledgers as $ledger) {
 
-            /*
-        |--------------------------------------------------------------------------
-        | Ledger's own journal entries
-        |--------------------------------------------------------------------------
-        |
-        | sub_ledger_id = NULL / 0
-        |
-        */
-
+            // Ledger's own journal entries
             $ledgerKey = $ledger->id . '-0';
 
-            $ledgerOwnDebit =
-                $journalLookup[$ledgerKey]['debit'] ?? 0;
-
-            $ledgerOwnCredit =
-                $journalLookup[$ledgerKey]['credit'] ?? 0;
-
-
-            /*
-        |--------------------------------------------------------------------------
-        | Sub Ledgers
-        |--------------------------------------------------------------------------
-        */
+            $ledgerOwnDebit = $journalLookup[$ledgerKey]['debit'] ?? 0;
+            $ledgerOwnCredit = $journalLookup[$ledgerKey]['credit'] ?? 0;
 
             $subLedgers = collect();
 
             $subLedgerDebitTotal = 0;
             $subLedgerCreditTotal = 0;
 
-
             foreach ($ledger->subLedgers as $subLedger) {
 
-                $subLedgerKey =
-                    $ledger->id .
-                    '-' .
-                    $subLedger->id;
+                $subLedgerKey = $ledger->id . '-' . $subLedger->id;
 
-
-                $debit =
-                    $journalLookup[$subLedgerKey]['debit'] ?? 0;
-
-                $credit =
-                    $journalLookup[$subLedgerKey]['credit'] ?? 0;
-
+                $debit = $journalLookup[$subLedgerKey]['debit'] ?? 0;
+                $credit = $journalLookup[$subLedgerKey]['credit'] ?? 0;
 
                 $subLedgerDebitTotal += $debit;
                 $subLedgerCreditTotal += $credit;
 
+                // Net subledger balance
+                $balance = $debit - $credit;
 
                 $subLedgers->push([
-
                     'id' => $subLedger->id,
-
-                    /*
-                 * Change these column names if your table
-                 * uses another name.
-                 */
-
-                    'code' =>
-                    $subLedger->code
-                        ?? $subLedger->id,
-
-                    'name' =>
-                    $subLedger->name
+                    'code' => $subLedger->code ?? $subLedger->id,
+                    'name' => $subLedger->name
                         ?? $subLedger->title
                         ?? 'Sub Ledger',
 
-                    'debit' => $debit,
-
-                    'credit' => $credit,
+                    'debit' => $balance > 0 ? $balance : 0,
+                    'credit' => $balance < 0 ? abs($balance) : 0,
                 ]);
             }
 
+            // Ledger total = own entries + all subledger entries
+            $ledgerDebit = $ledgerOwnDebit + $subLedgerDebitTotal;
+            $ledgerCredit = $ledgerOwnCredit + $subLedgerCreditTotal;
 
-            /*
-        |--------------------------------------------------------------------------
-        | Ledger Total
-        |--------------------------------------------------------------------------
-        |
-        | Ledger total =
-        | ledger's own entries
-        | +
-        | all sub-ledger entries
-        |
-        */
+            // Net ledger balance
+            $ledgerBalance = $ledgerDebit - $ledgerCredit;
 
-            $ledgerDebit =
-                $ledgerOwnDebit +
-                $subLedgerDebitTotal;
+            $ledgerDebitBalance = $ledgerBalance > 0
+                ? $ledgerBalance
+                : 0;
 
-            $ledgerCredit =
-                $ledgerOwnCredit +
-                $subLedgerCreditTotal;
-
-
-            /*
-        |--------------------------------------------------------------------------
-        | Add Ledger
-        |--------------------------------------------------------------------------
-        */
+            $ledgerCreditBalance = $ledgerBalance < 0
+                ? abs($ledgerBalance)
+                : 0;
 
             $ledgerGroups->push([
-
                 'id' => $ledger->id,
-
-                /*
-             * Change "code" if your ledger table uses
-             * another field such as ledger_code.
-             */
-
-                'code' =>
-                $ledger->code
+                'code' => $ledger->code
                     ?? $ledger->ledger_code
                     ?? $ledger->id,
 
-                'name' =>
-                $ledger->name
+                'name' => $ledger->name
                     ?? $ledger->title
                     ?? 'Ledger',
 
-                'debit' => $ledgerDebit,
-
-                'credit' => $ledgerCredit,
+                'debit' => $ledgerDebitBalance,
+                'credit' => $ledgerCreditBalance,
 
                 'sub_ledgers' => $subLedgers->values()->all(),
             ]);
         }
 
-
-        /*
-    |--------------------------------------------------------------------------
-    | Grand Totals
-    |--------------------------------------------------------------------------
-    */
-
-        $totalDebit = $ledgerGroups->sum('debit');
-
-        $totalCredit = $ledgerGroups->sum('credit');
-
-
+        // Grand totals: sum ledger balances only, not subledger rows again
         $totals = [
-
-            'debit' => $totalDebit,
-
-            'credit' => $totalCredit,
-
+            'debit' => $ledgerGroups->sum('debit'),
+            'credit' => $ledgerGroups->sum('credit'),
         ];
 
+        return view('reports.trial_balance', compact(
+            'ledgerGroups',
+            'totals',
+            'fromDate',
+            'toDate'
+        ));
+    }
 
-        /*
-    |--------------------------------------------------------------------------
-    | Return Report
-    |--------------------------------------------------------------------------
-    */
+    public function balanceSheet(Request $request)
+    {
+        $asOfDate = $request->input('as_of_date', now()->toDateString());
 
-        return view(
-            'reports.trial_balance',
-            compact(
-                'ledgerGroups',
-                'totals',
-                'fromDate',
-                'toDate'
-            )
-        );
+        $branchId = (int) auth()->user()->branch_id;
+
+        // Branch visibility rules
+        if ($branchId === 1) {
+            $branchIds = Branch::pluck('id');
+        } elseif ($branchId === 2) {
+            $branchIds = Branch::where('id', '!=', 1)->pluck('id');
+        } else {
+            $branchIds = collect([$branchId]);
+        }
+
+        $accountTypes = AccountType::with('accountGroups.ledgers')->get();
+
+        $assets = [];
+        $liabilities = [];
+        $equity = [];
+
+        $assetsTotal = 0;
+        $liabilitiesTotal = 0;
+        $equityTotal = 0;
+        $incomeTotal = 0;
+        $expensesTotal = 0;
+
+        foreach ($accountTypes as $type) {
+            $typeName = strtolower(trim($type->name));
+
+            foreach ($type->accountGroups as $group) {
+                $groupName = strtolower(trim($group->name));
+
+                foreach ($group->ledgers as $ledger) {
+
+                    // Get journal details for this ledger and visible branches
+                    $details = JournalEntryDetail::where('ledger_id', $ledger->id)
+                        ->whereHas('journalEntry', function ($query) use (
+                            $asOfDate,
+                            $branchIds
+                        ) {
+                            $query->whereDate('journal_date', '<=', $asOfDate)
+                                ->whereIn('branch_id', $branchIds);
+                        });
+
+                    $debit = (clone $details)->sum('debit');
+                    $credit = (clone $details)->sum('credit');
+
+                    $row = [
+                        'group' => $group->name,
+                        'ledger' => $ledger->name,
+                        'balance' => 0,
+                    ];
+
+                    if (in_array($typeName, ['assets', 'asset'])) {
+                        $row['balance'] = $debit - $credit;
+                        $assets[] = $row;
+                        $assetsTotal += $row['balance'];
+                    } elseif (in_array($typeName, ['liabilities', 'liability'])) {
+
+                        if ($groupName === 'equity') {
+                            $row['balance'] = $credit - $debit;
+                            $equity[] = $row;
+                            $equityTotal += $row['balance'];
+                        } else {
+                            $row['balance'] = $credit - $debit;
+                            $liabilities[] = $row;
+                            $liabilitiesTotal += $row['balance'];
+                        }
+                    } elseif (in_array($typeName, ['income', 'incomes'])) {
+                        $incomeTotal += $credit - $debit;
+                    } elseif (in_array($typeName, ['expenses', 'expense'])) {
+                        $expensesTotal += $debit - $credit;
+                    }
+                }
+            }
+        }
+
+        // Net profit / loss up to the selected date
+        $profitLoss = $incomeTotal - $expensesTotal;
+
+        $equity[] = [
+            'group' => 'Current Profit / Loss',
+            'ledger' => 'Accumulated Profit / Loss',
+            'balance' => $profitLoss,
+        ];
+
+        $equityTotal += $profitLoss;
+
+        return view('reports.balance-sheet', compact(
+            'asOfDate',
+            'assets',
+            'liabilities',
+            'equity',
+            'assetsTotal',
+            'liabilitiesTotal',
+            'equityTotal'
+        ));
     }
 }

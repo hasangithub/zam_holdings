@@ -153,6 +153,8 @@ class CashbookController extends Controller
      */
     public function store(Request $request)
     {
+        
+
         $request->validate([
             'cashbook_sub_ledger_id' => [
                 'required',
@@ -248,7 +250,6 @@ class CashbookController extends Controller
 
             $subLedger = SubLedger::where('id', $request->sub_ledger_id)
                 ->where('ledger_id', $ledger->id)
-                ->whereNull('branch_id')
                 ->first();
 
             // if (!$subLedger) {
@@ -267,6 +268,8 @@ class CashbookController extends Controller
         | Create Transaction + Journal
         |--------------------------------------------------------------------------
         */
+
+       
 
         DB::transaction(function () use (
             $request,

@@ -45,7 +45,7 @@ class ChartOfAccountsSeeder extends Seeder
             'name' => 'Current Liabilities'
         ]);
 
-         $nonCurrentLiab = AccountGroup::firstOrCreate([
+        $nonCurrentLiab = AccountGroup::firstOrCreate([
             'account_type_id' => $liability->id,
             'name' => 'Non Current Liabilities'
         ]);
@@ -159,14 +159,34 @@ class ChartOfAccountsSeeder extends Seeder
             'name' => ' Packing Material'
         ]);
 
-    SubLedger::firstOrCreate([
+        SubLedger::firstOrCreate([
             'ledger_id' => $inventory->id,
             'name' => 'Trading Goods Inventory'
         ]);
 
-  SubLedger::firstOrCreate([
+        SubLedger::firstOrCreate([
             'ledger_id' => $inventory->id,
             'name' => 'Packing Material Inventory'
+        ]);
+
+        $otherIncome = AccountGroup::firstOrCreate([
+            'account_group_id' => $income->id,
+            'name' => 'Other Income'
+        ]);
+
+        $equity = AccountGroup::firstOrCreate([
+            'account_type_id' => $liability->id,
+            'name' => 'Equity'
+        ]);
+
+        $equity = Ledger::firstOrCreate([
+            'account_group_id' => $equity->id,
+            'name' => 'Capital'
+        ]);
+
+        $accruedFreightExpenses = Ledger::firstOrCreate([
+            'account_group_id' => $currentLiab->id,
+            'name' => 'Accrued Freight Expenses'
         ]);
     }
 }

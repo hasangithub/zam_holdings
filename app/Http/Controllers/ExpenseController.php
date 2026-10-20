@@ -93,53 +93,79 @@ class ExpenseController extends Controller
                     'expense_date' => $request->expense_date,
                     'total_amount' => $amount,
                     'remarks' => $request->remarks,
+                    'is_paid' => $request->payment_status === 'paid' ? true : false,
                 ]);
 
                 if ($request->payment_status === 'paid') {
-                    $creditLedgerId =  1;
-                    $creditSubLedgerId = $request->payment_sub_ledger_id;
-                    $debitLedgerId = $category->ledger_id;
-                    $debitSubLedgerId = null;
+
+                    $journal = Accounting::postJournal([
+                        'branch_id' => $branchId,
+                        'date' => $expense->expense_date,
+                        'description' => 'Operational Expense #' . $expense->id . ' - ' . $category->name,
+
+                        'entries' => [
+
+                            [
+                                'ledger_id' =>  $category->ledger_id,
+                                'sub_ledger_id' => null,
+                                'debit' => $amount,
+                                'credit' => 0,
+                            ],
+
+                            [
+                                'ledger_id' => 1,
+                                'sub_ledger_id' => $request->payment_sub_ledger_id,
+                                'debit' => 0,
+                                'credit' => $amount,
+                            ],
+
+                        ],
+                    ]);
+
+                    JournalEntryReference::create([
+                        'journal_entry_id' => $journal->id,
+                        'model_type' => Expense::class,
+                        'model_id' => $expense->id,
+                        'action' => 'created',
+                    ]);
+
                     $expense->update([
                         'payment_sub_ledger_id' => $request->payment_sub_ledger_id,
+                        'paid_date' => now()->toDateString(),
                     ]);
                 } else {
-                    $creditLedgerId = 9;
-                    $creditSubLedgerId = $category->accrued_expense_sub_ledger_id;
-                    $debitLedgerId = $category->ledger_id;
-                    $debitSubLedgerId = null;
+
+                    $journal = Accounting::postJournal([
+                        'branch_id' => $branchId,
+                        'date' => $expense->expense_date,
+                        'description' => 'Operational Expense #' . $expense->id . ' - ' . $category->name,
+
+                        'entries' => [
+
+                            [
+                                'ledger_id' =>  $category->ledger_id,
+                                'sub_ledger_id' => null,
+                                'debit' => $amount,
+                                'credit' => 0,
+                            ],
+
+                            [
+                                'ledger_id' => 9,
+                                'sub_ledger_id' => $category->accrued_expense_sub_ledger_id,
+                                'debit' => 0,
+                                'credit' => $amount,
+                            ],
+
+                        ],
+                    ]);
+
+                    JournalEntryReference::create([
+                        'journal_entry_id' => $journal->id,
+                        'model_type' => Expense::class,
+                        'model_id' => $expense->id,
+                        'action' => 'created',
+                    ]);
                 }
-
-                $journal = Accounting::postJournal([
-                    'branch_id' => $branchId,
-                    'date' => $expense->expense_date,
-                    'description' => 'Operational Expense #' . $expense->id . ' - ' . $category->name,
-
-                    'entries' => [
-
-                        [
-                            'ledger_id' =>  $debitLedgerId,
-                            'sub_ledger_id' => $debitSubLedgerId,
-                            'debit' => $amount,
-                            'credit' => 0,
-                        ],
-
-                        [
-                            'ledger_id' => $creditLedgerId,
-                            'sub_ledger_id' => $creditSubLedgerId,
-                            'debit' => 0,
-                            'credit' => $amount,
-                        ],
-
-                    ],
-                ]);
-
-                JournalEntryReference::create([
-                    'journal_entry_id' => $journal->id,
-                    'model_type' => Expense::class,
-                    'model_id' => $expense->id,
-                    'action' => 'created',
-                ]);
             });
 
 

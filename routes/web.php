@@ -58,9 +58,9 @@ Route::middleware(['auth'])->group(function () {
 
     Route::resource('employees', EmployeeController::class)->except(['show']);
     Route::resource(
-    'invoice-company-profiles',
-    InvoiceCompanyProfileController::class
-)->only(['index', 'create', 'store', 'edit', 'update']);
+        'invoice-company-profiles',
+        InvoiceCompanyProfileController::class
+    )->only(['index', 'create', 'store', 'edit', 'update']);
 
     Route::get(
         'cashbooks',
@@ -110,6 +110,7 @@ Route::middleware(['auth'])->group(function () {
     Route::post('reports/general-ledger', [GeneralLedgerController::class, 'report'])
         ->name('reports.general-ledger.report');
     Route::get('/reports/trial-balance', [ReportController::class, 'trialBalance'])->name('reports.trial_balance');
+    Route::get('/reports/balance-sheet', [ReportController::class, 'balanceSheet'])->name('reports.balance-sheet');
 
     Route::get('/dashboard', [App\Http\Controllers\DashboardController::class, 'index'])->name('dashboard');
     Route::resource('categories', CategoryController::class);
@@ -409,6 +410,8 @@ Route::middleware(['auth', 'permission:roles.manage'])
     });
 
 use App\Http\Controllers\SettingsController;
+use App\Http\Controllers\StatementOfAccountController;
+use App\Models\StatementOfAccount;
 
 Route::middleware(['auth'])
     ->prefix('settings')
@@ -439,3 +442,37 @@ Route::middleware(['auth', 'permission:accounting.chart-of-accounts'])
         Route::get('/ledgers/{ledger}/subledgers', 'subLedgers')
             ->name('subledgers');
     });
+
+
+
+Route::middleware(['auth'])
+    ->prefix('statements')
+    ->name('statements.')
+    ->controller(StatementOfAccountController::class)
+    ->group(function () {
+        Route::get('/', 'index')->name('index');
+
+        // Branch 2 creates drafts.
+        Route::get('/create', 'create')->name('create');
+        Route::post('/', 'store')->name('store');
+
+        // Submit a Branch 2 draft to Branch 1.
+        Route::post('/{statement}/submit', 'submit')
+            ->name('submit');
+
+        // View and edit, with authorization enforced in the controller.
+        Route::get('/{statement}/edit', 'edit')->name('edit');
+        Route::put('/{statement}', 'update')->name('update');
+        Route::get('/{statement}', 'show')->name('show');
+    });
+
+
+use App\Http\Controllers\ProfitLossController;
+
+Route::middleware(['auth'])->group(function () {
+    Route::get('/reports/profit-loss', [
+        ProfitLossController::class,
+        'index'
+    ])->name('reports.profit-loss');
+});
+

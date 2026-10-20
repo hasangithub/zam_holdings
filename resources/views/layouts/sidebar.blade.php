@@ -501,7 +501,7 @@
 
                         <li class="nav-item">
 
-                            <a href=""
+                            <a href="/reports/balance-sheet"
                                 class="nav-link">
 
                                 <i class="far fa-circle nav-icon text-info"></i>
@@ -509,6 +509,22 @@
 
                             </a>
 
+                        </li>
+
+                        <li class="nav-item">
+                            <a href="{{ route('statements.index') }}"
+                                class="nav-link {{ request()->routeIs('statements.*') ? 'active' : '' }}">
+                                <i class="nav-icon fas fa-file-invoice-dollar"></i>
+                                <p>Statement of Account</p>
+                            </a>
+                        </li>
+
+                        <li class="nav-item">
+                            <a href="{{ route('reports.profit-loss') }}"
+                                class="nav-link {{ request()->routeIs('reports.profit-loss') ? 'active' : '' }}">
+                                <i class="nav-icon fas fa-file-invoice-dollar"></i>
+                                <p>Profit Loss Statement</p>
+                            </a>
                         </li>
 
                         <li class="nav-item">
