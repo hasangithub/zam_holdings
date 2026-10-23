@@ -357,7 +357,7 @@ class CustomerController extends Controller
                             'credit' => 0,
                         ],
                         [
-                            'ledger_id' => 3,
+                            'ledger_id' => 6,
                             'sub_ledger_id' =>  $customer->receivable_sub_ledger_id,
                             'debit' => 0,
                             'credit' => $amount,
