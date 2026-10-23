@@ -170,7 +170,7 @@ class ChartOfAccountsSeeder extends Seeder
         ]);
 
         $otherIncome = AccountGroup::firstOrCreate([
-            'account_group_id' => $income->id,
+            'account_type_id' => $income->id,
             'name' => 'Other Income'
         ]);
 

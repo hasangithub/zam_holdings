@@ -18,6 +18,7 @@ class Customer extends Model
         'customer_code',
         'phone',
         'receivable_sub_ledger_id',
+        'opening_journal_entry_id'
     ];
 
     public function sales()

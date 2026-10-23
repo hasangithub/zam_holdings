@@ -164,6 +164,9 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/suppliers/{id}/payment', [SupplierController::class, 'storePayment'])->name('suppliers.payment.store');
     Route::post('/suppliers/{id}/inventory-payment', [SupplierController::class, 'storeInventoryPayment'])->name('suppliers.inventory.payment.store');
     Route::post('/suppliers/{id}/asset-payment', [SupplierController::class, 'storeAssetPayment'])->name('suppliers.asset.payment.store');
+    Route::post('/suppliers/{supplier}/opening-balance',[SupplierController::class, 'storeOpeningBalance'])->name('suppliers.opening-balance');
+    Route::post('/customers/{customer}/opening-balance',[CustomerController::class, 'storeOpeningBalance'])->name('customers.opening-balance');
+
     Route::prefix('pos')->group(function () {
 
         Route::get('/local', [PosController::class, 'local'])->name('pos.local');

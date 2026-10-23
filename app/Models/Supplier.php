@@ -16,7 +16,8 @@ class Supplier extends Model
         'company_name',
         'phone',
         'address',
-        'liability_sub_ledger_id'
+        'liability_sub_ledger_id',
+        'opening_journal_entry_id'
     ];
 
     public function liabilitySubLedger()
@@ -32,6 +33,14 @@ class Supplier extends Model
         return $this->hasMany(
             PurchaseAmendment::class,
             'supplier_id'
+        );
+    }
+
+    public function openingJournalEntry()
+    {
+        return $this->belongsTo(
+            JournalEntry::class,
+            'opening_journal_entry_id'
         );
     }
 }

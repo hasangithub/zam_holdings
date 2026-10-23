@@ -60,20 +60,17 @@ class CustomerController extends Controller
         */
 
             $subLedger = SubLedger::create([
-
-                'ledger_id' => 3,
+                'ledger_id' => 6,
                 'name'      => $customer->name,
             ]);
 
             $customer->update([
-                'receivable_sub_ledger_id' =>
-                $subLedger->id,
-
+                'receivable_sub_ledger_id' => $subLedger->id,
             ]);
         });
 
         if ($request->customer_type == 'export') {
-             return redirect()->route('customers.export')->with('success', 'Export Customer created successfully.');
+            return redirect()->route('customers.export')->with('success', 'Export Customer created successfully.');
         }
         return redirect()->route('customers.local')->with('success', 'Local Customer created successfully.');
     }
@@ -132,6 +129,41 @@ class CustomerController extends Controller
         $openingBalance = 0;
 
         /*
+|--------------------------------------------------------------------------
+| CUSTOMER OPENING BALANCE JOURNAL
+|--------------------------------------------------------------------------
+*/
+
+        if ($customer->opening_journal_entry_id) {
+
+            $openingJournal = DB::table('journal_entries')
+                ->where('id', $customer->opening_journal_entry_id)
+                ->first();
+
+            if ($openingJournal) {
+
+                $openingAmount = (float) DB::table('journal_entry_details')
+                    ->where('journal_entry_id', $customer->opening_journal_entry_id)
+                    ->where('sub_ledger_id', $customer->receivable_sub_ledger_id)
+                    ->sum('debit');
+
+                if ($openingAmount > 0) {
+
+                    $ledger->push([
+                        'date' => $openingJournal->journal_date,
+                        'module' => 'Opening Balance',
+                        'type' => 'Opening Balance',
+                        'reference' => 'OPN-' . $openingJournal->id,
+                        'description' => $openingJournal->description
+                            ?? 'Customer Opening Balance',
+                        'debit' => $openingAmount,
+                        'credit' => 0,
+                    ]);
+                }
+            }
+        }
+
+        /*
     |--------------------------------------------------------------------------
     | SALES
     |--------------------------------------------------------------------------
@@ -175,7 +207,15 @@ class CustomerController extends Controller
     |--------------------------------------------------------------------------
     */
 
-        $ledger = $ledger->sortBy('date')->values();
+       $ledger = $ledger
+    ->sortBy(function ($row) {
+        return [
+            $row['date'],
+            $row['type'],
+            $row['reference'] ?? '',
+        ];
+    })
+    ->values();
 
 
         /*
@@ -333,5 +373,57 @@ class CustomerController extends Controller
         } catch (\Throwable $e) {
             return back()->withInput()->with('error', 'Unable to process the payment.');
         }
+    }
+
+    public function storeOpeningBalance(Request $request, Customer $customer)
+    {
+        $request->validate([
+            'amount' => 'required|numeric|min:0.01',
+            'date'   => 'required|date',
+        ]);
+
+        if ($customer->opening_journal_entry_id) {
+            return back()->with(
+                'error',
+                'Opening balance has already been entered for this customer.'
+            );
+        }
+
+        DB::transaction(function () use ($request, $customer) {
+
+            $amount = $request->amount;
+
+            $journal = Accounting::postJournal([
+                'branch_id' => $customer->branch_id,
+                'date' => $request->date,
+                'description' => 'Opening balance - Customer: '
+                    . $customer->name,
+
+                'entries' => [
+                    [
+                        'ledger_id' => 31,
+                        'sub_ledger_id' => null,
+                        'debit' => 0,
+                        'credit' => $amount,
+                    ],
+                    [
+                        'ledger_id' => 6,
+                        'sub_ledger_id' =>  $customer->receivable_sub_ledger_id,
+                        'debit' => $amount,
+                        'credit' => 0,
+                    ],
+                ]
+            ]);
+
+            // Store journal header ID in customer
+            $customer->update([
+                'opening_journal_entry_id' => $journal->id,
+            ]);
+        });
+
+        return back()->with(
+            'success',
+            'Customer opening balance saved successfully.'
+        );
     }
 }

@@ -19,6 +19,13 @@
             + Customer Payment
         </button>
 
+        <button type="button"
+                class="btn btn-primary"
+                data-toggle="modal"
+                data-target="#openingBalanceModal">
+                Opening Balance
+            </button>
+
     </div>
 
 
@@ -317,12 +324,17 @@
                                             Invoice
                                         </span>
 
-                                    @else
+                                     @elseif($row['type'] == 'Payment')
 
                                         <span class="badge badge-success">
                                             Payment
                                         </span>
 
+                                    @elseif($row['type'] == 'Opening Balance')
+
+                                        <span class="badge badge-info">
+                                            Opening Balance
+                                        </span>
                                     @endif
 
                                 </td>
@@ -419,6 +431,57 @@
 
     </div>
 
+</div>
+
+<div class="modal fade" id="openingBalanceModal" tabindex="-1">
+    <div class="modal-dialog">
+        <form method="POST"
+              action="{{ route('customers.opening-balance', $customer->id) }}">
+            @csrf
+
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Customer Opening Balance</h5>
+                    <button type="button" class="close"
+                            data-dismiss="modal">
+                        <span>&times;</span>
+                    </button>
+                </div>
+
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label>Opening Balance Amount</label>
+                        <input type="number"
+                               name="amount"
+                               class="form-control"
+                               min="0.01"
+                               step="0.01"
+                               required>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Opening Balance Date</label>
+                        <input type="date"
+                               name="date"
+                               class="form-control"
+                               value="{{ date('Y-m-d') }}"
+                               required>
+                    </div>
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary"
+                            data-dismiss="modal">
+                        Cancel
+                    </button>
+
+                    <button type="submit" class="btn btn-primary">
+                        Save Opening Balance
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
 </div>
 
 

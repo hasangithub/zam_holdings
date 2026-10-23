@@ -193,26 +193,54 @@ class SupplierController extends Controller
 
         $all = $request->boolean('all');
 
-        $fromDate = $request->input(
-            'from_date',
-            now()->subDays(6)->format('Y-m-d')
-        );
-
-        $toDate = $request->input(
-            'to_date',
-            now()->format('Y-m-d')
-        );
+        $fromDate = $request->input('from_date', now()->subDays(6)->format('Y-m-d'));
+        $toDate = $request->input('to_date', now()->format('Y-m-d'));
 
         $ledger = collect();
-
         $openingBalance = 0;
+
+        /*
+|--------------------------------------------------------------------------
+| Supplier Opening Balance Journal Entry
+|--------------------------------------------------------------------------
+*/
+
+        if ($supplier->opening_journal_entry_id) {
+
+            $openingJournal = \DB::table('journal_entries')
+                ->where('id', $supplier->opening_journal_entry_id)
+                ->first();
+
+            if ($openingJournal) {
+
+                // Get the journal amount belonging to this supplier's subledger.
+                $openingAmount = (float) DB::table('journal_entry_details')
+                    ->where('journal_entry_id', $supplier->opening_journal_entry_id)
+                    ->selectRaw('COALESCE(SUM(debit + credit), 0) as amount')
+                    ->value('amount');
+
+                if ($openingAmount > 0) {
+
+                    $ledger->push([
+                        'date' => $openingJournal->journal_date,
+                        'module' => 'Opening Balance',
+                        'type' => 'Opening Balance',
+                        'reference' => 'OPN-' . $openingJournal->id,
+                        'description' => $openingJournal->description
+                            ?? 'Supplier Opening Balance',
+                        'debit' => $openingAmount,
+                        'credit' => 0,
+                    ]);
+                }
+            }
+        }
 
 
         /*
-    |--------------------------------------------------------------------------
-    | Trading Goods
-    |--------------------------------------------------------------------------
-    */
+            |--------------------------------------------------------------------------
+            | Trading Goods
+            |--------------------------------------------------------------------------
+            */
 
         if ($supplier->supplier_type == 'Trading Goods') {
 
@@ -222,26 +250,16 @@ class SupplierController extends Controller
         |--------------------------------------------------------------------------
         */
 
-            $purchases = Purchase::where(
-                'supplier_id',
-                $id
-            )->get();
-
+            $purchases = Purchase::where('supplier_id', $id)->get();
 
             foreach ($purchases as $purchase) {
 
                 $ledger->push([
-
                     'date' => $purchase->purchase_date,
-
                     'module' => 'Purchase',
-
                     'type' => 'Invoice',
-
                     'debit' => (float) $purchase->total,
-
                     'credit' => 0,
-
                 ]);
             }
 
@@ -252,13 +270,7 @@ class SupplierController extends Controller
         |--------------------------------------------------------------------------
         */
 
-            $amendments = PurchaseAmendment::where(
-                'supplier_id',
-                $id
-            )
-                ->where('status', 'approved')
-                ->get();
-
+            $amendments = PurchaseAmendment::where('supplier_id', $id)->where('status', 'approved')->get();
 
             foreach ($amendments as $amendment) {
 
@@ -275,9 +287,7 @@ class SupplierController extends Controller
             */
 
                 if ($amount > 0) {
-
                     $debit = $amount;
-
                     $credit = 0;
                 }
 
@@ -291,27 +301,18 @@ class SupplierController extends Controller
             */ else {
 
                     $debit = 0;
-
                     $credit = abs($amount);
                 }
 
 
                 $ledger->push([
-
                     'date' => $amendment->amendment_date,
-
                     'module' => 'Purchase',
-
                     'type' => 'Amendment',
-
                     'reference' => 'AMD-' . $amendment->id,
-
                     'description' => $amendment->reason,
-
                     'debit' => $debit,
-
                     'credit' => $credit,
-
                 ]);
             }
 
@@ -322,26 +323,16 @@ class SupplierController extends Controller
         |--------------------------------------------------------------------------
         */
 
-            $payments = PurchasePayment::where(
-                'supplier_id',
-                $id
-            )->get();
-
+            $payments = PurchasePayment::where('supplier_id', $id)->get();
 
             foreach ($payments as $payment) {
 
                 $ledger->push([
-
                     'date' => $payment->payment_date,
-
                     'module' => 'Purchase',
-
                     'type' => 'Payment',
-
                     'debit' => 0,
-
                     'credit' => (float) $payment->amount,
-
                 ]);
             }
         }
@@ -353,32 +344,17 @@ class SupplierController extends Controller
     |--------------------------------------------------------------------------
     */ elseif ($supplier->supplier_type == 'Asset Providers') {
 
-            $purchases = FixedAsset::where(
-                'supplier_id',
-                $id
-            )->get();
-
-
-            $payments = FixedAssetPayment::where(
-                'supplier_id',
-                $id
-            )->get();
-
+            $purchases = FixedAsset::where('supplier_id', $id)->get();
+            $payments = FixedAssetPayment::where('supplier_id', $id)->get();
 
             foreach ($purchases as $purchase) {
 
                 $ledger->push([
-
                     'date' => $purchase->purchase_date,
-
                     'module' => 'Fixed Asset',
-
                     'type' => 'Invoice',
-
                     'debit' => (float) $purchase->amount,
-
                     'credit' => 0,
-
                 ]);
             }
 
@@ -386,17 +362,11 @@ class SupplierController extends Controller
             foreach ($payments as $payment) {
 
                 $ledger->push([
-
                     'date' => $payment->payment_date,
-
                     'module' => 'Fixed Asset',
-
                     'type' => 'Payment',
-
                     'debit' => 0,
-
                     'credit' => (float) $payment->amount,
-
                 ]);
             }
         }
@@ -408,50 +378,28 @@ class SupplierController extends Controller
     |--------------------------------------------------------------------------
     */ else {
 
-            $purchases = PurchaseInventory::where(
-                'supplier_id',
-                $id
-            )->get();
-
-
-            $payments = PurchaseInventoryPayment::where(
-                'supplier_id',
-                $id
-            )->get();
-
+            $purchases = PurchaseInventory::where('supplier_id', $id)->get();
+            $payments = PurchaseInventoryPayment::where('supplier_id', $id)->get();
 
             foreach ($purchases as $purchase) {
 
                 $ledger->push([
 
                     'date' => $purchase->purchase_date,
-
                     'module' => 'Inventory',
-
                     'type' => 'Invoice',
-
                     'debit' => (float) $purchase->total,
-
                     'credit' => 0,
-
                 ]);
             }
 
-
             foreach ($payments as $payment) {
-
                 $ledger->push([
-
                     'date' => $payment->payment_date,
-
                     'module' => 'Inventory',
-
                     'type' => 'Payment',
-
                     'debit' => 0,
-
                     'credit' => (float) $payment->amount,
-
                 ]);
             }
         }
@@ -490,7 +438,6 @@ class SupplierController extends Controller
 
             $filtered = collect();
 
-
             foreach ($ledger as $row) {
 
                 /*
@@ -500,9 +447,7 @@ class SupplierController extends Controller
             */
 
                 if ($row['date'] < $fromDate) {
-
-                    $openingBalance +=
-                        $row['debit'] - $row['credit'];
+                    $openingBalance += $row['debit'] - $row['credit'];
                 }
 
 
@@ -532,17 +477,9 @@ class SupplierController extends Controller
 
         $running = $openingBalance;
 
-
         $ledger = $ledger->map(function ($row) use (&$running) {
-
-            $running +=
-                $row['debit'] -
-                $row['credit'];
-
-
+            $running += $row['debit'] - $row['credit'];
             $row['balance'] = $running;
-
-
             return $row;
         });
 
@@ -850,5 +787,57 @@ class SupplierController extends Controller
         } catch (\Throwable $e) {
             return back()->withInput()->with('error', 'Unable to process the payment.');
         }
+    }
+
+    public function storeOpeningBalance(Request $request, Supplier $supplier)
+    {
+        $request->validate([
+            'amount' => 'required|numeric|min:0.01',
+            'date'   => 'required|date',
+        ]);
+
+        if ($supplier->opening_journal_entry_id) {
+            return back()->with(
+                'error',
+                'Opening balance has already been entered for this supplier.'
+            );
+        }
+
+        DB::transaction(function () use ($request, $supplier) {
+
+            $amount = $request->amount;
+
+            $journal = Accounting::postJournal([
+                'branch_id' => $supplier->branch_id,
+                'date' => $request->date,
+                'description' => 'Opening balance - Supplier: '
+                    . $supplier->name,
+
+                'entries' => [
+                    [
+                        'ledger_id' => 31,
+                        'sub_ledger_id' => null,
+                        'debit' => $amount,
+                        'credit' => 0,
+                    ],
+                    [
+                        'ledger_id' => 8,
+                        'sub_ledger_id' =>  $supplier->liability_sub_ledger_id,
+                        'debit' => 0,
+                        'credit' => $amount,
+                    ],
+                ]
+            ]);
+
+            // Store journal header ID in supplier
+            $supplier->update([
+                'opening_journal_entry_id' => $journal->id,
+            ]);
+        });
+
+        return back()->with(
+            'success',
+            'Supplier opening balance saved successfully.'
+        );
     }
 }
