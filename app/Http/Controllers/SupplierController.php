@@ -207,7 +207,7 @@ class SupplierController extends Controller
 
         if ($supplier->opening_journal_entry_id) {
 
-            $openingJournal = \DB::table('journal_entries')
+            $openingJournal = DB::table('journal_entries')
                 ->where('id', $supplier->opening_journal_entry_id)
                 ->first();
 
@@ -216,8 +216,7 @@ class SupplierController extends Controller
                 // Get the journal amount belonging to this supplier's subledger.
                 $openingAmount = (float) DB::table('journal_entry_details')
                     ->where('journal_entry_id', $supplier->opening_journal_entry_id)
-                    ->selectRaw('COALESCE(SUM(debit + credit), 0) as amount')
-                    ->value('amount');
+                    ->sum('debit');
 
                 if ($openingAmount > 0) {
 
