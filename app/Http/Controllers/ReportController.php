@@ -365,6 +365,14 @@ class ReportController extends Controller
         $customers = Customer::query()
             ->where('branch_id', auth()->user()->branch_id)
             ->where('customer_type', 'local')
+            ->selectSub(function ($query) {
+                $query->from('journal_entry_details')
+                    ->selectRaw('COALESCE(SUM(debit), 0)')
+                    ->whereColumn(
+                        'journal_entry_details.journal_entry_id',
+                        'customers.opening_journal_entry_id'
+                    );
+            }, 'opening_balance')
             ->withSum(['sales as total_sales' => function ($q) {
                 $q->where('status', '!=', 'cancelled');
             }], 'total')
@@ -376,6 +384,14 @@ class ReportController extends Controller
             ->get();
 
         $customers->each(function ($customer) {
+
+             $customer->opening_balance =
+                (float) ($customer->opening_balance ?? 0);
+
+            $customer->total_sales =
+                (float) ($customer->total_sales ?? 0)
+                + $customer->opening_balance; 
+                
             $customer->outstanding =
                 ($customer->total_sales ?? 0) -
                 ($customer->total_paid ?? 0);
@@ -391,6 +407,14 @@ class ReportController extends Controller
         $customers = Customer::query()
             ->where('branch_id', auth()->user()->branch_id)
             ->where('customer_type', 'export')
+            ->selectSub(function ($query) {
+                $query->from('journal_entry_details')
+                    ->selectRaw('COALESCE(SUM(debit), 0)')
+                    ->whereColumn(
+                        'journal_entry_details.journal_entry_id',
+                        'customers.opening_journal_entry_id'
+                    );
+            }, 'opening_balance')
             ->withSum(['sales as total_sales' => function ($q) {
                 $q->where('status', '!=', 'cancelled');
             }], 'total')
@@ -401,7 +425,17 @@ class ReportController extends Controller
             ->orderBy('name')
             ->get();
 
+
+
         $customers->each(function ($customer) {
+
+            $customer->opening_balance =
+                (float) ($customer->opening_balance ?? 0);
+
+            $customer->total_sales =
+                (float) ($customer->total_sales ?? 0)
+                + $customer->opening_balance;
+
             $customer->outstanding =
                 ($customer->total_sales ?? 0) -
                 ($customer->total_paid ?? 0);
@@ -425,6 +459,15 @@ class ReportController extends Controller
             })
 
             ->select('suppliers.*')
+            // SUPPLIER OPENING BALANCE FROM JOURNAL
+            ->selectSub(function ($query) {
+                $query->from('journal_entry_details')
+                    ->selectRaw('COALESCE(SUM(debit), 0)')
+                    ->whereColumn(
+                        'journal_entry_details.journal_entry_id',
+                        'suppliers.opening_journal_entry_id'
+                    );
+            }, 'opening_balance')
 
             // TRADING GOODS PURCHASE TOTAL
             ->selectSub(function ($query) {
@@ -513,6 +556,10 @@ class ReportController extends Controller
                 $supplier->last_purchase =
                     $supplier->inventory_last_purchase;
             }
+
+            $supplier->opening_balance = (float) ($supplier->opening_balance ?? 0);
+
+            $supplier->purchase_total += $supplier->opening_balance;
 
             $supplier->outstanding =
                 $supplier->purchase_total -
