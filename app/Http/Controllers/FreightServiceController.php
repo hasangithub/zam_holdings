@@ -32,7 +32,7 @@ class FreightServiceController extends Controller
         ]);
 
             $subLedger = SubLedger::create([
-                'ledger_id' => 5,
+                'ledger_id' => 18,
                 'name'      => $frightService->name,
             ]);
 
