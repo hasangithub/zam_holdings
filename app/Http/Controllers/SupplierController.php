@@ -815,7 +815,7 @@ class SupplierController extends Controller
 
                 'entries' => [
                     [
-                        'ledger_id' => 31,
+                        'ledger_id' => 17,
                         'sub_ledger_id' => null,
                         'debit' => $amount,
                         'credit' => 0,
