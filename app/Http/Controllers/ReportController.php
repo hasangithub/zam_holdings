@@ -385,13 +385,13 @@ class ReportController extends Controller
 
         $customers->each(function ($customer) {
 
-             $customer->opening_balance =
+            $customer->opening_balance =
                 (float) ($customer->opening_balance ?? 0);
 
             $customer->total_sales =
                 (float) ($customer->total_sales ?? 0)
-                + $customer->opening_balance; 
-                
+                + $customer->opening_balance;
+
             $customer->outstanding =
                 ($customer->total_sales ?? 0) -
                 ($customer->total_paid ?? 0);
@@ -450,127 +450,188 @@ class ReportController extends Controller
     public function supplierSummary(Request $request)
     {
         $type = $request->supplier_type;
+        $balanceFilter = $request->balance_filter;
+       
 
-        $suppliers = Supplier::query()
-            ->where('branch_id', auth()->user()->branch_id)
+        $query = Supplier::query()
+            ->where('suppliers.branch_id', auth()->user()->branch_id)
 
             ->when($type, function ($query) use ($type) {
-                $query->where('supplier_type', $type);
+                $query->where('suppliers.supplier_type', $type);
             })
 
             ->select('suppliers.*')
-            // SUPPLIER OPENING BALANCE FROM JOURNAL
+
+            // OPENING BALANCE
             ->selectSub(function ($query) {
-                $query->from('journal_entry_details')
-                    ->selectRaw('COALESCE(SUM(debit), 0)')
+                $query->from('journal_entry_details as jed')
+                    ->selectRaw('COALESCE(SUM(jed.debit), 0)')
                     ->whereColumn(
-                        'journal_entry_details.journal_entry_id',
+                        'jed.journal_entry_id',
                         'suppliers.opening_journal_entry_id'
                     );
             }, 'opening_balance')
 
-            // TRADING GOODS PURCHASE TOTAL
+            // TRADING PURCHASE TOTAL
             ->selectSub(function ($query) {
-                $query->from('purchases')
-                    ->selectRaw('COALESCE(SUM(total), 0)')
-                    ->whereColumn('purchases.supplier_id', 'suppliers.id')
-                    ->where('purchases.status', '!=', 'cancelled');
+                $query->from('purchases as p')
+                    ->selectRaw('COALESCE(SUM(p.total), 0)')
+                    ->whereColumn('p.supplier_id', 'suppliers.id')
+                    ->where('p.status', '!=', 'cancelled');
             }, 'trading_purchase_total')
 
-            // TRADING GOODS PAYMENT TOTAL
+            // TRADING PAYMENT TOTAL
             ->selectSub(function ($query) {
-                $query->from('purchase_payments')
-                    ->selectRaw('COALESCE(SUM(amount), 0)')
-                    ->whereColumn('purchase_payments.supplier_id', 'suppliers.id');
+                $query->from('purchase_payments as pp')
+                    ->selectRaw('COALESCE(SUM(pp.amount), 0)')
+                    ->whereColumn('pp.supplier_id', 'suppliers.id');
             }, 'trading_payment_total')
 
-            // PACKING MATERIAL / OTHERS PURCHASE TOTAL
+            // INVENTORY PURCHASE TOTAL
             ->selectSub(function ($query) {
-                $query->from('purchase_inventories')
-                    ->selectRaw('COALESCE(SUM(total), 0)')
-                    ->whereColumn('purchase_inventories.supplier_id', 'suppliers.id')
-                    ->where('purchase_inventories.status', '!=', 'cancelled');
+                $query->from('purchase_inventories as pi')
+                    ->selectRaw('COALESCE(SUM(pi.total), 0)')
+                    ->whereColumn('pi.supplier_id', 'suppliers.id')
+                    ->where('pi.status', '!=', 'cancelled');
             }, 'inventory_purchase_total')
 
-            // PACKING MATERIAL / OTHERS PAYMENT TOTAL
+            // INVENTORY PAYMENT TOTAL
             ->selectSub(function ($query) {
-                $query->from('purchase_inventory_payments')
-                    ->selectRaw('COALESCE(SUM(amount), 0)')
-                    ->whereColumn(
-                        'purchase_inventory_payments.supplier_id',
-                        'suppliers.id'
-                    );
+                $query->from('purchase_inventory_payments as pip')
+                    ->selectRaw('COALESCE(SUM(pip.amount), 0)')
+                    ->whereColumn('pip.supplier_id', 'suppliers.id');
             }, 'inventory_payment_total')
 
             // LAST TRADING PURCHASE
             ->selectSub(function ($query) {
-                $query->from('purchases')
-                    ->selectRaw('MAX(purchase_date)')
-                    ->whereColumn('purchases.supplier_id', 'suppliers.id')
-                    ->where('purchases.status', '!=', 'cancelled');
+                $query->from('purchases as p')
+                    ->selectRaw('MAX(p.purchase_date)')
+                    ->whereColumn('p.supplier_id', 'suppliers.id')
+                    ->where('p.status', '!=', 'cancelled');
             }, 'trading_last_purchase')
 
             // LAST INVENTORY PURCHASE
             ->selectSub(function ($query) {
-                $query->from('purchase_inventories')
-                    ->selectRaw('MAX(purchase_date)')
-                    ->whereColumn(
-                        'purchase_inventories.supplier_id',
-                        'suppliers.id'
-                    )
-                    ->where('purchase_inventories.status', '!=', 'cancelled');
+                $query->from('purchase_inventories as pi')
+                    ->selectRaw('MAX(pi.purchase_date)')
+                    ->whereColumn('pi.supplier_id', 'suppliers.id')
+                    ->where('pi.status', '!=', 'cancelled');
             }, 'inventory_last_purchase')
 
-            ->orderBy('name')
+            // PURCHASE TOTAL INCLUDING OPENING BALANCE
+            ->selectRaw("
+            CASE
+                WHEN suppliers.supplier_type = 'Trading Goods'
+                    THEN
+                        COALESCE((
+                            SELECT SUM(p.total)
+                            FROM purchases p
+                            WHERE p.supplier_id = suppliers.id
+                              AND p.status != 'cancelled'
+                        ), 0)
+                        +
+                        COALESCE((
+                            SELECT SUM(jed.debit)
+                            FROM journal_entry_details jed
+                            WHERE jed.journal_entry_id =
+                                  suppliers.opening_journal_entry_id
+                        ), 0)
+                ELSE
+                        COALESCE((
+                            SELECT SUM(pi.total)
+                            FROM purchase_inventories pi
+                            WHERE pi.supplier_id = suppliers.id
+                              AND pi.status != 'cancelled'
+                        ), 0)
+                        +
+                        COALESCE((
+                            SELECT SUM(jed.debit)
+                            FROM journal_entry_details jed
+                            WHERE jed.journal_entry_id =
+                                  suppliers.opening_journal_entry_id
+                        ), 0)
+            END AS purchase_total
+        ")
+
+            // PAYMENT TOTAL
+            ->selectRaw("
+            CASE
+                WHEN suppliers.supplier_type = 'Trading Goods'
+                    THEN COALESCE((
+                        SELECT SUM(pp.amount)
+                        FROM purchase_payments pp
+                        WHERE pp.supplier_id = suppliers.id
+                    ), 0)
+                ELSE COALESCE((
+                    SELECT SUM(pip.amount)
+                    FROM purchase_inventory_payments pip
+                    WHERE pip.supplier_id = suppliers.id
+                ), 0)
+            END AS payment_total
+        ")
+
+            // OUTSTANDING BALANCE
+            ->selectRaw("
+            CASE
+                WHEN suppliers.supplier_type = 'Trading Goods'
+                    THEN
+                        COALESCE((
+                            SELECT SUM(p.total)
+                            FROM purchases p
+                            WHERE p.supplier_id = suppliers.id
+                              AND p.status != 'cancelled'
+                        ), 0)
+                        +
+                        COALESCE((
+                            SELECT SUM(jed.debit)
+                            FROM journal_entry_details jed
+                            WHERE jed.journal_entry_id =
+                                  suppliers.opening_journal_entry_id
+                        ), 0)
+                        -
+                        COALESCE((
+                            SELECT SUM(pp.amount)
+                            FROM purchase_payments pp
+                            WHERE pp.supplier_id = suppliers.id
+                        ), 0)
+                ELSE
+                        COALESCE((
+                            SELECT SUM(pi.total)
+                            FROM purchase_inventories pi
+                            WHERE pi.supplier_id = suppliers.id
+                              AND pi.status != 'cancelled'
+                        ), 0)
+                        +
+                        COALESCE((
+                            SELECT SUM(jed.debit)
+                            FROM journal_entry_details jed
+                            WHERE jed.journal_entry_id =
+                                  suppliers.opening_journal_entry_id
+                        ), 0)
+                        -
+                        COALESCE((
+                            SELECT SUM(pip.amount)
+                            FROM purchase_inventory_payments pip
+                            WHERE pip.supplier_id = suppliers.id
+                        ), 0)
+            END AS outstanding
+        ");
+
+        // APPLY YOUR BALANCE FILTER
+        // Keep the comparison values matching your existing Blade dropdown.
+        if (isset($balanceFilter)) {
+            $query->havingRaw('outstanding > ?', [$balanceFilter]);
+        } 
+
+        $suppliers = $query
+            ->orderBy('suppliers.name')
             ->get();
 
-
-        /*
-    |--------------------------------------------------------------------------
-    | Calculate supplier balance based on supplier type
-    |--------------------------------------------------------------------------
-    */
-
-        $suppliers->each(function ($supplier) {
-
-            if ($supplier->supplier_type === 'Trading Goods') {
-
-                // Trading Goods
-                $supplier->purchase_total =
-                    (float) $supplier->trading_purchase_total;
-
-                $supplier->payment_total =
-                    (float) $supplier->trading_payment_total;
-
-                $supplier->last_purchase =
-                    $supplier->trading_last_purchase;
-            } else {
-
-                // Packing Material + Others
-                $supplier->purchase_total =
-                    (float) $supplier->inventory_purchase_total;
-
-                $supplier->payment_total =
-                    (float) $supplier->inventory_payment_total;
-
-                $supplier->last_purchase =
-                    $supplier->inventory_last_purchase;
-            }
-
-            $supplier->opening_balance = (float) ($supplier->opening_balance ?? 0);
-
-            $supplier->purchase_total += $supplier->opening_balance;
-
-            $supplier->outstanding =
-                $supplier->purchase_total -
-                $supplier->payment_total;
-        });
-
-
-        return view(
-            'reports.supplier-summary',
-            compact('suppliers', 'type')
-        );
+        return view('reports.supplier-summary', compact(
+            'suppliers',
+            'type',
+            'balanceFilter'
+        ));
     }
 
     /**
