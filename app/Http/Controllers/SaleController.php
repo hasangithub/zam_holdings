@@ -65,7 +65,7 @@ class SaleController extends Controller
     */
 
         $stocks = DB::table('purchase_items')
-            ->join('items','items.id','=','purchase_items.item_id')
+            ->join('items', 'items.id', '=', 'purchase_items.item_id')
             ->join('purchases', 'purchases.id', '=', 'purchase_items.purchase_id')
             ->select(
                 'purchase_items.item_id',
@@ -75,14 +75,14 @@ class SaleController extends Controller
                 DB::raw('SUM(purchase_items.remaining_qty) as total_qty')
             )
 
-            ->where('purchase_items.remaining_qty','>', 0)
+            ->where('purchase_items.remaining_qty', '>', 0)
             ->where('purchases.branch_id', auth()->user()->branch_id)
-            ->groupBy('purchase_items.item_id','purchase_items.price','items.name')
+            ->groupBy('purchase_items.item_id', 'purchase_items.price', 'items.name')
             ->orderBy('items.name')
             ->orderBy('purchase_items.price')
             ->get();
 
-        return view('sales.create',compact('customers','stocks'));
+        return view('sales.create', compact('customers', 'stocks'));
     }
 
     public function createExport()
@@ -128,7 +128,7 @@ class SaleController extends Controller
         $request->validate([
             'customer_id' => 'required|exists:customers,id',
             'items' => 'required|array|min:1',
-            'items.*.group_key' =>'required',
+            'items.*.group_key' => 'required',
             'items.*.qty' => 'required|numeric|gt:0',
             'items.*.sale_price' => 'required|numeric|min:0',
         ]);
@@ -195,9 +195,9 @@ class SaleController extends Controller
 
 
                     $itemId = (int) $parts[0];
-                    $costPrice =(float) $parts[1];
-                    $qtyRequested =(float) $row['qty'];
-                    $salePrice =(float) $row['sale_price'];
+                    $costPrice = (float) $parts[1];
+                    $qtyRequested = (float) $row['qty'];
+                    $salePrice = (float) $row['sale_price'];
                     /*
                 |--------------------------------------------------------------------------
                 | LOCK ALL MATCHING PURCHASE BATCHES
@@ -206,7 +206,9 @@ class SaleController extends Controller
 
                     $batches =
                         PurchaseItem::query()->where('item_id', $itemId)
-                        ->where('price',$costPrice)
+                        ->join('purchases', 'purchases.id', '=', 'purchase_items.purchase_id')
+                        ->where('purchases.branch_id', $branchId)
+                        ->where('price', $costPrice)
                         ->where('remaining_qty', '>', 0)
 
                         /*
@@ -299,7 +301,7 @@ class SaleController extends Controller
                             break;
                         }
                         $batchRemaining = (float)$batch->remaining_qty;
-                        $deductQty = min($batchRemaining,$remainingToDeduct);
+                        $deductQty = min($batchRemaining, $remainingToDeduct);
                         /*
                     |--------------------------------------------------------------------------
                     | SALE SUBTOTAL FOR THIS BATCH
@@ -360,12 +362,12 @@ class SaleController extends Controller
                     //SAFETY CHECK
 
                     if ($remainingToDeduct > 0) {
-                        throw ValidationException::withMessages([ 'items' => sprintf(
-            'Stock deduction failed for item ID %d at cost price %.4f. Remaining quantity: %.6f.',
-            $itemId,
-            $costPrice,
-            $remainingToDeduct
-        ),]);
+                        throw ValidationException::withMessages(['items' => sprintf(
+                            'Stock deduction failed for item ID %d at cost price %.4f. Remaining quantity: %.6f.',
+                            $itemId,
+                            $costPrice,
+                            $remainingToDeduct
+                        ),]);
                     }
                 }
                 //UPDATE SALE TOTAL
@@ -1525,7 +1527,7 @@ class SaleController extends Controller
     }
 
     public function invoicePdf(Request $request, $id)
-    {  
+    {
         $request->validate([
             'company_profile_id' => [
                 'nullable',
@@ -1753,7 +1755,7 @@ class SaleController extends Controller
 
         $invoiceCompanyProfiles = InvoiceCompanyProfile::where('status', true)->get();
 
-                /*
+        /*
     |--------------------------------------------------------------------------
     | Generate PDF
     |--------------------------------------------------------------------------
