@@ -65,48 +65,24 @@ class SaleController extends Controller
     */
 
         $stocks = DB::table('purchase_items')
-            ->join(
-                'items',
-                'items.id',
-                '=',
-                'purchase_items.item_id'
-            )
-
+            ->join('items','items.id','=','purchase_items.item_id')
+            ->join('purchases', 'purchases.id', '=', 'purchase_items.purchase_id')
             ->select(
                 'purchase_items.item_id',
                 'items.name as item_name',
                 'purchase_items.price',
 
-                DB::raw(
-                    'SUM(purchase_items.remaining_qty) as total_qty'
-                )
+                DB::raw('SUM(purchase_items.remaining_qty) as total_qty')
             )
 
-            ->where(
-                'purchase_items.remaining_qty',
-                '>',
-                0
-            )
-
-            ->groupBy(
-                'purchase_items.item_id',
-                'purchase_items.price',
-                'items.name'
-            )
-
+            ->where('purchase_items.remaining_qty','>', 0)
+            ->where('purchases.branch_id', auth()->user()->branch_id)
+            ->groupBy('purchase_items.item_id','purchase_items.price','items.name')
             ->orderBy('items.name')
             ->orderBy('purchase_items.price')
-
             ->get();
 
-
-        return view(
-            'sales.create',
-            compact(
-                'customers',
-                'stocks'
-            )
-        );
+        return view('sales.create',compact('customers','stocks'));
     }
 
     public function createExport()
