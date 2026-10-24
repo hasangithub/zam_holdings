@@ -91,12 +91,8 @@ class SaleController extends Controller
         $freightServices = FreightService::all();
 
         $stocks = DB::table('purchase_items')
-            ->join(
-                'items',
-                'items.id',
-                '=',
-                'purchase_items.item_id'
-            )
+            ->join('items', 'items.id', '=','purchase_items.item_id')
+            ->join('purchases', 'purchases.id', '=', 'purchase_items.purchase_id')
             ->select(
                 'purchase_items.item_id',
                 'items.name as item_name',
@@ -108,6 +104,7 @@ class SaleController extends Controller
                 '>',
                 0
             )
+            ->where('purchases.branch_id', auth()->user()->branch_id)
             ->groupBy(
                 'purchase_items.item_id',
                 'purchase_items.price',
@@ -125,6 +122,7 @@ class SaleController extends Controller
 
     public function store(Request $request)
     {
+        
         $request->validate([
             'customer_id' => 'required|exists:customers,id',
             'items' => 'required|array|min:1',
@@ -205,16 +203,16 @@ class SaleController extends Controller
                 */
 
                     $batches =
-                        PurchaseItem::query()->where('item_id', $itemId)
+                        PurchaseItem::query()->where('purchase_items.item_id', $itemId)
                         ->join('purchases', 'purchases.id', '=', 'purchase_items.purchase_id')
                         ->where('purchases.branch_id', $branchId)
-                        ->where('price', $costPrice)
-                        ->where('remaining_qty', '>', 0)
+                        ->where('purchase_items.price', $costPrice)
+                        ->where('purchase_items.remaining_qty', '>', 0)
 
                         /*
                         | FIFO
                         */
-                        ->orderBy('id')
+                        ->orderBy('purchase_items.id')
 
                         /*
                         | Prevent another sale from using
@@ -508,10 +506,12 @@ class SaleController extends Controller
                     $costPrice = (float) $parts[1];
                     $quantity  = (float) $row['qty'];
 
-                    $batches = PurchaseItem::where('item_id', $itemId)
-                        ->where('price', $costPrice)
-                        ->where('remaining_qty', '>', 0)
-                        ->orderBy('id')
+                    $batches = PurchaseItem::where('purchase_items.item_id', $itemId)
+                        ->join('purchases', 'purchases.id', '=', 'purchase_items.purchase_id')
+                        ->where('purchases.branch_id', $branchId)
+                        ->where('purchase_items.price', $costPrice)
+                        ->where('purchase_items.remaining_qty', '>', 0)
+                        ->orderBy('purchase_items.id')
                         ->lockForUpdate()
                         ->get();
 
