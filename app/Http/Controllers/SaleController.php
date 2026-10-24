@@ -126,22 +126,11 @@ class SaleController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-
-            'customer_id' =>
-            'required|exists:customers,id',
-
-            'items' =>
-            'required|array|min:1',
-
-            'items.*.group_key' =>
-            'required',
-
-            'items.*.qty' =>
-            'required|numeric|gt:0',
-
-            'items.*.sale_price' =>
-            'required|numeric|min:0',
-
+            'customer_id' => 'required|exists:customers,id',
+            'items' => 'required|array|min:1',
+            'items.*.group_key' =>'required',
+            'items.*.qty' => 'required|numeric|gt:0',
+            'items.*.sale_price' => 'required|numeric|min:0',
         ]);
 
 
@@ -150,14 +139,7 @@ class SaleController extends Controller
             $sale = DB::transaction(function () use ($request) {
 
                 $branchId = auth()->user()->branch_id;
-
-                $customer =
-                    Customer::lockForUpdate()
-                    ->findOrFail(
-                        $request->customer_id
-                    );
-
-
+                $customer = Customer::lockForUpdate()->findOrFail($request->customer_id);
                 /*
             |--------------------------------------------------------------------------
             | CREATE SALE HEADER
@@ -179,12 +161,8 @@ class SaleController extends Controller
                     ),
                 ]);
 
-
                 $total = 0;
-
                 $costOfGoodsSold = 0;
-
-
                 /*
             |--------------------------------------------------------------------------
             | PROCESS POS ITEMS
@@ -192,8 +170,6 @@ class SaleController extends Controller
             */
 
                 foreach ($request->items as $row) {
-
-
                     /*
                 |--------------------------------------------------------------------------
                 | group_key
@@ -205,12 +181,7 @@ class SaleController extends Controller
                 |
                 */
 
-                    $parts =
-                        explode(
-                            '|',
-                            $row['group_key']
-                        );
-
+                    $parts = explode('|', $row['group_key']);
 
                     if (count($parts) < 2) {
 
@@ -223,22 +194,10 @@ class SaleController extends Controller
                     }
 
 
-                    $itemId =
-                        (int) $parts[0];
-
-
-                    $costPrice =
-                        (float) $parts[1];
-
-
-                    $qtyRequested =
-                        (float) $row['qty'];
-
-
-                    $salePrice =
-                        (float) $row['sale_price'];
-
-
+                    $itemId = (int) $parts[0];
+                    $costPrice =(float) $parts[1];
+                    $qtyRequested =(float) $row['qty'];
+                    $salePrice =(float) $row['sale_price'];
                     /*
                 |--------------------------------------------------------------------------
                 | LOCK ALL MATCHING PURCHASE BATCHES
@@ -246,23 +205,9 @@ class SaleController extends Controller
                 */
 
                     $batches =
-                        PurchaseItem::query()
-
-                        ->where(
-                            'item_id',
-                            $itemId
-                        )
-
-                        ->where(
-                            'price',
-                            $costPrice
-                        )
-
-                        ->where(
-                            'remaining_qty',
-                            '>',
-                            0
-                        )
+                        PurchaseItem::query()->where('item_id', $itemId)
+                        ->where('price',$costPrice)
+                        ->where('remaining_qty', '>', 0)
 
                         /*
                         | FIFO
@@ -341,11 +286,7 @@ class SaleController extends Controller
                 | KEEP ORIGINAL QUANTITY
                 |--------------------------------------------------------------------------
                 */
-
-                    $remainingToDeduct =
-                        $qtyRequested;
-
-
+                    $remainingToDeduct = $qtyRequested;
                     /*
                 |--------------------------------------------------------------------------
                 | DEDUCT FROM PURCHASE BATCHES
@@ -354,61 +295,31 @@ class SaleController extends Controller
 
                     foreach ($batches as $batch) {
 
-                        if (
-                            $remainingToDeduct <= 0
-                        ) {
-
+                        if ($remainingToDeduct <= 0) {
                             break;
                         }
-
-
-                        $batchRemaining =
-                            (float)
-                            $batch->remaining_qty;
-
-
-                        $deductQty =
-                            min(
-                                $batchRemaining,
-                                $remainingToDeduct
-                            );
-
-
+                        $batchRemaining = (float)$batch->remaining_qty;
+                        $deductQty = min($batchRemaining,$remainingToDeduct);
                         /*
                     |--------------------------------------------------------------------------
                     | SALE SUBTOTAL FOR THIS BATCH
                     |--------------------------------------------------------------------------
                     */
-
-                        $saleSubtotal =
-                            $deductQty *
-                            $salePrice;
-
-
+                        $saleSubtotal = $deductQty * $salePrice;
                         /*
                     |--------------------------------------------------------------------------
                     | COGS FOR THIS BATCH
                     |--------------------------------------------------------------------------
                     */
-
-                        $batchCost =
-                            $deductQty *
-                            (float) $batch->price;
-
-
+                        $batchCost = $deductQty * (float) $batch->price;
                         /*
                     |--------------------------------------------------------------------------
                     | UPDATE PURCHASE STOCK
                     |--------------------------------------------------------------------------
                     */
 
-                        $batch->remaining_qty =
-                            $batchRemaining -
-                            $deductQty;
-
+                        $batch->remaining_qty = $batchRemaining - $deductQty;
                         $batch->save();
-
-
                         /*
                     |--------------------------------------------------------------------------
                     | CREATE SALE ITEM
@@ -449,7 +360,12 @@ class SaleController extends Controller
                     //SAFETY CHECK
 
                     if ($remainingToDeduct > 0) {
-                        throw ValidationException::withMessages(['items' => 'Stock deduction failed.']);
+                        throw ValidationException::withMessages([ 'items' => sprintf(
+            'Stock deduction failed for item ID %d at cost price %.4f. Remaining quantity: %.6f.',
+            $itemId,
+            $costPrice,
+            $remainingToDeduct
+        ),]);
                     }
                 }
                 //UPDATE SALE TOTAL
