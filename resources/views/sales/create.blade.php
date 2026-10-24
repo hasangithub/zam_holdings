@@ -21,6 +21,8 @@
 
 @section('content')
 
+@include('partials.alerts')
+
 <div class="container-fluid">
 
     <div class="row">
