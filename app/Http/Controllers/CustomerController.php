@@ -169,7 +169,9 @@ class CustomerController extends Controller
     |--------------------------------------------------------------------------
     */
 
-        $sales = Sale::where('customer_id', $id)->get();
+        $sales = Sale::where('customer_id', $id)
+        ->where('status', '!=', 'cancelled')
+        ->get();
 
         $payments = SalesPayment::where('customer_id', $id)->get();
 
