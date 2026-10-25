@@ -208,37 +208,14 @@ class SaleController extends Controller
                         ->where('purchases.branch_id', $branchId)
                         ->where('purchase_items.price', $costPrice)
                         ->where('purchase_items.remaining_qty', '>', 0)
-
-                        /*
-                        | FIFO
-                        */
                         ->orderBy('purchase_items.id')
-
-                        /*
-                        | Prevent another sale from using
-                        | these rows at the same time.
-                        */
-                        ->lockForUpdate()
-
-                        ->get();
-
-
+                        ->lockForUpdate()->get();
                     /*
                 |--------------------------------------------------------------------------
                 | CALCULATE AVAILABLE STOCK
                 |--------------------------------------------------------------------------
                 */
-
-                    $availableQty =
-                        $batches->sum(
-                            function ($batch) {
-
-                                return (float)
-                                $batch->remaining_qty;
-                            }
-                        );
-
-
+                    $availableQty = $batches->sum(function ($batch) { return (float) $batch->remaining_qty;});
                     /*
                 |--------------------------------------------------------------------------
                 | STOCK CHECK
