@@ -206,6 +206,7 @@ class SaleController extends Controller
                         PurchaseItem::query()->where('purchase_items.item_id', $itemId)
                         ->join('purchases', 'purchases.id', '=', 'purchase_items.purchase_id')
                         ->where('purchases.branch_id', $branchId)
+                        ->where('purchases.status', '!=', 'cancelled')
                         ->where('purchase_items.price', $costPrice)
                         ->where('purchase_items.remaining_qty', '>', 0)
                         ->orderBy('purchase_items.id')
@@ -222,17 +223,9 @@ class SaleController extends Controller
                 |--------------------------------------------------------------------------
                 */
 
-                    if (
-                        $availableQty <
-                        $qtyRequested
-                    ) {
+                    if ($availableQty < $qtyRequested) {
 
-                        $itemName =
-                            optional(
-                                Item::find($itemId)
-                            )->name
-                            ?? "Item ID {$itemId}";
-
+                        $itemName = optional(Item::find($itemId))->name ?? "Item ID {$itemId}";
 
                         throw ValidationException::withMessages([
 
