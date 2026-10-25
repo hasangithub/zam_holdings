@@ -77,6 +77,7 @@ class SaleController extends Controller
 
             ->where('purchase_items.remaining_qty', '>', 0)
             ->where('purchases.branch_id', auth()->user()->branch_id)
+            ->where('purchases.status', '!=', 'cancelled')
             ->groupBy('purchase_items.item_id', 'purchase_items.price', 'items.name')
             ->orderBy('items.name')
             ->orderBy('purchase_items.price')
