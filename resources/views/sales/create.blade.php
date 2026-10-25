@@ -73,9 +73,7 @@
 @include('partials.alerts')
 
 <div class="container-fluid">
-
     <div class="card card-primary card-outline">
-
         <div class="card-header">
             <h3 class="card-title">
                 <i class="fas fa-shopping-cart mr-1"></i>
@@ -84,31 +82,23 @@
         </div>
 
         <div class="card-body">
-
             <form method="POST"
                   action="{{ route('sales.store') }}"
                   id="saleForm">
-
                 @csrf
 
                 {{-- WIZARD PROGRESS --}}
                 <div class="wizard-progress">
-
                     <div class="wizard-progress-item active" id="progressStep1">
                         <strong>Step 1</strong>
-                        
                     </div>
 
                     <div class="wizard-progress-item" id="progressStep2">
                         <strong>Step 2</strong>
-                        
                     </div>
-
                 </div>
 
-                {{-- =====================================================
-                     STEP 1: CUSTOMER AND ITEMS
-                ====================================================== --}}
+                {{-- STEP 1: CUSTOMER, SALE DATE AND ITEMS --}}
                 <div id="wizardStep1" class="sale-wizard-step active">
 
                     <div class="form-group">
@@ -120,7 +110,6 @@
                                 id="customer_id"
                                 class="form-control"
                                 required>
-
                             <option value="">Select Customer</option>
 
                             @foreach($customers as $c)
@@ -129,8 +118,21 @@
                                     {{ $c->name }}
                                 </option>
                             @endforeach
-
                         </select>
+                    </div>
+
+                    {{-- SALE DATE --}}
+                    <div class="form-group">
+                        <label for="sale_date">
+                            Sale Date <span class="text-danger">*</span>
+                        </label>
+
+                        <input type="date"
+                               name="sale_date"
+                               id="sale_date"
+                               class="form-control"
+                               value="{{ old('sale_date', now()->toDateString()) }}"
+                               required>
                     </div>
 
                     <hr>
@@ -144,21 +146,17 @@
                                 class="form-control"
                                 multiple
                                 placeholder="Search and select items...">
-
                             @foreach($stocks as $s)
                                 <option
                                     value="{{ $s->item_id }}|{{ $s->price }}"
                                     data-item-name="{{ $s->item_name }}"
                                     data-cost="{{ $s->price }}"
                                     data-stock="{{ $s->total_qty }}">
-
                                     {{ $s->item_name }}
                                     | Cost: {{ number_format($s->price, 2) }}
                                     | Stock: {{ number_format($s->total_qty, 3) }}
-
                                 </option>
                             @endforeach
-
                         </select>
 
                         <small class="form-text text-muted">
@@ -167,28 +165,64 @@
                         </small>
                     </div>
 
-                    <div class="d-flex justify-content-between align-items-center mt-4">
+                    {{-- DEFAULT QUANTITY AND SALE PRICE --}}
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label for="default_qty">
+                                    Default Quantity <span class="text-danger">*</span>
+                                </label>
 
-                        <a href="{{ route('sales.index') }}"
-                           class="btn btn-secondary">
+                                <input type="number"
+                                       id="default_qty"
+                                       class="form-control"
+                                       min="0.001"
+                                       step="0.001"
+                                       value="{{ old('default_qty', '1') }}"
+                                       required>
+
+                                <small class="form-text text-muted">
+                                    Applied to each selected item in Step 2.
+                                </small>
+                            </div>
+                        </div>
+
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label for="default_sale_price">
+                                    Default Sale Price <span class="text-danger">*</span>
+                                </label>
+
+                                <input type="number"
+                                       id="default_sale_price"
+                                       class="form-control"
+                                       min="0"
+                                       step="0.01"
+                                       value="{{ old('default_sale_price', '') }}"
+                                       placeholder="Enter default sale price"
+                                       required>
+
+                                <small class="form-text text-muted">
+                                    Applied to each selected item. You can change individual prices in Step 2.
+                                </small>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="d-flex justify-content-between align-items-center mt-4">
+                        <a href="{{ route('sales.index') }}" class="btn btn-secondary">
                             <i class="fas fa-arrow-left mr-1"></i>
                             Cancel
                         </a>
 
-                        <button type="button"
-                                class="btn btn-primary"
-                                id="nextStep">
+                        <button type="button" class="btn btn-primary" id="nextStep">
                             Next
                             <i class="fas fa-arrow-right ml-1"></i>
                         </button>
-
                     </div>
-
                 </div>
 
-                {{-- =====================================================
-                     STEP 2: SELECTED ITEMS
-                ====================================================== --}}
+                {{-- STEP 2: SELECTED ITEMS --}}
                 <div id="wizardStep2" class="sale-wizard-step">
 
                     <div class="d-flex justify-content-between align-items-center mb-3">
@@ -202,10 +236,8 @@
                     </div>
 
                     <div class="table-responsive">
-
                         <table class="table table-bordered table-hover table-sm table-erp"
                                id="selectedItemsTable">
-
                             <thead class="bg-dark text-white">
                                 <tr>
                                     <th style="min-width:250px;">Item / Cost / Stock</th>
@@ -222,18 +254,12 @@
 
                             <tfoot>
                                 <tr class="bg-light font-weight-bold">
-                                    <td colspan="3" class="text-right">
-                                        Total Amount
-                                    </td>
-                                    <td class="text-right" id="grandTotal">
-                                        0.00
-                                    </td>
+                                    <td colspan="3" class="text-right">Total Amount</td>
+                                    <td class="text-right" id="grandTotal">0.00</td>
                                     <td></td>
                                 </tr>
                             </tfoot>
-
                         </table>
-
                     </div>
 
                     <div id="noItemsMessage"
@@ -243,31 +269,21 @@
                     </div>
 
                     <div class="d-flex justify-content-between align-items-center mt-4">
-
-                        <button type="button"
-                                class="btn btn-secondary"
-                                id="backStep">
+                        <button type="button" class="btn btn-secondary" id="backStep">
                             <i class="fas fa-arrow-left mr-1"></i>
                             Back
                         </button>
 
-                        <button type="submit"
-                                class="btn btn-success"
-                                id="saveSale">
+                        <button type="submit" class="btn btn-success" id="saveSale">
                             <i class="fas fa-save mr-1"></i>
                             Create Sale
                         </button>
-
                     </div>
-
                 </div>
-
             </form>
-
         </div>
     </div>
 </div>
-
 @endsection
 
 @push('scripts')
@@ -288,6 +304,9 @@
 
         const customerSelect = document.getElementById('customer_id');
         const itemPickerElement = document.getElementById('itemPicker');
+        const saleDateInput = document.getElementById('sale_date');
+        const defaultQtyInput = document.getElementById('default_qty');
+        const defaultPriceInput = document.getElementById('default_sale_price');
 
         const step1 = document.getElementById('wizardStep1');
         const step2 = document.getElementById('wizardStep2');
@@ -299,14 +318,12 @@
         const itemCount = document.getElementById('itemCount');
         const grandTotal = document.getElementById('grandTotal');
         const noItemsMessage = document.getElementById('noItemsMessage');
+        const saveButton = document.getElementById('saveSale');
 
         let currentStep = 1;
         let itemTomSelect = null;
-        let rowIndex = 0;
+        let isSubmitting = false;
 
-        /*
-         * Initialize Tom Select.
-         */
         if (typeof TomSelect !== 'undefined') {
             itemTomSelect = new TomSelect(itemPickerElement, {
                 plugins: ['remove_button'],
@@ -323,9 +340,6 @@
             return;
         }
 
-        /*
-         * Show one wizard step at a time.
-         */
         function showStep(stepNumber) {
             currentStep = stepNumber;
 
@@ -342,9 +356,6 @@
             });
         }
 
-        /*
-         * Get selected item option data.
-         */
         function getSelectedItems() {
             return itemTomSelect.items.map(function (value) {
                 const option = itemTomSelect.options[value];
@@ -355,16 +366,13 @@
 
                 return {
                     key: value,
-                    name: option.text.trim(),
+                    name: option.item_name || option.text.trim(),
                     cost: parseFloat(option.cost) || 0,
                     stock: parseFloat(option.stock) || 0
                 };
             }).filter(Boolean);
         }
 
-        /*
-         * Preserve quantities and prices when rebuilding rows.
-         */
         function getExistingRowValues() {
             const values = {};
 
@@ -380,20 +388,14 @@
             return values;
         }
 
-        /*
-         * Build the selected-items table.
-         */
         function renderSelectedItems() {
             const previousValues = getExistingRowValues();
             const selectedItems = getSelectedItems();
 
             itemsBody.innerHTML = '';
-            rowIndex = 0;
 
-            selectedItems.forEach(function (item) {
+            selectedItems.forEach(function (item, index) {
                 const previous = previousValues[item.key] || {};
-                const index = rowIndex++;
-
                 const row = document.createElement('tr');
                 row.dataset.groupKey = item.key;
 
@@ -412,10 +414,6 @@
                 itemCell.appendChild(itemName);
                 itemCell.appendChild(itemInfo);
 
-                /*
-                 * group_key is the original item_id|cost value expected
-                 * by the existing sales.store controller.
-                 */
                 const groupKeyInput = document.createElement('input');
                 groupKeyInput.type = 'hidden';
                 groupKeyInput.name = 'items[' + index + '][group_key]';
@@ -433,7 +431,9 @@
                 qtyInput.max = item.stock;
                 qtyInput.required = true;
                 qtyInput.placeholder = 'Quantity';
-                qtyInput.value = previous.qty || '';
+                qtyInput.value = previous.qty !== undefined && previous.qty !== ''
+                    ? previous.qty
+                    : defaultQtyInput.value;
                 qtyInput.setAttribute('aria-label', 'Quantity');
 
                 qtyCell.appendChild(qtyInput);
@@ -448,7 +448,9 @@
                 priceInput.min = '0';
                 priceInput.required = true;
                 priceInput.placeholder = 'Sale price';
-                priceInput.value = previous.salePrice || '';
+                priceInput.value = previous.salePrice !== undefined && previous.salePrice !== ''
+                    ? previous.salePrice
+                    : defaultPriceInput.value;
                 priceInput.setAttribute('aria-label', 'Sale price');
 
                 priceCell.appendChild(priceInput);
@@ -480,15 +482,11 @@
             itemCount.textContent =
                 selectedItems.length + (selectedItems.length === 1 ? ' item' : ' items');
 
-            noItemsMessage.style.display =
-                selectedItems.length === 0 ? 'block' : 'none';
+            noItemsMessage.style.display = selectedItems.length === 0 ? 'block' : 'none';
 
             calculateTotal();
         }
 
-        /*
-         * Calculate each line amount and the grand total.
-         */
         function calculateTotal() {
             let total = 0;
 
@@ -507,13 +505,31 @@
             });
         }
 
-        /*
-         * NEXT: require customer and at least one item.
-         */
         document.getElementById('nextStep').addEventListener('click', function () {
             if (!customerSelect.value) {
                 alert('Please select a customer.');
                 customerSelect.focus();
+                return;
+            }
+
+            if (!saleDateInput.value) {
+                alert('Please select the sale date.');
+                saleDateInput.focus();
+                return;
+            }
+
+            const defaultQty = parseFloat(defaultQtyInput.value);
+            if (!Number.isFinite(defaultQty) || defaultQty <= 0) {
+                alert('Please enter a default quantity greater than zero.');
+                defaultQtyInput.focus();
+                return;
+            }
+
+            const defaultPrice = parseFloat(defaultPriceInput.value);
+            if (defaultPriceInput.value === '' ||
+                !Number.isFinite(defaultPrice) || defaultPrice < 0) {
+                alert('Please enter a valid default sale price.');
+                defaultPriceInput.focus();
                 return;
             }
 
@@ -527,26 +543,16 @@
             showStep(2);
         });
 
-        /*
-         * BACK: return to Step 1 without losing entered values.
-         */
         document.getElementById('backStep').addEventListener('click', function () {
             showStep(1);
         });
 
-        /*
-         * If items are changed after returning to Step 1, refresh the table
-         * when moving forward. Existing quantities/prices are preserved.
-         */
         itemTomSelect.on('change', function () {
             if (currentStep === 2) {
                 renderSelectedItems();
             }
         });
 
-        /*
-         * Remove an item from Step 2 and from the Tom Select selection.
-         */
         itemsBody.addEventListener('click', function (event) {
             const button = event.target.closest('.remove-item');
 
@@ -561,23 +567,36 @@
             renderSelectedItems();
         });
 
-        /*
-         * Recalculate when quantity or sale price changes.
-         */
         itemsBody.addEventListener('input', function (event) {
             if (event.target.matches('.qty-input, .price-input')) {
                 calculateTotal();
             }
         });
 
-        /*
-         * Validate the form before submitting.
-         */
         form.addEventListener('submit', function (event) {
+            if (isSubmitting) {
+                event.preventDefault();
+                return;
+            }
+
+            if (currentStep !== 2) {
+                event.preventDefault();
+                return;
+            }
+
+            if (!saleDateInput.value) {
+                event.preventDefault();
+                showStep(1);
+                alert('Please select the sale date.');
+                saleDateInput.focus();
+                return;
+            }
+
             if (itemTomSelect.items.length === 0) {
                 event.preventDefault();
                 showStep(1);
                 alert('Please select at least one item.');
+                itemTomSelect.focus();
                 return;
             }
 
@@ -591,29 +610,33 @@
                 const price = parseFloat(priceInput.value);
                 const stock = parseFloat(qtyInput.max);
 
-                if (
-                    !qtyInput.value ||
+                if (!qtyInput.value ||
                     !Number.isFinite(qty) ||
                     qty <= 0 ||
-                    qty > stock ||
-                    !priceInput.value ||
-                    !Number.isFinite(price) ||
-                    price < 0
-                ) {
+                    qty > stock) {
                     valid = false;
                     qtyInput.reportValidity();
+                }
+
+                if (!priceInput.value ||
+                    !Number.isFinite(price) ||
+                    price < 0) {
+                    valid = false;
                     priceInput.reportValidity();
                 }
             });
 
             if (!valid) {
                 event.preventDefault();
+                return;
             }
+
+            isSubmitting = true;
+            saveButton.disabled = true;
+            saveButton.innerHTML =
+                '<i class="fas fa-spinner fa-spin mr-1"></i> Creating Sale...';
         });
 
-        /*
-         * Start with only Step 1 visible.
-         */
         showStep(1);
     }
 

@@ -126,6 +126,7 @@ class SaleController extends Controller
         
         $request->validate([
             'customer_id' => 'required|exists:customers,id',
+            'sale_date' => 'required',
             'items' => 'required|array|min:1',
             'items.*.group_key' => 'required',
             'items.*.qty' => 'required|numeric|gt:0',
@@ -149,7 +150,7 @@ class SaleController extends Controller
 
                     'branch_id' => $branchId,
                     'customer_id' => $customer->id,
-                    'sale_date' => now(),
+                    'sale_date' => $request->sale_date,
                     'currency' => 'LKR',
                     'exchange_rate' => 1,
                     'total' => 0,
@@ -1165,6 +1166,7 @@ class SaleController extends Controller
                     'total_foreign' => 0,
                     'balance_amount' => $total,
                     'cost_of_goods_sold' => $costOfGoodsSold,
+                    'sale_date' => $request->sale_date ?? now(),
                 ]);
 
                 $journal = Accounting::postJournal([

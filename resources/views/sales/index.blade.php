@@ -21,7 +21,7 @@
                 <tr>
                     <th>Invoice</th>
                     <th>Customer</th>
-                    <th>Date</th>
+                    <th>Sales Date</th>
                     <th>Total</th>
                     <th>Status</th>
                     <th width="200">Actions</th>
@@ -41,7 +41,7 @@
                     </td>
 
                     <td>
-                        {{ date('d M Y', strtotime($s->created_at)) }}
+                        {{ date('d M Y', strtotime($s->sale_date)) }}
                     </td>
 
                     <td>
