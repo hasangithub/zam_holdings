@@ -190,35 +190,14 @@
 
                             <tr>
 
-                                <th style="width:40%">
-                                    Item
-                                </th>
-
-                                <th style="width:12%">
-                                    Qty
-                                </th>
-
-                                <th style="width:15%">
-                                    Base Price
-                                </th>
-
-                                <th style="width:15%">
-                                    Sale Price
-                                </th>
-
-                                <th style="width:13%"
-                                    class="text-right">
-
-                                    Subtotal
-
-                                </th>
-
-                                <th style="width:5%"
-                                    class="text-center">
-
-                                    Action
-
-                                </th>
+                                <th style="min-width:260px">Item</th>
+                                <th style="min-width:110px">Available Qty</th>
+                                <th style="min-width:110px">Avg. Cost</th>
+                                <th style="min-width:100px">Sale Qty</th>
+                                <th style="min-width:120px">Base Price</th>
+                                <th style="min-width:120px">Sale Price</th>
+                                <th style="min-width:130px" class="text-right">Subtotal</th>
+                                <th style="min-width:65px" class="text-center">Action</th>
 
                             </tr>
 
@@ -233,99 +212,68 @@
 
                                 {{-- ITEM --}}
                                 <td>
-
                                     <select
-                                        name="items[{{ $key }}][group_key]"
+                                        name="items[{{ $key }}][item_id]"
                                         class="form-control form-control-sm item-select tom-select"
                                         required>
-
                                         <option value="">Select Item</option>
-
                                         @foreach($items as $item)
-
-                                        <option
-                                            value="{{ $item->id }}|{{ $saleItem->base_price }}"
-                                            {{ $saleItem->item_id == $item->id ? 'selected' : '' }}>
-
-                                            {{ $item->name }}
-
-                                        </option>
-
+                                            <option
+                                                value="{{ $item->id }}"
+                                                data-qty="{{ (float) ($item->available_qty ?? 0) }}"
+                                                data-cost="{{ (float) ($item->average_cost ?? 0) }}"
+                                                {{ $saleItem->item_id == $item->id ? 'selected' : '' }}>
+                                                {{ $item->name }}
+                                            </option>
                                         @endforeach
-
                                     </select>
-
                                 </td>
 
-
-                                {{-- QTY --}}
+                                {{-- AVAILABLE QUANTITY --}}
                                 <td>
+                                    <input type="text" class="form-control form-control-sm available-qty"
+                                        value="{{ number_format((float) ($items->firstWhere('id', $saleItem->item_id)->available_qty ?? 0), 3, '.', '') }}" readonly>
+                                </td>
 
-                                    <input
-                                        type="number"
-                                        name="items[{{ $key }}][qty]"
+                                {{-- AVERAGE COST --}}
+                                <td>
+                                    <input type="text" class="form-control form-control-sm average-cost"
+                                        value="{{ number_format((float) ($items->firstWhere('id', $saleItem->item_id)->average_cost ?? $saleItem->base_price), 2, '.', '') }}" readonly>
+                                </td>
+
+                                {{-- SALE QUANTITY --}}
+                                <td>
+                                    <input type="number" name="items[{{ $key }}][qty]"
                                         class="form-control form-control-sm qty"
-                                        value="{{ $saleItem->qty }}"
-                                        min="0.001"
-                                        step="0.001"
-                                        required>
-
+                                        value="{{ $saleItem->qty }}" min="0.001" step="0.001" required>
                                 </td>
 
-
-                                {{-- BASE PRICE --}}
+                                {{-- BASE PRICE (DISPLAY ONLY; SERVER CALCULATES COST) --}}
                                 <td>
-
-                                    <input
-                                        type="number"
-                                        name="items[{{ $key }}][base_price]"
+                                    <input type="number" name="items[{{ $key }}][base_price]"
                                         class="form-control form-control-sm base-price"
-                                        value="{{ $saleItem->base_price }}"
-                                        min="0"
-                                        step="0.01"
-                                        required>
-
+                                        value="{{ number_format((float) ($items->firstWhere('id', $saleItem->item_id)->average_cost ?? $saleItem->base_price), 2, '.', '') }}"
+                                        min="0" step="0.01" readonly>
                                 </td>
-
 
                                 {{-- SALE PRICE --}}
                                 <td>
-
-                                    <input
-                                        type="number"
-                                        name="items[{{ $key }}][sale_price]"
+                                    <input type="number" name="items[{{ $key }}][sale_price]"
                                         class="form-control form-control-sm sale-price"
-                                        value="{{ $saleItem->sale_price }}"
-                                        min="0"
-                                        step="0.01"
-                                        required>
-
+                                        value="{{ $saleItem->sale_price }}" min="0" step="0.01" required>
                                 </td>
-
 
                                 {{-- SUBTOTAL --}}
                                 <td>
-
-                                    <input
-                                        type="text"
-                                        class="form-control form-control-sm subtotal text-right"
-                                        value="{{ number_format($saleItem->subtotal, 2, '.', '') }}"
-                                        readonly>
-
+                                    <input type="text" class="form-control form-control-sm subtotal text-right"
+                                        value="{{ number_format($saleItem->subtotal, 2, '.', '') }}" readonly>
                                 </td>
-
 
                                 {{-- REMOVE --}}
                                 <td class="text-center">
-
-                                    <button
-                                        type="button"
-                                        class="btn btn-danger btn-sm removeRow">
-
+                                    <button type="button" class="btn btn-danger btn-sm removeRow" title="Remove item">
                                         <i class="fas fa-times"></i>
-
                                     </button>
-
                                 </td>
 
                             </tr>
@@ -483,6 +431,26 @@
             });
 
 
+        // Update available stock and weighted-average cost when an item changes.
+        document.addEventListener('change', function (e) {
+            if (!e.target.classList.contains('item-select')) return;
+
+            const row = e.target.closest('tr');
+            const option = e.target.options[e.target.selectedIndex];
+            if (!row || !option) return;
+
+            const availableQty = option.dataset.qty || '0';
+            const averageCost = option.dataset.cost || '0';
+
+            row.querySelector('.available-qty').value =
+                (parseFloat(availableQty) || 0).toFixed(3);
+            row.querySelector('.average-cost').value =
+                (parseFloat(averageCost) || 0).toFixed(2);
+            row.querySelector('.base-price').value =
+                (parseFloat(averageCost) || 0).toFixed(2);
+        });
+
+
         /*
         |--------------------------------------------------------------------------
         | Item Options
@@ -490,18 +458,15 @@
         */
 
         const itemOptions = `
-        <option value="">
-            Select Item
-        </option>
-
-        @foreach($items as $item)
-
-            <option value="{{ $item->id }}|{{$saleItem->base_price}}">
-                {{ addslashes($item->name) }}
-            </option>
-
-        @endforeach
-    `;
+            <option value="">Select Item</option>
+            @foreach($items as $item)
+                <option value="{{ $item->id }}"
+                    data-qty="{{ (float) ($item->available_qty ?? 0) }}"
+                    data-cost="{{ (float) ($item->average_cost ?? 0) }}">
+                    {{ addslashes($item->name) }}
+                </option>
+            @endforeach
+        `;
 
 
         /*
@@ -599,84 +564,19 @@
 
 
                 row.innerHTML = `
-
-                <td>
-
-                    <select
-                        name="items[${rowIndex}][group_key]"
-                        class="form-control form-control-sm item-select tom-select"
-                        required>
-
-                        ${itemOptions}
-
-                    </select>
-
-                </td>
-
-
-                <td>
-
-                    <input
-                        type="number"
-                        name="items[${rowIndex}][qty]"
-                        class="form-control form-control-sm qty"
-                        min="0.001"
-                        step="0.001"
-                        required>
-
-                </td>
-
-
-                <td>
-
-                    <input
-                        type="number"
-                        name="items[${rowIndex}][base_price]"
-                        class="form-control form-control-sm base-price"
-                        min="0"
-                        step="0.01"
-                        required>
-
-                </td>
-
-
-                <td>
-
-                    <input
-                        type="number"
-                        name="items[${rowIndex}][sale_price]"
-                        class="form-control form-control-sm sale-price"
-                        min="0"
-                        step="0.01"
-                        required>
-
-                </td>
-
-
-                <td>
-
-                    <input
-                        type="text"
-                        class="form-control form-control-sm subtotal text-right"
-                        value="0.00"
-                        readonly>
-
-                </td>
-
-
-                <td class="text-center">
-
-                    <button
-                        type="button"
-                        class="btn btn-danger btn-sm removeRow">
-
-                        <i class="fas fa-times"></i>
-
-                    </button>
-
-                </td>
-
-            `;
+                    <td>
+                        <select name="items[${rowIndex}][item_id]" class="form-control form-control-sm item-select tom-select" required>
+                            ${itemOptions}
+                        </select>
+                    </td>
+                    <td><input type="text" class="form-control form-control-sm available-qty" value="0.000" readonly></td>
+                    <td><input type="text" class="form-control form-control-sm average-cost" value="0.00" readonly></td>
+                    <td><input type="number" name="items[${rowIndex}][qty]" class="form-control form-control-sm qty" min="0.001" step="0.001" required></td>
+                    <td><input type="number" name="items[${rowIndex}][base_price]" class="form-control form-control-sm base-price" min="0" step="0.01" value="0.00" readonly></td>
+                    <td><input type="number" name="items[${rowIndex}][sale_price]" class="form-control form-control-sm sale-price" min="0" step="0.01" required></td>
+                    <td><input type="text" class="form-control form-control-sm subtotal text-right" value="0.00" readonly></td>
+                    <td class="text-center"><button type="button" class="btn btn-danger btn-sm removeRow" title="Remove item"><i class="fas fa-times"></i></button></td>
+                `;
 
 
                 tbody.appendChild(row);

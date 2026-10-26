@@ -84,7 +84,8 @@
         <div class="card-body">
             <form method="POST"
                   action="{{ route('sales.store') }}"
-                  id="saleForm">
+                  id="saleForm"
+                  novalidate>
                 @csrf
 
                 {{-- WIZARD PROGRESS --}}
@@ -148,12 +149,12 @@
                                 placeholder="Search and select items...">
                             @foreach($stocks as $s)
                                 <option
-                                    value="{{ $s->item_id }}|{{ $s->price }}"
+                                    value="{{ $s->item_id }}"
                                     data-item-name="{{ $s->item_name }}"
-                                    data-cost="{{ $s->price }}"
+                                    data-cost="{{ $s->average_cost }}"
                                     data-stock="{{ $s->total_qty }}">
                                     {{ $s->item_name }}
-                                    | Cost: {{ number_format($s->price, 2) }}
+                                    | Average Cost: {{ number_format($s->average_cost, 2) }}
                                     | Stock: {{ number_format($s->total_qty, 3) }}
                                 </option>
                             @endforeach
@@ -161,7 +162,7 @@
 
                         <small class="form-text text-muted">
                             Search by item name and select all items required for this sale.
-                            The same item at different costs appears as a separate option.
+                            Each item appears once, with stock and average cost for your branch.
                         </small>
                     </div>
 
@@ -416,7 +417,7 @@
 
                 const groupKeyInput = document.createElement('input');
                 groupKeyInput.type = 'hidden';
-                groupKeyInput.name = 'items[' + index + '][group_key]';
+                groupKeyInput.name = 'items[' + index + '][item_id]';
                 groupKeyInput.value = item.key;
                 itemCell.appendChild(groupKeyInput);
 

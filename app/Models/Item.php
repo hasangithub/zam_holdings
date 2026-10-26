@@ -61,6 +61,11 @@ class Item extends Model
     {
         return $this->hasMany(Item::class, 'parent_id');
     }
+
+    public function branchStocks()
+    {
+        return $this->hasMany(BranchItemStock::class);
+    }
 }
 
 

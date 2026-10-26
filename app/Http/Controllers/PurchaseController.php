@@ -16,6 +16,7 @@ use App\Models\SaleItemFifo;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 use Barryvdh\DomPDF\Facade\Pdf;
+use App\Services\WeightedAverageStockService;
 
 class PurchaseController extends Controller
 {
@@ -35,78 +36,114 @@ class PurchaseController extends Controller
 
     public function store(Request $request)
     {
-        $branchId = auth()->user()->branch_id;
+        $request->validate([
+            'supplier_id' => 'required|exists:suppliers,id',
+            'purchase_date' => 'required|date',
+            'items' => 'required|array|min:1',
+            'items.*.item_id' => 'required|exists:items,id',
+            'items.*.qty' => 'required|numeric|gt:0',
+            'items.*.price' => 'required|numeric|min:0',
+        ]);
 
-        $supplier = Supplier::findOrFail(
-            $request->supplier_id
-        );
+        $branchId = (int) auth()->user()->branch_id;
 
-        if (!$supplier->liability_sub_ledger_id) {
+        DB::transaction(function () use ($request, $branchId) {
 
-            throw ValidationException::withMessages([
+            $supplier = Supplier::findOrFail(
+                $request->supplier_id
+            );
 
-                'supplier_id' =>
-                'This supplier does not have a liability subledger. '
-                    . 'Please configure the supplier accounting account first.',
+            if (!$supplier->liability_sub_ledger_id) {
+                throw ValidationException::withMessages([
+                    'supplier_id' =>
+                    'This supplier does not have a liability subledger. '
+                        . 'Please configure the supplier accounting account first.',
+                ]);
+            }
 
+            // 1. Create purchase header
+            $purchase = Purchase::create([
+                'branch_id' => $branchId,
+                'supplier_id' => $supplier->id,
+                'purchase_date' => $request->purchase_date,
+                'total' => 0,
             ]);
-        }
 
+            $total = 0;
 
-        $purchase = Purchase::create([
-            'branch_id' => $branchId,
-            'supplier_id' => $request->supplier_id,
-            'purchase_date' => $request->purchase_date,
-            'total' => 0
-        ]);
+            $weightedAverageService = app(
+                WeightedAverageStockService::class
+            );
 
-        $total = 0;
+            // 2. Create purchase items and update weighted average stock
+            foreach ($request->items as $row) {
 
-        foreach ($request->items as $row) {
-            $subtotal = $row['qty'] * $row['price'];
-            $total += $subtotal;
+                $qty = (float) $row['qty'];
+                $price = (float) $row['price'];
 
-            PurchaseItem::create([
-                'purchase_id' => $purchase->id,
-                'item_id' => $row['item_id'],
-                'qty' => $row['qty'],
-                'remaining_qty' => $row['qty'],
-                'price' => $row['price'],
-                'subtotal' => $subtotal
+                $subtotal = $qty * $price;
+
+                $total += $subtotal;
+
+                $purchaseItem = PurchaseItem::create([
+                    'purchase_id' => $purchase->id,
+                    'item_id' => $row['item_id'],
+                    'qty' => $qty,
+                    'remaining_qty' => $qty,
+                    'price' => $price,
+                    'subtotal' => $subtotal,
+                ]);
+
+                // Update branch_item_stocks
+                $weightedAverageService->addPurchase(
+                    $branchId,
+                    (int) $purchaseItem->item_id,
+                    $qty,
+                    $price
+                );
+            }
+
+            // 3. Update purchase totals
+            $purchase->update([
+                'total' => $total,
+                'balance_amount' => $total,
             ]);
-        }
 
-        $purchase->update(['total' => $total, 'balance_amount' => $total]);
+            // 4. Post accounting journal
+            $journal = Accounting::postJournal([
+                'branch_id' => $branchId,
+                'date' => $request->purchase_date,
+                'description' => 'Purchase Invoice',
 
-        $journal = Accounting::postJournal([
-            'branch_id' => $branchId,
-            'date' => $request->purchase_date,
-            'description' => 'Purchase Invoice',
-
-            'entries' => [
-                [
-                    'ledger_id' => 7,
-                    'sub_ledger_id' => 1,
-                    'debit' => $total,
-                    'credit' => 0,
+                'entries' => [
+                    [
+                        'ledger_id' => 7,
+                        'sub_ledger_id' => 1,
+                        'debit' => $total,
+                        'credit' => 0,
+                    ],
+                    [
+                        'ledger_id' => 8,
+                        'sub_ledger_id' =>
+                        $supplier->liability_sub_ledger_id,
+                        'debit' => 0,
+                        'credit' => $total,
+                    ],
                 ],
-                [
-                    'ledger_id' => 8,
-                    'sub_ledger_id' =>  $supplier->liability_sub_ledger_id,
-                    'debit' => 0,
-                    'credit' => $total,
-                ],
-            ]
-        ]);
+            ]);
 
-        JournalEntryReference::create([
-            'journal_entry_id' => $journal->id,
-            'model_type' => Purchase::class,
-            'model_id' => $purchase->id,
-            'action' => 'created',
-        ]);
+            // 5. Link journal to purchase
+            JournalEntryReference::create([
+                'journal_entry_id' => $journal->id,
+                'model_type' => Purchase::class,
+                'model_id' => $purchase->id,
+                'action' => 'created',
+            ]);
+        });
 
-        return redirect()->route('purchases.index');
+        return redirect()
+            ->route('purchases.index')
+            ->with('success', 'Purchase created successfully.');
     }
 
     public function show($id)
