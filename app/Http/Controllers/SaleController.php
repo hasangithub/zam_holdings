@@ -26,7 +26,10 @@ class SaleController extends Controller
 
     public function index()
     {
-        $sales = Sale::where('currency', 'LKR')->where('branch_id', auth()->user()->branch_id)->with('customer')->latest()->get();
+        $sales = Sale::where('currency', 'LKR')->where('branch_id', auth()->user()->branch_id)
+        ->with('customer')
+        ->orderByDesc('id')
+        ->get();
         return view('sales.index', compact('sales'));
     }
 
@@ -34,7 +37,7 @@ class SaleController extends Controller
     {
         $sales = Sale::where('currency', 'USD')->where('branch_id', auth()->user()->branch_id)
             ->with('freightService')
-            ->latest()
+             ->orderByDesc('id')
             ->get();
         return view('sales.index_export', compact('sales'));
     }

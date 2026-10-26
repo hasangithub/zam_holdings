@@ -106,7 +106,7 @@
             pageLength: 10,
             lengthChange: true,
             autoWidth: false,
-            ordering: true,
+            ordering: false,
             searching: true
         });
     });
