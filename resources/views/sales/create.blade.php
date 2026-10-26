@@ -179,7 +179,7 @@
                                        class="form-control"
                                        min="0.001"
                                        step="0.001"
-                                       value="{{ old('default_qty', '1') }}"
+                                       value="{{ old('default_qty', '0') }}"
                                        required>
 
                                 <small class="form-text text-muted">
@@ -199,7 +199,7 @@
                                        class="form-control"
                                        min="0"
                                        step="0.01"
-                                       value="{{ old('default_sale_price', '') }}"
+                                       value="{{ old('default_sale_price', '0.00') }}"
                                        placeholder="Enter default sale price"
                                        required>
 
@@ -520,15 +520,15 @@
             }
 
             const defaultQty = parseFloat(defaultQtyInput.value);
-            if (!Number.isFinite(defaultQty) || defaultQty <= 0) {
-                alert('Please enter a default quantity greater than zero.');
+            if (!Number.isFinite(defaultQty)) {
+                alert('Please enter a valid default quantity.');
                 defaultQtyInput.focus();
                 return;
             }
 
             const defaultPrice = parseFloat(defaultPriceInput.value);
             if (defaultPriceInput.value === '' ||
-                !Number.isFinite(defaultPrice) || defaultPrice < 0) {
+                !Number.isFinite(defaultPrice)) {
                 alert('Please enter a valid default sale price.');
                 defaultPriceInput.focus();
                 return;
