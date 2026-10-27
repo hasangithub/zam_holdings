@@ -8,11 +8,13 @@ use App\Models\Supplier;
 use App\Models\Item;
 use Illuminate\Http\Request;
 use App\Accounting\Accounting;
+use App\Models\BranchItemStock;
 use App\Models\InvoiceCompanyProfile;
 use App\Models\JournalEntryReference;
 use App\Models\PurchaseAmendment;
 use App\Models\PurchasePayment;
 use App\Models\SaleItemFifo;
+use App\Models\SubLedger;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -28,30 +30,91 @@ class PurchaseController extends Controller
 
     public function create()
     {
-        return view('purchases.create', [
-            'suppliers' => Supplier::where('supplier_type', 'Trading Goods')->get(),
-            'items' => Item::where('item_type', 1)->get()
-        ]);
+
+        $branchId = auth()->user()->branch_id;
+
+        $suppliers = Supplier::where('branch_id', $branchId)
+            ->where('supplier_type', 'Trading Goods')
+            ->orderBy('name')
+            ->get();
+
+        $items = Item::orderBy('name')->where('item_type', 1)->get();
+
+        $cashSubLedgers = SubLedger::where('ledger_id', 1)
+            ->orderBy('name')
+            ->get();
+
+        return view('purchases.create', compact(
+            'suppliers',
+            'items',
+            'cashSubLedgers'
+        ));
     }
 
     public function store(Request $request)
     {
-        $request->validate([
-            'supplier_id' => 'required|exists:suppliers,id',
+        $isNewSupplier = $request->input('is_new_supplier') == '1';
+
+        $rules = [
+            'is_new_supplier' => 'required|in:0,1',
             'purchase_date' => 'required|date',
             'items' => 'required|array|min:1',
             'items.*.item_id' => 'required|exists:items,id',
             'items.*.qty' => 'required|numeric|gt:0',
             'items.*.price' => 'required|numeric|min:0',
-        ]);
+            'is_paid' => 'required|in:0,1',
+        ];
+
+        if ($isNewSupplier) {
+            $rules['new_supplier_name'] = 'required|string|max:255';
+            $rules['new_supplier_phone'] = 'nullable|string|max:30';
+        } else {
+            $rules['supplier_id'] = 'required|exists:suppliers,id';
+        }
+
+        if ($request->input('is_paid') == '1') {
+            $rules['sub_ledger_id'] = 'required|exists:sub_ledgers,id';
+            $rules['payment_amount'] = 'required|numeric|gt:0';
+        }
+
+        $request->validate($rules);
 
         $branchId = (int) auth()->user()->branch_id;
 
-        DB::transaction(function () use ($request, $branchId) {
+        DB::transaction(function () use ($request, $branchId, $isNewSupplier) {
 
-            $supplier = Supplier::findOrFail(
-                $request->supplier_id
-            );
+            /*
+        |--------------------------------------------------------------------------
+        | 1. Find or Create Supplier
+        |--------------------------------------------------------------------------
+        */
+
+            if ($isNewSupplier) {
+
+                $supplier = Supplier::create([
+                    'name' => $request->new_supplier_name,
+                    'phone' => $request->new_supplier_phone,
+                    'supplier_type' => 'Trading Goods',
+                    'branch_id' => $branchId,
+                ]);
+
+                // Create supplier liability sub-ledger
+                $subLedger = SubLedger::create([
+                    'ledger_id' => 8,
+                    'name' => $supplier->name,
+                ]);
+
+                $supplier->update([
+                    'liability_sub_ledger_id' => $subLedger->id,
+                ]);
+
+                $supplier->refresh();
+            } else {
+
+                $supplier = Supplier::where('branch_id', $branchId)
+                    ->lockForUpdate()
+                    ->findOrFail($request->supplier_id);
+            }
 
             if (!$supplier->liability_sub_ledger_id) {
                 throw ValidationException::withMessages([
@@ -61,12 +124,18 @@ class PurchaseController extends Controller
                 ]);
             }
 
-            // 1. Create purchase header
+            /*
+        |--------------------------------------------------------------------------
+        | 2. Create Purchase Header
+        |--------------------------------------------------------------------------
+        */
+
             $purchase = Purchase::create([
                 'branch_id' => $branchId,
                 'supplier_id' => $supplier->id,
                 'purchase_date' => $request->purchase_date,
                 'total' => 0,
+                'balance_amount' => 0,
             ]);
 
             $total = 0;
@@ -75,13 +144,18 @@ class PurchaseController extends Controller
                 WeightedAverageStockService::class
             );
 
-            // 2. Create purchase items and update weighted average stock
+            /*
+        |--------------------------------------------------------------------------
+        | 3. Create Purchase Items and Update Weighted-Average Stock
+        |--------------------------------------------------------------------------
+        */
+
             foreach ($request->items as $row) {
 
                 $qty = (float) $row['qty'];
                 $price = (float) $row['price'];
 
-                $subtotal = $qty * $price;
+                $subtotal = round($qty * $price, 2);
 
                 $total += $subtotal;
 
@@ -94,7 +168,6 @@ class PurchaseController extends Controller
                     'subtotal' => $subtotal,
                 ]);
 
-                // Update branch_item_stocks
                 $weightedAverageService->addPurchase(
                     $branchId,
                     (int) $purchaseItem->item_id,
@@ -103,13 +176,19 @@ class PurchaseController extends Controller
                 );
             }
 
-            // 3. Update purchase totals
+            $total = round($total, 2);
+
+            /*
+        |--------------------------------------------------------------------------
+        | 4. Post Original Purchase Journal
+        |--------------------------------------------------------------------------
+        */
+
             $purchase->update([
                 'total' => $total,
                 'balance_amount' => $total,
             ]);
 
-            // 4. Post accounting journal
             $journal = Accounting::postJournal([
                 'branch_id' => $branchId,
                 'date' => $request->purchase_date,
@@ -124,21 +203,89 @@ class PurchaseController extends Controller
                     ],
                     [
                         'ledger_id' => 8,
-                        'sub_ledger_id' =>
-                        $supplier->liability_sub_ledger_id,
+                        'sub_ledger_id' => $supplier->liability_sub_ledger_id,
                         'debit' => 0,
                         'credit' => $total,
                     ],
                 ],
             ]);
 
-            // 5. Link journal to purchase
+            /*
+        |--------------------------------------------------------------------------
+        | 5. Link Purchase Journal
+        |--------------------------------------------------------------------------
+        */
+
             JournalEntryReference::create([
                 'journal_entry_id' => $journal->id,
                 'model_type' => Purchase::class,
                 'model_id' => $purchase->id,
                 'action' => 'created',
             ]);
+
+            /*
+        |--------------------------------------------------------------------------
+        | 6. Record Optional Payment
+        |--------------------------------------------------------------------------
+        */
+
+            if ($request->is_paid == '1') {
+
+                $paymentAmount = (float) $request->payment_amount;
+
+                if ($paymentAmount > $total) {
+                    throw ValidationException::withMessages([
+                        'payment_amount' =>
+                        'Payment amount cannot exceed the purchase total.',
+                    ]);
+                }
+
+                // Ensure the selected sub-ledger belongs to Cash/Bank ledger 1
+                $paymentSubLedger = SubLedger::where('ledger_id', 1)
+                    ->findOrFail($request->sub_ledger_id);
+
+                $payment = PurchasePayment::create([
+                    'supplier_id' => $supplier->id,
+                    'amount' => $paymentAmount,
+                    'payment_date' => $request->purchase_date,
+                    'note' => 'Payment for purchase',
+                ]);
+
+                // Dr Supplier Liability / Cr Cash or Bank
+                $paymentJournal = Accounting::postJournal([
+                    'branch_id' => $branchId,
+                    'date' => $request->purchase_date,
+                    'description' => 'Payment for purchase - ' . $supplier->name,
+
+                    'entries' => [
+                        [
+                            'ledger_id' => 8,
+                            'sub_ledger_id' => $supplier->liability_sub_ledger_id,
+                            'debit' => $paymentAmount,
+                            'credit' => 0,
+                        ],
+                        [
+                            'ledger_id' => 1,
+                            'sub_ledger_id' => $paymentSubLedger->id,
+                            'debit' => 0,
+                            'credit' => $paymentAmount,
+                        ],
+                    ],
+                ]);
+
+                // Link payment journal to the payment record
+                JournalEntryReference::create([
+                    'journal_entry_id' => $paymentJournal->id,
+                    'model_type' => PurchasePayment::class,
+                    'model_id' => $payment->id,
+                    'action' => 'created',
+                ]);
+
+                // Remaining supplier balance
+                $purchase->update([
+                    'balance_amount' => round($total - $paymentAmount, 2),
+                ]);
+            }
         });
 
         return redirect()
@@ -215,11 +362,13 @@ class PurchaseController extends Controller
         ]);
     }
 
+
     public function update(Request $request, $id)
     {
         $request->validate([
             'supplier_id' => 'required|exists:suppliers,id',
             'items' => 'required|array|min:1',
+            'items.*.id' => 'nullable|integer',
             'items.*.item_id' => 'required|exists:items,id',
             'items.*.qty' => 'required|numeric|min:0.001',
             'items.*.price' => 'required|numeric|min:0',
@@ -227,17 +376,19 @@ class PurchaseController extends Controller
 
         try {
             DB::transaction(function () use ($request, $id) {
-                $branchId = auth()->user()->branch_id;
+
+                $branchId = (int) auth()->user()->branch_id;
 
                 $purchase = Purchase::lockForUpdate()
                     ->with('items.item')
                     ->findOrFail($id);
 
-                if ((int) $purchase->branch_id !== (int) auth()->user()->branch_id) {
+                if ((int) $purchase->branch_id !== $branchId) {
                     abort(403, 'You are not allowed to update this purchase.');
                 }
 
-                $supplier = Supplier::lockForUpdate()->findOrFail($request->supplier_id);
+                $supplier = Supplier::lockForUpdate()
+                    ->findOrFail($request->supplier_id);
 
                 if (!$supplier->liability_sub_ledger_id) {
                     throw ValidationException::withMessages([
@@ -245,101 +396,213 @@ class PurchaseController extends Controller
                     ]);
                 }
 
+                /*
+            |--------------------------------------------------------------------------
+            | Weighted-average stock adjustment
+            |--------------------------------------------------------------------------
+            | qty          = current stock quantity
+            | average_cost = current weighted-average unit cost
+            |
+            | $qtyDelta   = quantity adjustment
+            | $valueDelta = inventory value adjustment
+            */
+                $adjustStock = function ($itemId, $qtyDelta, $valueDelta) use ($branchId) {
+
+                    $stock = BranchItemStock::where('branch_id', $branchId)
+                        ->where('item_id', $itemId)
+                        ->lockForUpdate()
+                        ->first();
+
+                    if (!$stock) {
+                        if ($qtyDelta < -0.00001) {
+                            throw ValidationException::withMessages([
+                                'items' => 'Stock record not found for an item being removed from this purchase.',
+                            ]);
+                        }
+
+                        $stock = BranchItemStock::create([
+                            'branch_id' => $branchId,
+                            'item_id' => $itemId,
+                            'qty' => 0,
+                            'average_cost' => 0,
+                        ]);
+                    }
+
+                    $currentQty = (float) $stock->qty;
+                    $currentAverageCost = (float) $stock->average_cost;
+
+                    $newQty = $currentQty + (float) $qtyDelta;
+                    $newValue = ($currentQty * $currentAverageCost)
+                        + (float) $valueDelta;
+
+                    if ($newQty < -0.00001) {
+                        throw ValidationException::withMessages([
+                            'items' => 'The purchase cannot be updated because the adjustment would make stock quantity negative.',
+                        ]);
+                    }
+
+                    if ($newValue < -0.00001) {
+                        throw ValidationException::withMessages([
+                            'items' => 'The purchase cannot be updated because the adjustment would make inventory value negative. Please review the purchase and stock history.',
+                        ]);
+                    }
+
+                    // Avoid small floating-point negatives.
+                    $newQty = max(0, $newQty);
+                    $newValue = max(0, $newValue);
+
+                    $newAverageCost = $newQty > 0
+                        ? $newValue / $newQty
+                        : 0;
+
+                    $stock->update([
+                        'qty' => round($newQty, 3),
+                        'average_cost' => round($newAverageCost, 4),
+                    ]);
+                };
+
                 $existingItems = $purchase->items->keyBy('id');
                 $submittedExistingIds = [];
                 $total = 0;
 
+                /*
+            |--------------------------------------------------------------------------
+            | Update existing items and add new items
+            |--------------------------------------------------------------------------
+            */
                 foreach ($request->items as $row) {
+
+                    $itemId = (int) $row['item_id'];
                     $qty = (float) $row['qty'];
                     $price = (float) $row['price'];
                     $subtotal = $qty * $price;
+
                     $total += $subtotal;
 
                     if (!empty($row['id'])) {
+
                         $purchaseItem = $existingItems->get($row['id']);
 
                         if (!$purchaseItem) {
                             throw ValidationException::withMessages([
-                                'items' => 'Invalid purchase item selected.'
+                                'items' => 'Invalid purchase item selected.',
                             ]);
                         }
 
                         $submittedExistingIds[] = $purchaseItem->id;
 
-                        $usedQty = (float) $purchaseItem->qty - (float) $purchaseItem->remaining_qty;
-                        $usedInSale = SaleItemFifo::where('purchase_item_id', $purchaseItem->id)->exists();
+                        $oldItemId = (int) $purchaseItem->item_id;
+                        $oldQty = (float) $purchaseItem->qty;
+                        $oldPrice = (float) $purchaseItem->price;
 
-                        if ($usedInSale) {
-                            if ((int) $row['item_id'] !== (int) $purchaseItem->item_id) {
-                                throw ValidationException::withMessages([
-                                    'items' => "Cannot change the item {$purchaseItem->item->name} because it has already been used in a sale."
-                                ]);
-                            }
+                        /*
+                     * Remove the old purchase line's quantity/value
+                     * contribution and apply the updated line.
+                     */
+                        if ($oldItemId === $itemId) {
 
-                            if (abs((float) $purchaseItem->price - $price) > 0.00001) {
-                                throw ValidationException::withMessages([
-                                    'items' => "Cannot change the price of {$purchaseItem->item->name} because it has already been used in a sale."
-                                ]);
-                            }
-                        }
+                            $qtyDelta = $qty - $oldQty;
 
-                        if ($qty < $usedQty) {
-                            throw ValidationException::withMessages([
-                                'items' => "Cannot reduce {$purchaseItem->item->name} below the quantity already used. Already used: " . number_format($usedQty, 2)
-                            ]);
+                            $valueDelta = ($qty * $price)
+                                - ($oldQty * $oldPrice);
+
+                            $adjustStock(
+                                $itemId,
+                                $qtyDelta,
+                                $valueDelta
+                            );
+                        } else {
+
+                            // Remove the old item contribution.
+                            $adjustStock(
+                                $oldItemId,
+                                -$oldQty,
+                                - ($oldQty * $oldPrice)
+                            );
+
+                            // Add the new item contribution.
+                            $adjustStock(
+                                $itemId,
+                                $qty,
+                                $qty * $price
+                            );
                         }
 
                         $purchaseItem->update([
-                            'item_id' => $usedInSale ? $purchaseItem->item_id : $row['item_id'],
+                            'item_id' => $itemId,
                             'qty' => $qty,
-                            'remaining_qty' => $qty - $usedQty,
-                            'price' => $usedInSale ? $purchaseItem->price : $price,
+                            'price' => $price,
                             'subtotal' => $subtotal,
                         ]);
                     } else {
+
+                        // Add new purchase item to weighted-average stock.
+                        $adjustStock(
+                            $itemId,
+                            $qty,
+                            $qty * $price
+                        );
+
                         PurchaseItem::create([
                             'purchase_id' => $purchase->id,
-                            'item_id' => $row['item_id'],
+                            'item_id' => $itemId,
                             'qty' => $qty,
-                            'remaining_qty' => $qty,
                             'price' => $price,
                             'subtotal' => $subtotal,
                         ]);
                     }
                 }
 
+                /*
+            |--------------------------------------------------------------------------
+            | Remove purchase items omitted from the submitted form
+            |--------------------------------------------------------------------------
+            */
                 foreach ($existingItems as $existingItem) {
-                    if (!in_array($existingItem->id, $submittedExistingIds)) {
-                        $usedInSale = SaleItemFifo::where('purchase_item_id', $existingItem->id)->exists();
 
-                        if ($usedInSale) {
-                            throw ValidationException::withMessages([
-                                'items' => "Cannot remove {$existingItem->item->name} because it has already been used in a sale."
-                            ]);
-                        }
+                    if (!in_array(
+                        $existingItem->id,
+                        $submittedExistingIds
+                    )) {
 
-                        $usedQty = (float) $existingItem->qty - (float) $existingItem->remaining_qty;
+                        $oldItemId = (int) $existingItem->item_id;
+                        $oldQty = (float) $existingItem->qty;
+                        $oldPrice = (float) $existingItem->price;
 
-                        if ($usedQty > 0) {
-                            throw ValidationException::withMessages([
-                                'items' => "Cannot remove {$existingItem->item->name}. " . number_format($usedQty, 2) . " quantity has already been used."
-                            ]);
-                        }
+                        // Reverse the removed purchase line's contribution.
+                        $adjustStock(
+                            $oldItemId,
+                            -$oldQty,
+                            - ($oldQty * $oldPrice)
+                        );
 
                         $existingItem->delete();
                     }
                 }
 
-                // Reverse old journal
+                /*
+            |--------------------------------------------------------------------------
+            | Reverse old journal
+            |--------------------------------------------------------------------------
+            */
                 Accounting::reverse(Purchase::class, $purchase->id);
 
+                /*
+            |--------------------------------------------------------------------------
+            | Update purchase header
+            |--------------------------------------------------------------------------
+            */
                 $purchase->update([
                     'supplier_id' => $request->supplier_id,
                     'total' => $total,
                     'balance_amount' => $total,
                 ]);
 
-                // Post new journal
+                /*
+            |--------------------------------------------------------------------------
+            | Post new journal
+            |--------------------------------------------------------------------------
+            */
                 $journal = Accounting::postJournal([
                     'branch_id' => $purchase->branch_id,
                     'date' => $purchase->purchase_date,
@@ -357,7 +620,7 @@ class PurchaseController extends Controller
                             'debit' => 0,
                             'credit' => $total,
                         ],
-                    ]
+                    ],
                 ]);
 
                 JournalEntryReference::create([
@@ -372,29 +635,33 @@ class PurchaseController extends Controller
                 ->route('purchases.index')
                 ->with('success', 'Purchase updated successfully.');
         } catch (ValidationException $e) {
+
             throw $e;
         } catch (\Symfony\Component\HttpKernel\Exception\HttpException $e) {
 
-            // Allow 403/404 etc. to reach Laravel's error handler
             throw $e;
         } catch (\Throwable $e) {
+
+            report($e);
+
             return back()
                 ->withInput()
                 ->with('error', 'Unable to update the purchase. Please try again.');
         }
     }
+
     public function destroy(int $id)
     {
         try {
             DB::transaction(function () use ($id) {
 
-                $branchId = auth()->user()->branch_id;
+                $branchId = (int) auth()->user()->branch_id;
 
                 $purchase = Purchase::lockForUpdate()
                     ->with('items.item', 'supplier')
                     ->findOrFail($id);
 
-                if ((int) $purchase->branch_id !== (int) auth()->user()->branch_id) {
+                if ((int) $purchase->branch_id !== $branchId) {
                     abort(403, 'You are not allowed to cancel this purchase.');
                 }
 
@@ -402,23 +669,6 @@ class PurchaseController extends Controller
                     throw ValidationException::withMessages([
                         'purchase' => 'This purchase is already cancelled.'
                     ]);
-                }
-
-                foreach ($purchase->items as $purchaseItem) {
-
-                    $usedInSale = SaleItemFifo::where(
-                        'purchase_item_id',
-                        $purchaseItem->id
-                    )->exists();
-
-                    if ($usedInSale) {
-                        throw ValidationException::withMessages([
-                            'purchase' =>
-                            "Cannot cancel this purchase because "
-                                . $purchaseItem->item->name
-                                . " has already been used in a sale."
-                        ]);
-                    }
                 }
 
                 /*
@@ -431,15 +681,47 @@ class PurchaseController extends Controller
 
                 /*
             |--------------------------------------------------------------------------
-            | Reverse Remaining Stock
+            | Reverse Weighted-Average Stock
             |--------------------------------------------------------------------------
             */
 
                 foreach ($purchase->items as $purchaseItem) {
 
-                    $purchaseItem->update([
-                        'remaining_qty' => 0,
-                    ]);
+                    $stock = BranchItemStock::where('branch_id', $branchId)
+                        ->where('item_id', $purchaseItem->item_id)
+                        ->lockForUpdate()
+                        ->first();
+
+                    if (!$stock) {
+                        throw ValidationException::withMessages([
+                            'purchase' =>
+                            'Stock record not found for '
+                                . $purchaseItem->item->name . '.'
+                        ]);
+                    }
+
+                    $currentQty = (float) $stock->qty;
+                    $purchaseQty = (float) $purchaseItem->qty;
+
+                    if ($purchaseQty > $currentQty + 0.00001) {
+                        throw ValidationException::withMessages([
+                            'purchase' =>
+                            'Cannot cancel this purchase because some quantity of '
+                                . $purchaseItem->item->name
+                                . ' has already been sold or consumed.'
+                        ]);
+                    }
+
+                    $newQty = max(0, round($currentQty - $purchaseQty, 3));
+
+                    $stock->qty = $newQty;
+
+                    if ($newQty <= 0.00001) {
+                        $stock->qty = 0;
+                        $stock->average_cost = 0;
+                    }
+
+                    $stock->save();
                 }
 
                 /*
@@ -455,10 +737,7 @@ class PurchaseController extends Controller
 
             return redirect()
                 ->route('purchases.index')
-                ->with(
-                    'success',
-                    'Purchase cancelled successfully.'
-                );
+                ->with('success', 'Purchase cancelled successfully.');
         } catch (ValidationException $e) {
 
             throw $e;
@@ -468,11 +747,10 @@ class PurchaseController extends Controller
             throw $e;
         } catch (\Throwable $e) {
 
+            report($e);
+
             return back()
-                ->with(
-                    'error',
-                    'Unable to cancel the purchase. Please try again.'
-                );
+                ->with('error', 'Unable to cancel the purchase. Please try again.');
         }
     }
 
