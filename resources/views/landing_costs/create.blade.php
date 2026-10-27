@@ -225,7 +225,7 @@
             let perKg = 0;
 
             if (net > 0) {
-                perKg = airLkr + (logistics / net);
+                perKg = (airLkr + logistics) / net;
             }
 
             let total = perKg + packing;

@@ -70,8 +70,7 @@ class LandingCostController extends Controller
 
         if ($netWeight > 0) {
 
-            $freightLogisticsPerKg =
-                $airFreightLkr + ($request->logistics_expenses / $netWeight);
+            $freightLogisticsPerKg = ($airFreightLkr + $request->logistics_expenses) / $netWeight;
         }
 
         $totalCostPerKg =
