@@ -326,6 +326,11 @@ class ReportController extends Controller
 
             $salesQty = (float) ($sales[$item->id] ?? 0);
 
+            // Include only items with purchases AND sales
+            if ($purchaseQty <= 0 || $salesQty <= 0) {
+                continue;
+            }
+
             $difference = $purchaseQty - $salesQty;
 
             $report->push([
@@ -451,7 +456,7 @@ class ReportController extends Controller
     {
         $type = $request->supplier_type;
         $balanceFilter = $request->balance_filter;
-       
+
 
         $query = Supplier::query()
             ->where('suppliers.branch_id', auth()->user()->branch_id)
@@ -621,7 +626,7 @@ class ReportController extends Controller
         // Keep the comparison values matching your existing Blade dropdown.
         if (isset($balanceFilter)) {
             $query->havingRaw('outstanding > ?', [$balanceFilter]);
-        } 
+        }
 
         $suppliers = $query
             ->orderBy('suppliers.name')
