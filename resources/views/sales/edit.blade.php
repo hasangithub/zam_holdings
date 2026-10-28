@@ -5,45 +5,45 @@
 @section('content')
 
 <style>
-    .sale-table th,
-    .sale-table td {
-        vertical-align: middle;
-    }
+.sale-table th,
+.sale-table td {
+    vertical-align: middle;
+}
 
-    .sale-table th {
-        font-size: 13px;
-        white-space: nowrap;
-    }
+.sale-table th {
+    font-size: 13px;
+    white-space: nowrap;
+}
 
-    .sale-table td {
-        padding: 6px;
-    }
+.sale-table td {
+    padding: 6px;
+}
 
-    .sale-total-box {
-        max-width: 400px;
-        margin-left: auto;
-    }
+.sale-total-box {
+    max-width: 400px;
+    margin-left: auto;
+}
 
-    .sale-total {
-        font-size: 18px;
-        font-weight: bold;
-    }
+.sale-total {
+    font-size: 18px;
+    font-weight: bold;
+}
 
-    .ts-wrapper {
-        width: 100%;
-    }
+.ts-wrapper {
+    width: 100%;
+}
 
-    .ts-dropdown {
-        z-index: 99999 !important;
-    }
+.ts-dropdown {
+    z-index: 99999 !important;
+}
 
-    @media print {
-        .no-print {
-            display: none !important;
-        }
+@media print {
+    .no-print {
+        display: none !important;
     }
+}
 </style>
-
+@include('partials.alerts')
 <div class="container-fluid">
 
     {{-- VALIDATION ERRORS --}}
@@ -63,9 +63,7 @@
 
         </ul>
 
-        <button type="button"
-            class="close"
-            data-dismiss="alert">
+        <button type="button" class="close" data-dismiss="alert">
 
             <span>&times;</span>
 
@@ -98,8 +96,7 @@
 
 
         {{-- FORM --}}
-        <form method="POST"
-            action="{{ route('sales.update', $sale->id) }}">
+        <form method="POST" action="{{ route('sales.update', $sale->id) }}">
 
             @csrf
             @method('PUT')
@@ -121,10 +118,7 @@
                                 <span class="text-danger">*</span>
                             </label>
 
-                            <select
-                                name="customer_id"
-                                class="form-control form-control-sm tom-select"
-                                required>
+                            <select name="customer_id" class="form-control form-control-sm tom-select" required>
 
                                 <option value="">
                                     Select Customer
@@ -132,8 +126,7 @@
 
                                 @foreach($customers as $customer)
 
-                                <option
-                                    value="{{ $customer->id }}"
+                                <option value="{{ $customer->id }}"
                                     {{ $sale->customer_id == $customer->id ? 'selected' : '' }}>
 
                                     {{ $customer->name }}
@@ -158,11 +151,7 @@
                                 Sale Date
                             </label>
 
-                            <input
-                                type="date"
-                                name="sale_date"
-                                class="form-control form-control-sm"
-                                value="{{ old(
+                            <input type="date" name="sale_date" class="form-control form-control-sm" value="{{ old(
                                     'sale_date',
                                     $sale->sale_date
                                         ? date('Y-m-d', strtotime($sale->sale_date))
@@ -171,6 +160,27 @@
 
                         </div>
 
+                    </div>
+                    <div class="col-md-3">
+                        <div class="form-group">
+                            <label for="status">Sale Status</label>
+
+                            <select name="status" id="status" class="form-control" required>
+                                <option value="draft"
+                                    {{ old('status', $sale->status ?? 'completed') === 'draft' ? 'selected' : '' }}>
+                                    Save as Draft
+                                </option>
+
+                                <option value="completed"
+                                    {{ old('status', $sale->status ?? 'completed') === 'completed' ? 'selected' : '' }}>
+                                    Confirm Sale
+                                </option>
+                            </select>
+
+                            @error('status')
+                            <span class="text-danger">{{ $message }}</span>
+                            @enderror
+                        </div>
                     </div>
 
                 </div>
@@ -182,9 +192,7 @@
                 {{-- ITEMS --}}
                 <div class="table-responsive">
 
-                    <table
-                        class="table table-bordered table-sm table-hover sale-table"
-                        id="salesTable">
+                    <table class="table table-bordered table-sm table-hover sale-table" id="salesTable">
 
                         <thead class="bg-dark text-white">
 
@@ -212,19 +220,16 @@
 
                                 {{-- ITEM --}}
                                 <td>
-                                    <select
-                                        name="items[{{ $key }}][item_id]"
-                                        class="form-control form-control-sm item-select tom-select"
-                                        required>
+                                    <select name="items[{{ $key }}][item_id]"
+                                        class="form-control form-control-sm item-select tom-select" required>
                                         <option value="">Select Item</option>
                                         @foreach($items as $item)
-                                            <option
-                                                value="{{ $item->id }}"
-                                                data-qty="{{ (float) ($item->available_qty ?? 0) }}"
-                                                data-cost="{{ (float) ($item->average_cost ?? 0) }}"
-                                                {{ $saleItem->item_id == $item->id ? 'selected' : '' }}>
-                                                {{ $item->name }}
-                                            </option>
+                                        <option value="{{ $item->id }}"
+                                            data-qty="{{ (float) ($item->available_qty ?? 0) }}"
+                                            data-cost="{{ (float) ($item->average_cost ?? 0) }}"
+                                            {{ $saleItem->item_id == $item->id ? 'selected' : '' }}>
+                                            {{ $item->name }}
+                                        </option>
                                         @endforeach
                                     </select>
                                 </td>
@@ -232,20 +237,22 @@
                                 {{-- AVAILABLE QUANTITY --}}
                                 <td>
                                     <input type="text" class="form-control form-control-sm available-qty"
-                                        value="{{ number_format((float) ($items->firstWhere('id', $saleItem->item_id)->available_qty ?? 0), 3, '.', '') }}" readonly>
+                                        value="{{ number_format((float) ($items->firstWhere('id', $saleItem->item_id)->available_qty ?? 0), 3, '.', '') }}"
+                                        readonly>
                                 </td>
 
                                 {{-- AVERAGE COST --}}
                                 <td>
                                     <input type="text" class="form-control form-control-sm average-cost"
-                                        value="{{ number_format((float) ($items->firstWhere('id', $saleItem->item_id)->average_cost ?? $saleItem->base_price), 2, '.', '') }}" readonly>
+                                        value="{{ number_format((float) ($items->firstWhere('id', $saleItem->item_id)->average_cost ?? $saleItem->base_price), 2, '.', '') }}"
+                                        readonly>
                                 </td>
 
                                 {{-- SALE QUANTITY --}}
                                 <td>
                                     <input type="number" name="items[{{ $key }}][qty]"
-                                        class="form-control form-control-sm qty"
-                                        value="{{ $saleItem->qty }}" min="0.001" step="0.001" required>
+                                        class="form-control form-control-sm qty" value="{{ $saleItem->qty }}"
+                                        min="0.001" step="0.001" required {{ $sale->status === 'draft' ? 'readonly' : '' }}>
                                 </td>
 
                                 {{-- BASE PRICE (DISPLAY ONLY; SERVER CALCULATES COST) --}}
@@ -288,10 +295,7 @@
 
 
                 {{-- ADD ITEM --}}
-                <button
-                    type="button"
-                    class="btn btn-primary btn-sm"
-                    id="addRow">
+                <button type="button" class="btn btn-primary btn-sm" id="addRow">
 
                     <i class="fas fa-plus mr-1"></i>
 
@@ -320,11 +324,8 @@
 
                                     <div class="col-6">
 
-                                        <input
-                                            type="text"
-                                            id="total"
-                                            class="form-control form-control-sm text-right sale-total"
-                                            value="0.00"
+                                        <input type="text" id="total"
+                                            class="form-control form-control-sm text-right sale-total" value="0.00"
                                             readonly>
 
                                     </div>
@@ -345,9 +346,7 @@
             {{-- FOOTER --}}
             <div class="card-footer">
 
-                <button
-                    type="submit"
-                    class="btn btn-success">
+                <button type="submit" class="btn btn-success">
 
                     <i class="fas fa-save mr-1"></i>
 
@@ -356,9 +355,7 @@
                 </button>
 
 
-                <a
-                    href="{{ route('sales.index') }}"
-                    class="btn btn-secondary">
+                <a href="{{ route('sales.index') }}" class="btn btn-secondary">
 
                     <i class="fas fa-times mr-1"></i>
 
@@ -380,84 +377,84 @@
 @push('scripts')
 
 <script>
-    document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', function() {
 
-        /*
-        |--------------------------------------------------------------------------
-        | Row Index
-        |--------------------------------------------------------------------------
-        */
+    /*
+    |--------------------------------------------------------------------------
+    | Row Index
+    |--------------------------------------------------------------------------
+    */
 
-       let rowIndex = {{ count($sale->items) }};
+    let rowIndex = {{ count($sale->items) }};
 
 
-        /*
-        |--------------------------------------------------------------------------
-        | Initialize Tom Select
-        |--------------------------------------------------------------------------
-        */
+    /*
+    |--------------------------------------------------------------------------
+    | Initialize Tom Select
+    |--------------------------------------------------------------------------
+    */
 
-        function initializeTomSelect(element) {
-            if (!element || element.tomselect) {
-                return;
-            }
-
-            new TomSelect(element, {
-
-                create: false,
-
-                allowEmptyOption: true,
-
-                dropdownParent: 'body',
-
-                maxOptions: 5000
-
-            });
+    function initializeTomSelect(element) {
+        if (!element || element.tomselect) {
+            return;
         }
 
+        new TomSelect(element, {
 
-        /*
-        |--------------------------------------------------------------------------
-        | Existing Selects
-        |--------------------------------------------------------------------------
-        */
+            create: false,
 
-        document
-            .querySelectorAll('.tom-select')
-            .forEach(function(element) {
+            allowEmptyOption: true,
 
-                initializeTomSelect(element);
+            dropdownParent: 'body',
 
-            });
+            maxOptions: 5000
+
+        });
+    }
 
 
-        // Update available stock and weighted-average cost when an item changes.
-        document.addEventListener('change', function (e) {
-            if (!e.target.classList.contains('item-select')) return;
+    /*
+    |--------------------------------------------------------------------------
+    | Existing Selects
+    |--------------------------------------------------------------------------
+    */
 
-            const row = e.target.closest('tr');
-            const option = e.target.options[e.target.selectedIndex];
-            if (!row || !option) return;
+    document
+        .querySelectorAll('.tom-select')
+        .forEach(function(element) {
 
-            const availableQty = option.dataset.qty || '0';
-            const averageCost = option.dataset.cost || '0';
+            initializeTomSelect(element);
 
-            row.querySelector('.available-qty').value =
-                (parseFloat(availableQty) || 0).toFixed(3);
-            row.querySelector('.average-cost').value =
-                (parseFloat(averageCost) || 0).toFixed(2);
-            row.querySelector('.base-price').value =
-                (parseFloat(averageCost) || 0).toFixed(2);
         });
 
 
-        /*
-        |--------------------------------------------------------------------------
-        | Item Options
-        |--------------------------------------------------------------------------
-        */
+    // Update available stock and weighted-average cost when an item changes.
+    document.addEventListener('change', function(e) {
+        if (!e.target.classList.contains('item-select')) return;
 
-        const itemOptions = `
+        const row = e.target.closest('tr');
+        const option = e.target.options[e.target.selectedIndex];
+        if (!row || !option) return;
+
+        const availableQty = option.dataset.qty || '0';
+        const averageCost = option.dataset.cost || '0';
+
+        row.querySelector('.available-qty').value =
+            (parseFloat(availableQty) || 0).toFixed(3);
+        row.querySelector('.average-cost').value =
+            (parseFloat(averageCost) || 0).toFixed(2);
+        row.querySelector('.base-price').value =
+            (parseFloat(averageCost) || 0).toFixed(2);
+    });
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Item Options
+    |--------------------------------------------------------------------------
+    */
+
+    const itemOptions = `
             <option value="">Select Item</option>
             @foreach($items as $item)
                 <option value="{{ $item->id }}"
@@ -469,101 +466,101 @@
         `;
 
 
-        /*
-        |--------------------------------------------------------------------------
-        | Calculate Row
-        |--------------------------------------------------------------------------
-        */
+    /*
+    |--------------------------------------------------------------------------
+    | Calculate Row
+    |--------------------------------------------------------------------------
+    */
 
-        function calculateRow(row) {
-            const qty =
-                parseFloat(
-                    row.querySelector('.qty').value
-                ) || 0;
+    function calculateRow(row) {
+        const qty =
+            parseFloat(
+                row.querySelector('.qty').value
+            ) || 0;
 
-            const salePrice =
-                parseFloat(
-                    row.querySelector('.sale-price').value
-                ) || 0;
+        const salePrice =
+            parseFloat(
+                row.querySelector('.sale-price').value
+            ) || 0;
 
-            const subtotal =
-                qty * salePrice;
+        const subtotal =
+            qty * salePrice;
 
-            row.querySelector('.subtotal').value =
-                subtotal.toFixed(2);
-        }
-
-
-        /*
-        |--------------------------------------------------------------------------
-        | Calculate Total
-        |--------------------------------------------------------------------------
-        */
-
-        function calculateTotal() {
-            let total = 0;
-
-            document
-                .querySelectorAll('#salesTable tbody tr')
-                .forEach(function(row) {
-
-                    const qty =
-                        parseFloat(
-                            row.querySelector('.qty').value
-                        ) || 0;
-
-                    const salePrice =
-                        parseFloat(
-                            row.querySelector('.sale-price').value
-                        ) || 0;
-
-                    total += qty * salePrice;
-
-                });
+        row.querySelector('.subtotal').value =
+            subtotal.toFixed(2);
+    }
 
 
-            document.getElementById('total').value =
-                total.toFixed(2);
-        }
+    /*
+    |--------------------------------------------------------------------------
+    | Calculate Total
+    |--------------------------------------------------------------------------
+    */
 
-
-        /*
-        |--------------------------------------------------------------------------
-        | Initial Total
-        |--------------------------------------------------------------------------
-        */
+    function calculateTotal() {
+        let total = 0;
 
         document
             .querySelectorAll('#salesTable tbody tr')
             .forEach(function(row) {
 
-                calculateRow(row);
+                const qty =
+                    parseFloat(
+                        row.querySelector('.qty').value
+                    ) || 0;
+
+                const salePrice =
+                    parseFloat(
+                        row.querySelector('.sale-price').value
+                    ) || 0;
+
+                total += qty * salePrice;
 
             });
 
-        calculateTotal();
+
+        document.getElementById('total').value =
+            total.toFixed(2);
+    }
 
 
-        /*
-        |--------------------------------------------------------------------------
-        | ADD ROW
-        |--------------------------------------------------------------------------
-        */
+    /*
+    |--------------------------------------------------------------------------
+    | Initial Total
+    |--------------------------------------------------------------------------
+    */
 
-        document
-            .getElementById('addRow')
-            .addEventListener('click', function() {
+    document
+        .querySelectorAll('#salesTable tbody tr')
+        .forEach(function(row) {
 
-                const tbody =
-                    document.querySelector(
-                        '#salesTable tbody'
-                    );
+            calculateRow(row);
 
+        });
 
-                const row = document.createElement('tr');
+    calculateTotal();
 
 
-                row.innerHTML = `
+    /*
+    |--------------------------------------------------------------------------
+    | ADD ROW
+    |--------------------------------------------------------------------------
+    */
+
+    document
+        .getElementById('addRow')
+        .addEventListener('click', function() {
+
+            const tbody =
+                document.querySelector(
+                    '#salesTable tbody'
+                );
+
+
+            const row = document.createElement('tr');
+
+
+            row.innerHTML = `
                     <td>
                         <select name="items[${rowIndex}][item_id]" class="form-control form-control-sm item-select tom-select" required>
                             ${itemOptions}
@@ -579,121 +576,121 @@
                 `;
 
 
-                tbody.appendChild(row);
-
-
-                /*
-                |--------------------------------------------------------------------------
-                | Initialize Tom Select For New Row
-                |--------------------------------------------------------------------------
-                */
-
-                initializeTomSelect(
-                    row.querySelector('.tom-select')
-                );
-
-
-                rowIndex++;
-
-            });
-
-
-        /*
-        |--------------------------------------------------------------------------
-        | QTY / SALE PRICE
-        |--------------------------------------------------------------------------
-        |
-        | Event delegation means this works for both existing
-        | rows and dynamically added rows.
-        |
-        */
-
-        document.addEventListener('input', function(e) {
-
-            if (
-                e.target.classList.contains('qty') ||
-                e.target.classList.contains('sale-price')
-            ) {
-
-                const row =
-                    e.target.closest('tr');
-
-                if (!row) {
-                    return;
-                }
-
-                calculateRow(row);
-
-                calculateTotal();
-
-            }
-
-        });
-
-
-        /*
-        |--------------------------------------------------------------------------
-        | REMOVE ROW
-        |--------------------------------------------------------------------------
-        */
-
-        document.addEventListener('click', function(e) {
-
-            const button =
-                e.target.closest('.removeRow');
-
-            if (!button) {
-                return;
-            }
-
-
-            const rows =
-                document.querySelectorAll(
-                    '#salesTable tbody tr'
-                );
-
-
-            if (rows.length <= 1) {
-
-                alert(
-                    'At least one item is required.'
-                );
-
-                return;
-
-            }
-
-
-            const row =
-                button.closest('tr');
+            tbody.appendChild(row);
 
 
             /*
             |--------------------------------------------------------------------------
-            | Destroy Tom Select
+            | Initialize Tom Select For New Row
             |--------------------------------------------------------------------------
             */
 
-            const select =
-                row.querySelector('.tom-select');
-
-            if (
-                select &&
-                select.tomselect
-            ) {
-
-                select.tomselect.destroy();
-
-            }
+            initializeTomSelect(
+                row.querySelector('.tom-select')
+            );
 
 
-            row.remove();
-
-            calculateTotal();
+            rowIndex++;
 
         });
 
+
+    /*
+    |--------------------------------------------------------------------------
+    | QTY / SALE PRICE
+    |--------------------------------------------------------------------------
+    |
+    | Event delegation means this works for both existing
+    | rows and dynamically added rows.
+    |
+    */
+
+    document.addEventListener('input', function(e) {
+
+        if (
+            e.target.classList.contains('qty') ||
+            e.target.classList.contains('sale-price')
+        ) {
+
+            const row =
+                e.target.closest('tr');
+
+            if (!row) {
+                return;
+            }
+
+            calculateRow(row);
+
+            calculateTotal();
+
+        }
+
     });
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | REMOVE ROW
+    |--------------------------------------------------------------------------
+    */
+
+    document.addEventListener('click', function(e) {
+
+        const button =
+            e.target.closest('.removeRow');
+
+        if (!button) {
+            return;
+        }
+
+
+        const rows =
+            document.querySelectorAll(
+                '#salesTable tbody tr'
+            );
+
+
+        if (rows.length <= 1) {
+
+            alert(
+                'At least one item is required.'
+            );
+
+            return;
+
+        }
+
+
+        const row =
+            button.closest('tr');
+
+
+        /*
+        |--------------------------------------------------------------------------
+        | Destroy Tom Select
+        |--------------------------------------------------------------------------
+        */
+
+        const select =
+            row.querySelector('.tom-select');
+
+        if (
+            select &&
+            select.tomselect
+        ) {
+
+            select.tomselect.destroy();
+
+        }
+
+
+        row.remove();
+
+        calculateTotal();
+
+    });
+
+});
 </script>
 
 @endpush

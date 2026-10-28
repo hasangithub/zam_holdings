@@ -83,9 +83,9 @@
 
         <div class="card-body">
             <form method="POST"
-                  action="{{ route('sales.store') }}"
-                  id="saleForm"
-                  novalidate>
+                action="{{ route('sales.store') }}"
+                id="saleForm"
+                novalidate>
                 @csrf
 
                 {{-- WIZARD PROGRESS --}}
@@ -108,16 +108,16 @@
                         </label>
 
                         <select name="customer_id"
-                                id="customer_id"
-                                class="form-control"
-                                required>
+                            id="customer_id"
+                            class="form-control"
+                            required>
                             <option value="">Select Customer</option>
 
                             @foreach($customers as $c)
-                                <option value="{{ $c->id }}"
-                                    {{ (string) old('customer_id') === (string) $c->id ? 'selected' : '' }}>
-                                    {{ $c->name }}
-                                </option>
+                            <option value="{{ $c->id }}"
+                                {{ (string) old('customer_id') === (string) $c->id ? 'selected' : '' }}>
+                                {{ $c->name }}
+                            </option>
                             @endforeach
                         </select>
                     </div>
@@ -129,11 +129,29 @@
                         </label>
 
                         <input type="date"
-                               name="sale_date"
-                               id="sale_date"
-                               class="form-control"
-                               value="{{ old('sale_date', now()->toDateString()) }}"
-                               required>
+                            name="sale_date"
+                            id="sale_date"
+                            class="form-control"
+                            value="{{ old('sale_date', now()->toDateString()) }}"
+                            required>
+                    </div>
+
+                    <div class="col-md-3">
+                        <div class="form-group">
+                            <label for="status">Sale Status</label>
+
+                            <select name="status" id="status" class="form-control" required>
+                                <option value="draft" {{ old('status') === 'draft' ? 'selected' : '' }}>
+                                    Save as Draft
+                                </option>
+                                <option value="completed" {{ old('status', 'completed') === 'completed' ? 'selected' : '' }}>
+                                    Confirm Sale
+                                </option>
+                            </select>
+                            @error('status')
+                            <span class="text-danger">{{ $message }}</span>
+                            @enderror
+                        </div>
                     </div>
 
                     <hr>
@@ -144,19 +162,19 @@
                         </label>
 
                         <select id="itemPicker"
-                                class="form-control"
-                                multiple
-                                placeholder="Search and select items...">
+                            class="form-control"
+                            multiple
+                            placeholder="Search and select items...">
                             @foreach($stocks as $s)
-                                <option
-                                    value="{{ $s->item_id }}"
-                                    data-item-name="{{ $s->item_name }}"
-                                    data-cost="{{ $s->average_cost }}"
-                                    data-stock="{{ $s->total_qty }}">
-                                    {{ $s->item_name }}
-                                    | Average Cost: {{ number_format($s->average_cost, 2) }}
-                                    | Stock: {{ number_format($s->total_qty, 3) }}
-                                </option>
+                            <option
+                                value="{{ $s->item_id }}"
+                                data-item-name="{{ $s->item_name }}"
+                                data-cost="{{ $s->average_cost }}"
+                                data-stock="{{ $s->total_qty }}">
+                                {{ $s->item_name }}
+                                | Average Cost: {{ number_format($s->average_cost, 2) }}
+                                | Stock: {{ number_format($s->total_qty, 3) }}
+                            </option>
                             @endforeach
                         </select>
 
@@ -175,12 +193,12 @@
                                 </label>
 
                                 <input type="number"
-                                       id="default_qty"
-                                       class="form-control"
-                                       min="0.001"
-                                       step="0.001"
-                                       value="{{ old('default_qty', '0') }}"
-                                       required>
+                                    id="default_qty"
+                                    class="form-control"
+                                    min="0.001"
+                                    step="0.001"
+                                    value="{{ old('default_qty', '0') }}"
+                                    required>
 
                                 <small class="form-text text-muted">
                                     Applied to each selected item in Step 2.
@@ -195,13 +213,13 @@
                                 </label>
 
                                 <input type="number"
-                                       id="default_sale_price"
-                                       class="form-control"
-                                       min="0"
-                                       step="0.01"
-                                       value="{{ old('default_sale_price', '0.00') }}"
-                                       placeholder="Enter default sale price"
-                                       required>
+                                    id="default_sale_price"
+                                    class="form-control"
+                                    min="0"
+                                    step="0.01"
+                                    value="{{ old('default_sale_price', '0.00') }}"
+                                    placeholder="Enter default sale price"
+                                    required>
 
                                 <small class="form-text text-muted">
                                     Applied to each selected item. You can change individual prices in Step 2.
@@ -238,7 +256,7 @@
 
                     <div class="table-responsive">
                         <table class="table table-bordered table-hover table-sm table-erp"
-                               id="selectedItemsTable">
+                            id="selectedItemsTable">
                             <thead class="bg-dark text-white">
                                 <tr>
                                     <th style="min-width:250px;">Item / Cost / Stock</th>
@@ -264,8 +282,8 @@
                     </div>
 
                     <div id="noItemsMessage"
-                         class="alert alert-warning"
-                         style="display:none;">
+                        class="alert alert-warning"
+                        style="display:none;">
                         No items selected. Go back and select at least one item.
                     </div>
 
@@ -291,361 +309,361 @@
 <script src="https://cdn.jsdelivr.net/npm/tom-select@2.4.3/dist/js/tom-select.complete.min.js"></script>
 
 <script>
-(function () {
-    'use strict';
+    (function() {
+        'use strict';
 
-    function initializeSaleWizard() {
-        const form = document.getElementById('saleForm');
+        function initializeSaleWizard() {
+            const form = document.getElementById('saleForm');
 
-        if (!form || form.dataset.initialized === '1') {
-            return;
-        }
-
-        form.dataset.initialized = '1';
-
-        const customerSelect = document.getElementById('customer_id');
-        const itemPickerElement = document.getElementById('itemPicker');
-        const saleDateInput = document.getElementById('sale_date');
-        const defaultQtyInput = document.getElementById('default_qty');
-        const defaultPriceInput = document.getElementById('default_sale_price');
-
-        const step1 = document.getElementById('wizardStep1');
-        const step2 = document.getElementById('wizardStep2');
-
-        const progress1 = document.getElementById('progressStep1');
-        const progress2 = document.getElementById('progressStep2');
-
-        const itemsBody = document.getElementById('selectedItemsBody');
-        const itemCount = document.getElementById('itemCount');
-        const grandTotal = document.getElementById('grandTotal');
-        const noItemsMessage = document.getElementById('noItemsMessage');
-        const saveButton = document.getElementById('saveSale');
-
-        let currentStep = 1;
-        let itemTomSelect = null;
-        let isSubmitting = false;
-
-        if (typeof TomSelect !== 'undefined') {
-            itemTomSelect = new TomSelect(itemPickerElement, {
-                plugins: ['remove_button'],
-                create: false,
-                maxItems: null,
-                hideSelected: true,
-                closeAfterSelect: false,
-                placeholder: 'Search and select items...',
-                dropdownParent: 'body'
-            });
-        } else {
-            console.error('Tom Select failed to load.');
-            alert('The item selector could not load. Please refresh the page.');
-            return;
-        }
-
-        function showStep(stepNumber) {
-            currentStep = stepNumber;
-
-            step1.classList.toggle('active', stepNumber === 1);
-            step2.classList.toggle('active', stepNumber === 2);
-
-            progress1.classList.toggle('active', stepNumber === 1);
-            progress1.classList.toggle('completed', stepNumber === 2);
-            progress2.classList.toggle('active', stepNumber === 2);
-
-            window.scrollTo({
-                top: 0,
-                behavior: 'smooth'
-            });
-        }
-
-        function getSelectedItems() {
-            return itemTomSelect.items.map(function (value) {
-                const option = itemTomSelect.options[value];
-
-                if (!option) {
-                    return null;
-                }
-
-                return {
-                    key: value,
-                    name: option.item_name || option.text.trim(),
-                    cost: parseFloat(option.cost) || 0,
-                    stock: parseFloat(option.stock) || 0
-                };
-            }).filter(Boolean);
-        }
-
-        function getExistingRowValues() {
-            const values = {};
-
-            itemsBody.querySelectorAll('tr[data-group-key]').forEach(function (row) {
-                const key = row.dataset.groupKey;
-
-                values[key] = {
-                    qty: row.querySelector('[name$="[qty]"]').value,
-                    salePrice: row.querySelector('[name$="[sale_price]"]').value
-                };
-            });
-
-            return values;
-        }
-
-        function renderSelectedItems() {
-            const previousValues = getExistingRowValues();
-            const selectedItems = getSelectedItems();
-
-            itemsBody.innerHTML = '';
-
-            selectedItems.forEach(function (item, index) {
-                const previous = previousValues[item.key] || {};
-                const row = document.createElement('tr');
-                row.dataset.groupKey = item.key;
-
-                const itemCell = document.createElement('td');
-
-                const itemName = document.createElement('div');
-                itemName.className = 'font-weight-bold';
-                itemName.textContent = item.name.split('|')[0].trim();
-
-                const itemInfo = document.createElement('small');
-                itemInfo.className = 'text-muted d-block';
-                itemInfo.textContent =
-                    'Cost: ' + item.cost.toFixed(2) +
-                    ' | Stock: ' + item.stock.toFixed(3);
-
-                itemCell.appendChild(itemName);
-                itemCell.appendChild(itemInfo);
-
-                const groupKeyInput = document.createElement('input');
-                groupKeyInput.type = 'hidden';
-                groupKeyInput.name = 'items[' + index + '][item_id]';
-                groupKeyInput.value = item.key;
-                itemCell.appendChild(groupKeyInput);
-
-                const qtyCell = document.createElement('td');
-                const qtyInput = document.createElement('input');
-
-                qtyInput.type = 'number';
-                qtyInput.name = 'items[' + index + '][qty]';
-                qtyInput.className = 'form-control form-control-sm qty-input';
-                qtyInput.step = '0.001';
-                qtyInput.min = '0.001';
-                qtyInput.max = item.stock;
-                qtyInput.required = true;
-                qtyInput.placeholder = 'Quantity';
-                qtyInput.value = previous.qty !== undefined && previous.qty !== ''
-                    ? previous.qty
-                    : defaultQtyInput.value;
-                qtyInput.setAttribute('aria-label', 'Quantity');
-
-                qtyCell.appendChild(qtyInput);
-
-                const priceCell = document.createElement('td');
-                const priceInput = document.createElement('input');
-
-                priceInput.type = 'number';
-                priceInput.name = 'items[' + index + '][sale_price]';
-                priceInput.className = 'form-control form-control-sm price-input';
-                priceInput.step = '0.01';
-                priceInput.min = '0';
-                priceInput.required = true;
-                priceInput.placeholder = 'Sale price';
-                priceInput.value = previous.salePrice !== undefined && previous.salePrice !== ''
-                    ? previous.salePrice
-                    : defaultPriceInput.value;
-                priceInput.setAttribute('aria-label', 'Sale price');
-
-                priceCell.appendChild(priceInput);
-
-                const amountCell = document.createElement('td');
-                amountCell.className = 'text-right font-weight-bold amount-cell';
-                amountCell.textContent = '0.00';
-
-                const actionCell = document.createElement('td');
-                actionCell.className = 'text-center';
-
-                const removeButton = document.createElement('button');
-                removeButton.type = 'button';
-                removeButton.className = 'btn btn-danger btn-sm remove-item';
-                removeButton.title = 'Remove item';
-                removeButton.innerHTML = '<i class="fas fa-times"></i>';
-
-                actionCell.appendChild(removeButton);
-
-                row.appendChild(itemCell);
-                row.appendChild(qtyCell);
-                row.appendChild(priceCell);
-                row.appendChild(amountCell);
-                row.appendChild(actionCell);
-
-                itemsBody.appendChild(row);
-            });
-
-            itemCount.textContent =
-                selectedItems.length + (selectedItems.length === 1 ? ' item' : ' items');
-
-            noItemsMessage.style.display = selectedItems.length === 0 ? 'block' : 'none';
-
-            calculateTotal();
-        }
-
-        function calculateTotal() {
-            let total = 0;
-
-            itemsBody.querySelectorAll('tr').forEach(function (row) {
-                const qty = parseFloat(row.querySelector('.qty-input').value) || 0;
-                const price = parseFloat(row.querySelector('.price-input').value) || 0;
-                const amount = qty * price;
-
-                row.querySelector('.amount-cell').textContent = amount.toFixed(2);
-                total += amount;
-            });
-
-            grandTotal.textContent = total.toLocaleString('en-US', {
-                minimumFractionDigits: 2,
-                maximumFractionDigits: 2
-            });
-        }
-
-        document.getElementById('nextStep').addEventListener('click', function () {
-            if (!customerSelect.value) {
-                alert('Please select a customer.');
-                customerSelect.focus();
+            if (!form || form.dataset.initialized === '1') {
                 return;
             }
 
-            if (!saleDateInput.value) {
-                alert('Please select the sale date.');
-                saleDateInput.focus();
+            form.dataset.initialized = '1';
+
+            const customerSelect = document.getElementById('customer_id');
+            const itemPickerElement = document.getElementById('itemPicker');
+            const saleDateInput = document.getElementById('sale_date');
+            const defaultQtyInput = document.getElementById('default_qty');
+            const defaultPriceInput = document.getElementById('default_sale_price');
+
+            const step1 = document.getElementById('wizardStep1');
+            const step2 = document.getElementById('wizardStep2');
+
+            const progress1 = document.getElementById('progressStep1');
+            const progress2 = document.getElementById('progressStep2');
+
+            const itemsBody = document.getElementById('selectedItemsBody');
+            const itemCount = document.getElementById('itemCount');
+            const grandTotal = document.getElementById('grandTotal');
+            const noItemsMessage = document.getElementById('noItemsMessage');
+            const saveButton = document.getElementById('saveSale');
+
+            let currentStep = 1;
+            let itemTomSelect = null;
+            let isSubmitting = false;
+
+            if (typeof TomSelect !== 'undefined') {
+                itemTomSelect = new TomSelect(itemPickerElement, {
+                    plugins: ['remove_button'],
+                    create: false,
+                    maxItems: null,
+                    hideSelected: true,
+                    closeAfterSelect: false,
+                    placeholder: 'Search and select items...',
+                    dropdownParent: 'body'
+                });
+            } else {
+                console.error('Tom Select failed to load.');
+                alert('The item selector could not load. Please refresh the page.');
                 return;
             }
 
-            const defaultQty = parseFloat(defaultQtyInput.value);
-            if (!Number.isFinite(defaultQty)) {
-                alert('Please enter a valid default quantity.');
-                defaultQtyInput.focus();
-                return;
+            function showStep(stepNumber) {
+                currentStep = stepNumber;
+
+                step1.classList.toggle('active', stepNumber === 1);
+                step2.classList.toggle('active', stepNumber === 2);
+
+                progress1.classList.toggle('active', stepNumber === 1);
+                progress1.classList.toggle('completed', stepNumber === 2);
+                progress2.classList.toggle('active', stepNumber === 2);
+
+                window.scrollTo({
+                    top: 0,
+                    behavior: 'smooth'
+                });
             }
 
-            const defaultPrice = parseFloat(defaultPriceInput.value);
-            if (defaultPriceInput.value === '' ||
-                !Number.isFinite(defaultPrice)) {
-                alert('Please enter a valid default sale price.');
-                defaultPriceInput.focus();
-                return;
+            function getSelectedItems() {
+                return itemTomSelect.items.map(function(value) {
+                    const option = itemTomSelect.options[value];
+
+                    if (!option) {
+                        return null;
+                    }
+
+                    return {
+                        key: value,
+                        name: option.item_name || option.text.trim(),
+                        cost: parseFloat(option.cost) || 0,
+                        stock: parseFloat(option.stock) || 0
+                    };
+                }).filter(Boolean);
             }
 
-            if (itemTomSelect.items.length === 0) {
-                alert('Please select at least one item.');
-                itemTomSelect.focus();
-                return;
+            function getExistingRowValues() {
+                const values = {};
+
+                itemsBody.querySelectorAll('tr[data-group-key]').forEach(function(row) {
+                    const key = row.dataset.groupKey;
+
+                    values[key] = {
+                        qty: row.querySelector('[name$="[qty]"]').value,
+                        salePrice: row.querySelector('[name$="[sale_price]"]').value
+                    };
+                });
+
+                return values;
             }
 
-            renderSelectedItems();
-            showStep(2);
-        });
+            function renderSelectedItems() {
+                const previousValues = getExistingRowValues();
+                const selectedItems = getSelectedItems();
 
-        document.getElementById('backStep').addEventListener('click', function () {
-            showStep(1);
-        });
+                itemsBody.innerHTML = '';
 
-        itemTomSelect.on('change', function () {
-            if (currentStep === 2) {
-                renderSelectedItems();
-            }
-        });
+                selectedItems.forEach(function(item, index) {
+                    const previous = previousValues[item.key] || {};
+                    const row = document.createElement('tr');
+                    row.dataset.groupKey = item.key;
 
-        itemsBody.addEventListener('click', function (event) {
-            const button = event.target.closest('.remove-item');
+                    const itemCell = document.createElement('td');
 
-            if (!button) {
-                return;
-            }
+                    const itemName = document.createElement('div');
+                    itemName.className = 'font-weight-bold';
+                    itemName.textContent = item.name.split('|')[0].trim();
 
-            const row = button.closest('tr');
-            const key = row.dataset.groupKey;
+                    const itemInfo = document.createElement('small');
+                    itemInfo.className = 'text-muted d-block';
+                    itemInfo.textContent =
+                        'Cost: ' + item.cost.toFixed(2) +
+                        ' | Stock: ' + item.stock.toFixed(3);
 
-            itemTomSelect.removeItem(key);
-            renderSelectedItems();
-        });
+                    itemCell.appendChild(itemName);
+                    itemCell.appendChild(itemInfo);
 
-        itemsBody.addEventListener('input', function (event) {
-            if (event.target.matches('.qty-input, .price-input')) {
+                    const groupKeyInput = document.createElement('input');
+                    groupKeyInput.type = 'hidden';
+                    groupKeyInput.name = 'items[' + index + '][item_id]';
+                    groupKeyInput.value = item.key;
+                    itemCell.appendChild(groupKeyInput);
+
+                    const qtyCell = document.createElement('td');
+                    const qtyInput = document.createElement('input');
+
+                    qtyInput.type = 'number';
+                    qtyInput.name = 'items[' + index + '][qty]';
+                    qtyInput.className = 'form-control form-control-sm qty-input';
+                    qtyInput.step = '0.001';
+                    qtyInput.min = '0.001';
+                    qtyInput.max = item.stock;
+                    qtyInput.required = true;
+                    qtyInput.placeholder = 'Quantity';
+                    qtyInput.value = previous.qty !== undefined && previous.qty !== '' ?
+                        previous.qty :
+                        defaultQtyInput.value;
+                    qtyInput.setAttribute('aria-label', 'Quantity');
+
+                    qtyCell.appendChild(qtyInput);
+
+                    const priceCell = document.createElement('td');
+                    const priceInput = document.createElement('input');
+
+                    priceInput.type = 'number';
+                    priceInput.name = 'items[' + index + '][sale_price]';
+                    priceInput.className = 'form-control form-control-sm price-input';
+                    priceInput.step = '0.01';
+                    priceInput.min = '0';
+                    priceInput.required = true;
+                    priceInput.placeholder = 'Sale price';
+                    priceInput.value = previous.salePrice !== undefined && previous.salePrice !== '' ?
+                        previous.salePrice :
+                        defaultPriceInput.value;
+                    priceInput.setAttribute('aria-label', 'Sale price');
+
+                    priceCell.appendChild(priceInput);
+
+                    const amountCell = document.createElement('td');
+                    amountCell.className = 'text-right font-weight-bold amount-cell';
+                    amountCell.textContent = '0.00';
+
+                    const actionCell = document.createElement('td');
+                    actionCell.className = 'text-center';
+
+                    const removeButton = document.createElement('button');
+                    removeButton.type = 'button';
+                    removeButton.className = 'btn btn-danger btn-sm remove-item';
+                    removeButton.title = 'Remove item';
+                    removeButton.innerHTML = '<i class="fas fa-times"></i>';
+
+                    actionCell.appendChild(removeButton);
+
+                    row.appendChild(itemCell);
+                    row.appendChild(qtyCell);
+                    row.appendChild(priceCell);
+                    row.appendChild(amountCell);
+                    row.appendChild(actionCell);
+
+                    itemsBody.appendChild(row);
+                });
+
+                itemCount.textContent =
+                    selectedItems.length + (selectedItems.length === 1 ? ' item' : ' items');
+
+                noItemsMessage.style.display = selectedItems.length === 0 ? 'block' : 'none';
+
                 calculateTotal();
             }
-        });
 
-        form.addEventListener('submit', function (event) {
-            if (isSubmitting) {
-                event.preventDefault();
-                return;
+            function calculateTotal() {
+                let total = 0;
+
+                itemsBody.querySelectorAll('tr').forEach(function(row) {
+                    const qty = parseFloat(row.querySelector('.qty-input').value) || 0;
+                    const price = parseFloat(row.querySelector('.price-input').value) || 0;
+                    const amount = qty * price;
+
+                    row.querySelector('.amount-cell').textContent = amount.toFixed(2);
+                    total += amount;
+                });
+
+                grandTotal.textContent = total.toLocaleString('en-US', {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2
+                });
             }
 
-            if (currentStep !== 2) {
-                event.preventDefault();
-                return;
-            }
-
-            if (!saleDateInput.value) {
-                event.preventDefault();
-                showStep(1);
-                alert('Please select the sale date.');
-                saleDateInput.focus();
-                return;
-            }
-
-            if (itemTomSelect.items.length === 0) {
-                event.preventDefault();
-                showStep(1);
-                alert('Please select at least one item.');
-                itemTomSelect.focus();
-                return;
-            }
-
-            let valid = true;
-
-            itemsBody.querySelectorAll('tr').forEach(function (row) {
-                const qtyInput = row.querySelector('.qty-input');
-                const priceInput = row.querySelector('.price-input');
-
-                const qty = parseFloat(qtyInput.value);
-                const price = parseFloat(priceInput.value);
-                const stock = parseFloat(qtyInput.max);
-
-                if (!qtyInput.value ||
-                    !Number.isFinite(qty) ||
-                    qty <= 0 ||
-                    qty > stock) {
-                    valid = false;
-                    qtyInput.reportValidity();
+            document.getElementById('nextStep').addEventListener('click', function() {
+                if (!customerSelect.value) {
+                    alert('Please select a customer.');
+                    customerSelect.focus();
+                    return;
                 }
 
-                if (!priceInput.value ||
-                    !Number.isFinite(price) ||
-                    price < 0) {
-                    valid = false;
-                    priceInput.reportValidity();
+                if (!saleDateInput.value) {
+                    alert('Please select the sale date.');
+                    saleDateInput.focus();
+                    return;
+                }
+
+                const defaultQty = parseFloat(defaultQtyInput.value);
+                if (!Number.isFinite(defaultQty)) {
+                    alert('Please enter a valid default quantity.');
+                    defaultQtyInput.focus();
+                    return;
+                }
+
+                const defaultPrice = parseFloat(defaultPriceInput.value);
+                if (defaultPriceInput.value === '' ||
+                    !Number.isFinite(defaultPrice)) {
+                    alert('Please enter a valid default sale price.');
+                    defaultPriceInput.focus();
+                    return;
+                }
+
+                if (itemTomSelect.items.length === 0) {
+                    alert('Please select at least one item.');
+                    itemTomSelect.focus();
+                    return;
+                }
+
+                renderSelectedItems();
+                showStep(2);
+            });
+
+            document.getElementById('backStep').addEventListener('click', function() {
+                showStep(1);
+            });
+
+            itemTomSelect.on('change', function() {
+                if (currentStep === 2) {
+                    renderSelectedItems();
                 }
             });
 
-            if (!valid) {
-                event.preventDefault();
-                return;
-            }
+            itemsBody.addEventListener('click', function(event) {
+                const button = event.target.closest('.remove-item');
 
-            isSubmitting = true;
-            saveButton.disabled = true;
-            saveButton.innerHTML =
-                '<i class="fas fa-spinner fa-spin mr-1"></i> Creating Sale...';
-        });
+                if (!button) {
+                    return;
+                }
 
-        showStep(1);
-    }
+                const row = button.closest('tr');
+                const key = row.dataset.groupKey;
 
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', initializeSaleWizard);
-    } else {
-        initializeSaleWizard();
-    }
-})();
+                itemTomSelect.removeItem(key);
+                renderSelectedItems();
+            });
+
+            itemsBody.addEventListener('input', function(event) {
+                if (event.target.matches('.qty-input, .price-input')) {
+                    calculateTotal();
+                }
+            });
+
+            form.addEventListener('submit', function(event) {
+                if (isSubmitting) {
+                    event.preventDefault();
+                    return;
+                }
+
+                if (currentStep !== 2) {
+                    event.preventDefault();
+                    return;
+                }
+
+                if (!saleDateInput.value) {
+                    event.preventDefault();
+                    showStep(1);
+                    alert('Please select the sale date.');
+                    saleDateInput.focus();
+                    return;
+                }
+
+                if (itemTomSelect.items.length === 0) {
+                    event.preventDefault();
+                    showStep(1);
+                    alert('Please select at least one item.');
+                    itemTomSelect.focus();
+                    return;
+                }
+
+                let valid = true;
+
+                itemsBody.querySelectorAll('tr').forEach(function(row) {
+                    const qtyInput = row.querySelector('.qty-input');
+                    const priceInput = row.querySelector('.price-input');
+
+                    const qty = parseFloat(qtyInput.value);
+                    const price = parseFloat(priceInput.value);
+                    const stock = parseFloat(qtyInput.max);
+
+                    if (!qtyInput.value ||
+                        !Number.isFinite(qty) ||
+                        qty <= 0 ||
+                        qty > stock) {
+                        valid = false;
+                        qtyInput.reportValidity();
+                    }
+
+                    if (!priceInput.value ||
+                        !Number.isFinite(price) ||
+                        price < 0) {
+                        valid = false;
+                        priceInput.reportValidity();
+                    }
+                });
+
+                if (!valid) {
+                    event.preventDefault();
+                    return;
+                }
+
+                isSubmitting = true;
+                saveButton.disabled = true;
+                saveButton.innerHTML =
+                    '<i class="fas fa-spinner fa-spin mr-1"></i> Creating Sale...';
+            });
+
+            showStep(1);
+        }
+
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initializeSaleWizard);
+        } else {
+            initializeSaleWizard();
+        }
+    })();
 </script>
 @endpush
