@@ -243,6 +243,16 @@ Route::middleware(['auth'])->group(function () {
     Route::resource('freight-records', FreightRecordController::class);
     Route::resource('/landing-costs', LandingCostController::class);
 
+    Route::get('/freight-expenses/{id}/statement', [
+    FreightController::class,
+    'statement',
+])->name('freight-expenses.statement');
+
+Route::post('/freight-expenses/{id}/opening-balance', [
+    FreightController::class,
+    'storeOpeningBalance',
+])->name('freight-expenses.opening-balance');
+
     Route::resource('freight-services', FreightServiceController::class)->except(['show', 'destroy']);
     Route::resource('freights', FreightController::class)->only(['index', 'create', 'store', 'show']);
     Route::post('freights/{id}/payment', [FreightController::class, 'payment'])->name('freights.payment');

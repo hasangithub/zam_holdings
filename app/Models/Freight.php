@@ -16,6 +16,7 @@ class Freight extends Model
         'amount_lkr',
         'total_paid',
         'balance_amount',
+        'opening_journal_entry_id',
         'status',
     ];
 
@@ -35,5 +36,13 @@ class Freight extends Model
     public function payments()
     {
         return $this->hasMany(FreightPayment::class);
+    }
+
+    public function openingJournalEntry()
+    {
+        return $this->belongsTo(
+            JournalEntry::class,
+            'opening_journal_entry_id'
+        );
     }
 }

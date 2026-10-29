@@ -11,7 +11,7 @@
 
         <div class="card-tools">
             <a href="{{ route('freights.create') }}"
-               class="btn btn-primary btn-sm">
+                class="btn btn-primary btn-sm">
                 <i class="fas fa-plus"></i> New Freight
             </a>
         </div>
@@ -24,18 +24,18 @@
 
                 <div class="col-md-4">
                     <select name="freight_service_id"
-                            class="form-control"
-                            onchange="this.form.submit()">
+                        class="form-control"
+                        onchange="this.form.submit()">
 
                         <option value="">
                             All Freight Services
                         </option>
 
                         @foreach($services as $service)
-                            <option value="{{ $service->id }}"
-                                {{ request('freight_service_id') == $service->id ? 'selected' : '' }}>
-                                {{ $service->name }}
-                            </option>
+                        <option value="{{ $service->id }}"
+                            {{ request('freight_service_id') == $service->id ? 'selected' : '' }}>
+                            {{ $service->name }}
+                        </option>
                         @endforeach
 
                     </select>
@@ -66,69 +66,84 @@
 
                 @forelse($freights as $freight)
 
-                    <tr>
-                        <td>{{ $freight->sale->invoice_id }}</td>
+                <tr>
+                    <td>{{ $freight->sale->invoice_id }}</td>
 
-                        <td>
-                            {{ \Carbon\Carbon::parse($freight->date)->format('Y-m-d') }}
-                        </td>
+                    <td>
+                        {{ \Carbon\Carbon::parse($freight->date)->format('Y-m-d') }}
+                    </td>
 
-                        <td>{{ $freight->sale->airway_number }}</td>
+                    <td>{{ $freight->sale->airway_number }}</td>
 
-                        <td>{{ $freight->sale->consignor }}</td>
+                    <td>{{ $freight->sale->consignor }}</td>
 
-                        <td>{{ $freight->service->name }}</td>
+                    <td>{{ $freight->service->name }}</td>
 
-                        <td class="text-right">
-                            {{ number_format($freight->amount_usd, 2) }}
-                        </td>
+                    <td class="text-right">
+                        {{ number_format($freight->amount_usd, 2) }}
+                    </td>
 
-                        <td class="text-right">
-                            {{ number_format($freight->amount_lkr, 2) }}
-                        </td>
+                    <td class="text-right">
+                        {{ number_format($freight->amount_lkr, 2) }}
+                    </td>
 
-                        <td class="text-right">
-                            {{ number_format($freight->total_paid, 2) }}
-                        </td>
+                    <td class="text-right">
+                        {{ number_format($freight->total_paid, 2) }}
+                    </td>
 
-                        <td class="text-right">
-                            {{ number_format($freight->balance_amount, 2) }}
-                        </td>
+                    <td class="text-right">
+                        {{ number_format($freight->balance_amount, 2) }}
+                    </td>
 
-                        <td>
-                            @if($freight->status == 'active')
-                                <span class="badge badge-success">
-                                    Active
-                                </span>
-                            @else
-                                <span class="badge badge-danger">
-                                    Cancelled
-                                </span>
-                            @endif
-                        </td>
+                    <td>
+                        @if($freight->status == 'active')
+                        <span class="badge badge-success">
+                            Active
+                        </span>
+                        @else
+                        <span class="badge badge-danger">
+                            Cancelled
+                        </span>
+                        @endif
+                    </td>
 
-                        <td>
-                            <a href="{{ route('freights.show', $freight->id) }}"
-                               class="btn btn-info btn-sm">
-                                <i class="fas fa-eye"></i>
-                            </a>
-                        </td>
-                    </tr>
+                    <td>
+                        <a href="{{ route('freights.show', $freight->id) }}"
+                            class="btn btn-info btn-sm">
+                            <i class="fas fa-eye"></i>
+                        </a>
+
+                        <a href="{{ route('freight-expenses.statement', $freight->id) }}"
+                            class="btn btn-info btn-xs">
+                            <i class="fas fa-file-alt"></i> Statement
+                        </a>
+                    </td>
+                </tr>
 
                 @empty
 
-                    <tr>
-                        <td colspan="11"
-                            class="text-center">
-                            No freight records found.
-                        </td>
-                    </tr>
+                <tr>
+                    <td colspan="11"
+                        class="text-center">
+                        No freight records found.
+                    </td>
+                </tr>
 
                 @endforelse
 
             </tbody>
 
-            @if($freights->count() > 0) <tfoot> <tr class="font-weight-bold bg-light"> <td colspan="5" class="text-right"> Total </td> <td class="text-right"> {{ number_format($freights->sum('amount_usd'), 2) }} </td> <td class="text-right"> {{ number_format($freights->sum('amount_lkr'), 2) }} </td> <td class="text-right"> {{ number_format($freights->sum('total_paid'), 2) }} </td> <td class="text-right"> {{ number_format($freights->sum('balance_amount'), 2) }} </td> <td></td> <td></td> </tr> </tfoot> @endif
+            @if($freights->count() > 0) <tfoot>
+                <tr class="font-weight-bold bg-light">
+                    <td colspan="5" class="text-right"> Total </td>
+                    <td class="text-right"> {{ number_format($freights->sum('amount_usd'), 2) }} </td>
+                    <td class="text-right"> {{ number_format($freights->sum('amount_lkr'), 2) }} </td>
+                    <td class="text-right"> {{ number_format($freights->sum('total_paid'), 2) }} </td>
+                    <td class="text-right"> {{ number_format($freights->sum('balance_amount'), 2) }} </td>
+                    <td></td>
+                    <td></td>
+                </tr>
+            </tfoot> @endif
 
         </table>
 
