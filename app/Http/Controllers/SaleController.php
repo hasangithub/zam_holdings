@@ -892,10 +892,11 @@ class SaleController extends Controller
     }
 
     public function update(Request $request, $id)
-    {
-        $validated = $request->validate([
+    {   
+            $validated = $request->validate([
+
             'customer_id' => ['required', 'exists:customers,id'],
-            'sale_date' => ['required', 'date'],
+            
             'status' => ['required', 'in:draft,completed'],
 
             'items' => ['required', 'array', 'min:1'],
@@ -1066,7 +1067,7 @@ class SaleController extends Controller
 
                 // Update the sale.
                 $sale->customer_id = $customer->id;
-                $sale->sale_date = $validated['sale_date'];
+               
                 $sale->status = $newStatus;
                 $sale->total = $total;
                 $sale->total_foreign = 0;
@@ -1077,9 +1078,9 @@ class SaleController extends Controller
              */
                 if ($newStatus === 'completed') {
 
-                    Accounting::postJournal([
+                    $journal = Accounting::postJournal([
                         'branch_id' => $branchId,
-                        'journal_date' => $sale->sale_date,
+                        'date' => now(),
                         'description' => 'Local Sale - ' . $sale->invoice_id,
                         'created_by' => auth()->id(),
                         'entries' => [
@@ -1111,6 +1112,7 @@ class SaleController extends Controller
                     ]);
 
                     JournalEntryReference::create([
+                        'journal_entry_id' => $journal->id,
                         'model_type' => Sale::class,
                         'model_id' => $sale->id,
                         'action' => 'updated',
@@ -1134,7 +1136,7 @@ class SaleController extends Controller
 
             return back()
                 ->withInput()
-                ->with('error', 'Failed to update sale. Please try again.');
+                 ->with('error', $e->getMessage());
         }
     }
 
