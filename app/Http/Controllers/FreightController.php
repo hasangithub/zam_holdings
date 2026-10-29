@@ -335,7 +335,7 @@ class FreightController extends Controller
             ? $freight->created_at->toDateString()
             : now()->toDateString();
 
-        $invoiceAmount = (float) $freight->amount;
+        $invoiceAmount = (float) $freight->amount_lkr;
 
         $completeLedger->push([
             'date' => $invoiceDate,
