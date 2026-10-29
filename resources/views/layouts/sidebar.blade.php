@@ -462,8 +462,8 @@
                         </li>
 
                         <li class="nav-item">
-                            <a href="{{ route('salary-advances.index') }}"
-                                class="nav-link {{ request()->routeIs('salary-advances.*') ? 'active' : '' }}">
+                            <a href="{{ route('salaryadvances.employees.index') }}"
+                                class="nav-link {{ request()->routeIs('salaryadvances.*') ? 'active' : '' }}">
                                 <i class="nav-icon fas fa-hand-holding-usd"></i>
                                 <p>Salary Advance Statement</p>
                             </a>

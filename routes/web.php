@@ -124,11 +124,11 @@ Route::middleware(['auth'])->group(function () {
     Route::get('suppliers/supplier-summary', [ReportController::class, 'supplierSummary'])->name('reports.supplier-summary');
     Route::resource('suppliers', SupplierController::class);
     Route::get('/customers/local', [CustomerController::class, 'local'])
-    ->middleware('permission:customers.local')
-    ->name('customers.local');
+        ->middleware('permission:customers.local')
+        ->name('customers.local');
     Route::get('/customers/export', [CustomerController::class, 'export'])
-    ->middleware('permission:customers.export')
-    ->name('customers.export');
+        ->middleware('permission:customers.export')
+        ->name('customers.export');
     Route::get('customers/customer-summary-local', [ReportController::class, 'customerSummaryLocal'])->name('reports.customer-summary-local');
     Route::get('customers/customer-summary-export', [ReportController::class, 'customerSummaryExport'])->name('reports.customer-summary-export');
     Route::resource('customers', CustomerController::class);
@@ -164,8 +164,19 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/suppliers/{id}/payment', [SupplierController::class, 'storePayment'])->name('suppliers.payment.store');
     Route::post('/suppliers/{id}/inventory-payment', [SupplierController::class, 'storeInventoryPayment'])->name('suppliers.inventory.payment.store');
     Route::post('/suppliers/{id}/asset-payment', [SupplierController::class, 'storeAssetPayment'])->name('suppliers.asset.payment.store');
-    Route::post('/suppliers/{supplier}/opening-balance',[SupplierController::class, 'storeOpeningBalance'])->name('suppliers.opening-balance');
-    Route::post('/customers/{customer}/opening-balance',[CustomerController::class, 'storeOpeningBalance'])->name('customers.opening-balance');
+    Route::post('/suppliers/{supplier}/opening-balance', [SupplierController::class, 'storeOpeningBalance'])->name('suppliers.opening-balance');
+    Route::post('/customers/{customer}/opening-balance', [CustomerController::class, 'storeOpeningBalance'])->name('customers.opening-balance');
+
+    Route::get('/salaryadvances/employees', [EmployeeController::class, 'salaryAdvanceIndex'])
+        ->name('salaryadvances.employees.index');
+
+    Route::get('/employees/{id}/statement', [EmployeeController::class, 'statement'])
+        ->name('employees.statement');
+
+    Route::post('/employees/{employee}/opening-balance', [
+        EmployeeController::class,
+        'storeOpeningBalance'
+    ])->name('employees.opening-balance');
 
     Route::prefix('pos')->group(function () {
 
@@ -482,4 +493,3 @@ Route::middleware(['auth'])->group(function () {
         'index'
     ])->name('reports.profit-loss');
 });
-
