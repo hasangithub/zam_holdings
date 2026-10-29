@@ -134,6 +134,10 @@ Route::middleware(['auth'])->group(function () {
     Route::resource('customers', CustomerController::class);
 
     Route::resource('fixed-assets', FixedAssetController::class);
+    Route::post('/fixed-assets/{id}/opening-balance', [
+    FixedAssetController::class,
+    'storeOpeningBalance',
+])->name('fixed-assets.opening-balance');
     Route::get('/purchases/{purchase}/invoice', [PurchaseController::class, 'invoice'])->name('purchases.invoice');
     Route::get('/purchases/{purchase}/invoice/pdf',  [PurchaseController::class, 'invoicePdf'])->name('purchases.invoice.pdf');
     Route::get('/sales/{sale}/invoice', [SaleController::class, 'invoice'])->name('sales.invoice');

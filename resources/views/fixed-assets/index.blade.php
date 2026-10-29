@@ -15,7 +15,7 @@
         <div class="card-tools">
 
             <a href="{{ route('fixed-assets.create') }}"
-               class="btn btn-primary btn-sm">
+                class="btn btn-primary btn-sm">
 
                 <i class="fas fa-plus"></i>
                 Add Fixed Asset
@@ -46,57 +46,61 @@
 
                 @forelse($assets as $asset)
 
-                    <tr>
+                <tr>
 
-                        <td>{{ $asset->asset_code }}</td>
+                    <td>{{ $asset->asset_code }}</td>
 
-                        <td>{{ $asset->name }}</td>
+                    <td>{{ $asset->name }}</td>
 
-                        <td>
-                            {{ $asset->purchase_date->format('Y-m-d') }}
-                        </td>
+                    <td>
+                        {{ $asset->purchase_date->format('Y-m-d') }}
+                    </td>
 
-                        <td>
-                            {{ $asset->supplier->name }}
-                        </td>
+                    <td>
+                        {{ $asset->supplier->name }}
+                    </td>
 
-                        <td class="text-right">
-                            {{ number_format($asset->amount, 2) }}
-                        </td>
+                    <td class="text-right">
+                        {{ number_format($asset->amount, 2) }}
+                    </td>
 
-                        <td>
+                    <td>
 
-                            @if($asset->status === 'active')
+                        @if($asset->status === 'active')
 
-                                <span class="badge badge-success">
-                                    Active
-                                </span>
+                        <span class="badge badge-success">
+                            Active
+                        </span>
 
-                            @else
+                        @else
 
-                                <span class="badge badge-danger">
-                                    Cancelled
-                                </span>
+                        <span class="badge badge-danger">
+                            Cancelled
+                        </span>
 
-                            @endif
+                        @endif
 
-                        </td>
+                    </td>
 
-                        <td>
+                    <td>
 
-                          
+                        <a href="{{ route('fixed-assets.show', $asset->id) }}"
+                            class="btn btn-info btn-xs"
+                            title="View Asset">
+                            <i class="fas fa-eye"></i> View
+                        </a>
 
-                        </td>
+                    </td>
 
-                    </tr>
+                </tr>
 
                 @empty
 
-                    <tr>
-                        <td colspan="7" class="text-center">
-                            No fixed assets found.
-                        </td>
-                    </tr>
+                <tr>
+                    <td colspan="7" class="text-center">
+                        No fixed assets found.
+                    </td>
+                </tr>
 
                 @endforelse
 
