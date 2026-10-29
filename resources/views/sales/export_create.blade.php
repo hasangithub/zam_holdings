@@ -160,6 +160,24 @@
                                         class="form-control form-control-sm"
                                         value="{{ old('sale_date', now()->toDateString()) }}" required>
                                 </div>
+                                <div class="col-md-3">
+                                    <div class="form-group">
+                                        <label for="status">Sale Status</label>
+
+                                        <select name="status" id="status" class="form-control" required>
+                                            <option value="draft" {{ old('status') === 'draft' ? 'selected' : '' }}>
+                                                Save as Draft
+                                            </option>
+                                            <option value="completed" {{ old('status', 'completed') === 'completed' ? 'selected' : '' }}>
+                                                Confirm Sale
+                                            </option>
+                                        </select>
+                                        @error('status')
+                                        <span class="text-danger">{{ $message }}</span>
+                                        @enderror
+                                    </div>
+                                </div>
+
                             </div>
 
                             {{-- CUSTOMER + EXCHANGE --}}

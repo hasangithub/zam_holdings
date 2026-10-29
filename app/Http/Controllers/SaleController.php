@@ -256,6 +256,7 @@ class SaleController extends Controller
             'customer_id'                => 'required|exists:customers,id',
             'exchange_rate'              => 'required|numeric|gt:0',
             'sale_date'                  => 'required|date',
+            'status'                     => 'required|in:draft,confirmed',
 
             'items'                      => 'required|array|min:1',
             'items.*.item_id'            => 'required|integer|distinct|exists:items,id',
@@ -279,6 +280,7 @@ class SaleController extends Controller
                     ->findOrFail($request->customer_id);
 
                 $exchangeRate = (float) $request->exchange_rate;
+                $status = $request->status;
 
                 $sale = Sale::create([
                     'branch_id'          => $branchId,
@@ -288,9 +290,12 @@ class SaleController extends Controller
                     'exchange_rate'      => $exchangeRate,
                     'total'              => 0,
                     'total_foreign'      => 0,
+                    'status'             => $status,
+
                     'invoice_id'         => $this->generateInvoiceId(
                         $customer->customer_code
                     ),
+
                     'airway_no'          => $request->airway_no,
                     'consignee_name'     => $customer->consignee_name,
                     'consignee_address'  => $customer->consignee_address,
@@ -313,7 +318,7 @@ class SaleController extends Controller
 
                     /*
                 |--------------------------------------------------------------------------
-                | Get and lock the weighted-average stock for this branch and item
+                | Get and lock weighted-average stock
                 |--------------------------------------------------------------------------
                 */
 
@@ -368,19 +373,19 @@ class SaleController extends Controller
                 */
 
                     SaleItem::create([
-                        'sale_id'             => $sale->id,
-                        'item_id'             => $itemId,
-                        'qty'                 => $quantity,
-                        'base_price'          => $averageCost,
-                        'sale_price_foreign'  => $salePriceUsd,
-                        'sub_total_foreign'   => $subtotalUsd,
-                        'sale_price'          => $salePriceUsd * $exchangeRate,
-                        'subtotal'            => $subtotalLkr,
+                        'sale_id'            => $sale->id,
+                        'item_id'            => $itemId,
+                        'qty'                => $quantity,
+                        'base_price'         => $averageCost,
+                        'sale_price_foreign' => $salePriceUsd,
+                        'sub_total_foreign'  => $subtotalUsd,
+                        'sale_price'         => $salePriceUsd * $exchangeRate,
+                        'subtotal'           => $subtotalLkr,
                     ]);
 
                     /*
                 |--------------------------------------------------------------------------
-                | Deduct stock from branch_item_stocks
+                | Deduct stock (for both draft and confirmed sales)
                 |--------------------------------------------------------------------------
                 */
 
@@ -390,7 +395,7 @@ class SaleController extends Controller
                         ->where('branch_id', $branchId)
                         ->where('item_id', $itemId)
                         ->update([
-                            'qty' => max(0, $newQty),
+                            'qty'        => max(0, $newQty),
                             'updated_at' => now(),
                         ]);
 
@@ -411,69 +416,77 @@ class SaleController extends Controller
 
                 /*
             |--------------------------------------------------------------------------
-            | Post accounting journal
+            | Post accounting journals only for confirmed sales
             |--------------------------------------------------------------------------
             */
 
-                $journal = Accounting::postJournal([
-                    'branch_id'   => $branchId,
-                    'date'        => $sale->sale_date,
-                    'description' => 'Export Sale - Invoice ' . $sale->invoice_id,
+                if ($status === 'confirmed') {
 
-                    'entries' => [
-                        // Customer receivable
-                        [
-                            'ledger_id'     => 6,
-                            'sub_ledger_id' => $customer->receivable_sub_ledger_id,
-                            'debit'         => $totalLkr,
-                            'credit'        => 0,
+                    $journal = Accounting::postJournal([
+                        'branch_id'   => $branchId,
+                        'date'        => $sale->sale_date,
+                        'description' => 'Export Sale - Invoice ' . $sale->invoice_id,
+
+                        'entries' => [
+                            // Customer receivable
+                            [
+                                'ledger_id'     => 6,
+                                'sub_ledger_id' => $customer->receivable_sub_ledger_id,
+                                'debit'         => $totalLkr,
+                                'credit'        => 0,
+                            ],
+
+                            // Sales revenue
+                            [
+                                'ledger_id'     => 12,
+                                'sub_ledger_id' => null,
+                                'debit'         => 0,
+                                'credit'        => $totalLkr,
+                            ],
+
+                            // Cost of goods sold
+                            [
+                                'ledger_id'     => 14,
+                                'sub_ledger_id' => null,
+                                'debit'         => $totalCogs,
+                                'credit'        => 0,
+                            ],
+
+                            // Inventory
+                            [
+                                'ledger_id'     => 7,
+                                'sub_ledger_id' => 1,
+                                'debit'         => 0,
+                                'credit'        => $totalCogs,
+                            ],
                         ],
+                    ]);
 
-                        // Sales revenue
-                        [
-                            'ledger_id'     => 12,
-                            'sub_ledger_id' => null,
-                            'debit'         => 0,
-                            'credit'        => $totalLkr,
-                        ],
+                    /*
+                |--------------------------------------------------------------------------
+                | Link journal to sale
+                |--------------------------------------------------------------------------
+                */
 
-                        // Cost of goods sold
-                        [
-                            'ledger_id'     => 14,
-                            'sub_ledger_id' => null,
-                            'debit'         => $totalCogs,
-                            'credit'        => 0,
-                        ],
-
-                        // Inventory
-                        [
-                            'ledger_id'     => 7,
-                            'sub_ledger_id' => 1,
-                            'debit'         => 0,
-                            'credit'        => $totalCogs,
-                        ],
-                    ],
-                ]);
-
-                /*
-            |--------------------------------------------------------------------------
-            | Link journal to sale
-            |--------------------------------------------------------------------------
-            */
-
-                JournalEntryReference::create([
-                    'journal_entry_id' => $journal->id,
-                    'model_type'       => Sale::class,
-                    'model_id'         => $sale->id,
-                    'action'           => 'created',
-                ]);
+                    JournalEntryReference::create([
+                        'journal_entry_id' => $journal->id,
+                        'model_type'       => Sale::class,
+                        'model_id'         => $sale->id,
+                        'action'           => 'created',
+                    ]);
+                }
 
                 return $sale;
             });
 
             return redirect()
                 ->route('export-sales.index')
-                ->with('success', 'Export sale created successfully.');
+                ->with(
+                    'success',
+                    $sale->status === 'draft'
+                        ? 'Export sale saved as draft successfully.'
+                        : 'Export sale confirmed successfully.'
+                );
         } catch (ValidationException $e) {
 
             return back()
@@ -488,6 +501,7 @@ class SaleController extends Controller
                 ->with('error', 'Unable to create export sale. Please try again.');
         }
     }
+
 
     public function show(int $id)
     {
@@ -984,7 +998,7 @@ class SaleController extends Controller
                     $stock->qty = $newQty;
                     $stock->save();
                 }
- 
+
 
                 // Delete all old sale items.
                 // Removed items will NOT be recreated below.
@@ -1125,15 +1139,17 @@ class SaleController extends Controller
     }
 
 
+
     public function updateExport(Request $request, $id)
     {
         $request->validate([
-            'customer_id' => 'required|exists:customers,id',
-            'exchange_rate' => 'required|numeric|gt:0',
-            'items' => 'required|array|min:1',
-            'items.*.item_id' => 'required|exists:items,id',
-            'items.*.qty' => 'required|numeric|gt:0',
-            'items.*.sale_price_foreign' => 'required|numeric|min:0',
+            'customer_id'                => 'required|exists:customers,id',
+            'exchange_rate'              => 'required|numeric|gt:0',
+            'status'                     => 'required|in:draft,confirmed',
+            'items'                      => 'required|array|min:1',
+            'items.*.item_id'            => 'required|integer|distinct|exists:items,id',
+            'items.*.qty'                => 'required|numeric|gt:0',
+            'items.*.sale_price_foreign' => 'nullable|numeric|min:0',
         ]);
 
         try {
@@ -1141,7 +1157,12 @@ class SaleController extends Controller
 
                 $branchId = (int) auth()->user()->branch_id;
 
-                // Lock sale
+                /*
+            |--------------------------------------------------------------------------
+            | STEP 1: Lock and validate sale
+            |--------------------------------------------------------------------------
+            */
+
                 $sale = Sale::lockForUpdate()->findOrFail($id);
 
                 if ((int) $sale->branch_id !== $branchId) {
@@ -1154,20 +1175,45 @@ class SaleController extends Controller
                     ]);
                 }
 
-                // Lock customer
+                $oldStatus = $sale->status;
+                $newStatus = $request->status;
+
+                if ($oldStatus === 'confirmed' && $newStatus === 'draft') {
+                    throw ValidationException::withMessages([
+                        'status' => 'A confirmed sale cannot be changed back to draft.',
+                    ]);
+                }
+
+                /*
+            |--------------------------------------------------------------------------
+            | STEP 2: Lock customer and old items
+            |--------------------------------------------------------------------------
+            */
+
                 $customer = Customer::lockForUpdate()
                     ->findOrFail($request->customer_id);
 
-                // Lock existing sale items
                 $oldItems = $sale->items()
                     ->lockForUpdate()
                     ->get();
 
                 /*
-             * STEP 1:
-             * Restore the old quantities to branch stock.
-             * Weighted-average cost remains unchanged.
-             */
+            |--------------------------------------------------------------------------
+            | Preserve existing item prices.
+            |
+            | Existing item: use sale_items.sale_price_foreign.
+            | New item: use the submitted sale_price_foreign.
+            |--------------------------------------------------------------------------
+            */
+
+                $existingItems = $oldItems->keyBy('item_id');
+
+                /*
+            |--------------------------------------------------------------------------
+            | STEP 3: Restore all previous quantities to stock
+            |--------------------------------------------------------------------------
+            */
+
                 foreach ($oldItems as $oldItem) {
 
                     $stock = BranchItemStock::where('branch_id', $branchId)
@@ -1188,18 +1234,30 @@ class SaleController extends Controller
                 }
 
                 /*
-             * STEP 2:
-             * Reverse the old sale journal and remove old sale items.
-             */
-                Accounting::reverse(Sale::class, $sale->id);
+            |--------------------------------------------------------------------------
+            | STEP 4: Reverse old journal only for confirmed sales
+            |--------------------------------------------------------------------------
+            */
+
+                if ($oldStatus === 'confirmed') {
+                    Accounting::reverse(Sale::class, $sale->id);
+                }
+
+                /*
+            |--------------------------------------------------------------------------
+            | Delete old sale items.
+            | Removed items remain restored in branch stock.
+            |--------------------------------------------------------------------------
+            */
 
                 $sale->items()->delete();
 
                 /*
-             * STEP 3:
-             * Create each submitted row as one SaleItem.
-             * No FIFO batch allocation or item splitting.
-             */
+            |--------------------------------------------------------------------------
+            | STEP 5: Re-create submitted items
+            |--------------------------------------------------------------------------
+            */
+
                 $totalUsd = 0;
                 $totalLkr = 0;
                 $cogs = 0;
@@ -1210,9 +1268,43 @@ class SaleController extends Controller
 
                     $itemId = (int) $row['item_id'];
                     $qty = (float) $row['qty'];
-                    $usdPrice = (float) $row['sale_price_foreign'];
 
-                    // Lock the current branch stock
+                    /*
+                |--------------------------------------------------------------------------
+                | Determine selling price
+                |--------------------------------------------------------------------------
+                |
+                | Existing item: preserve its saved USD selling price.
+                | New item: use the price submitted by the form.
+                |--------------------------------------------------------------------------
+                */
+
+                    if ($existingItems->has($itemId)) {
+
+                        $usdPrice = (float) $existingItems
+                            ->get($itemId)
+                            ->sale_price_foreign;
+                    } else {
+
+                        if (
+                            !isset($row['sale_price_foreign']) ||
+                            !is_numeric($row['sale_price_foreign']) ||
+                            (float) $row['sale_price_foreign'] < 0
+                        ) {
+                            throw ValidationException::withMessages([
+                                'items' => "Please enter a valid USD selling price for new item ID {$itemId}.",
+                            ]);
+                        }
+
+                        $usdPrice = (float) $row['sale_price_foreign'];
+                    }
+
+                    /*
+                |--------------------------------------------------------------------------
+                | Lock current branch stock
+                |--------------------------------------------------------------------------
+                */
+
                     $stock = BranchItemStock::where('branch_id', $branchId)
                         ->where('item_id', $itemId)
                         ->lockForUpdate()
@@ -1226,16 +1318,23 @@ class SaleController extends Controller
 
                     $availableQty = (float) $stock->qty;
 
-                    // Validate available quantity
                     if ($availableQty < $qty) {
                         throw ValidationException::withMessages([
                             'items' => "Insufficient stock for item ID {$itemId}. "
-                                . "Available quantity: {$availableQty}, "
-                                . "requested quantity: {$qty}.",
+                                . 'Available quantity: '
+                                . number_format($availableQty, 3)
+                                . ', requested quantity: '
+                                . number_format($qty, 3)
+                                . '.',
                         ]);
                     }
 
-                    // Use the database weighted-average cost
+                    /*
+                |--------------------------------------------------------------------------
+                | Use weighted-average cost from branch stock
+                |--------------------------------------------------------------------------
+                */
+
                     $averageCost = (float) $stock->average_cost;
 
                     $subtotalUsd = $qty * $usdPrice;
@@ -1244,24 +1343,30 @@ class SaleController extends Controller
 
                     $itemCost = $qty * $averageCost;
 
-                    // Deduct quantity from branch stock
+                    /*
+                |--------------------------------------------------------------------------
+                | Deduct stock for the submitted quantity
+                |--------------------------------------------------------------------------
+                */
+
                     $stock->qty = $availableQty - $qty;
                     $stock->save();
 
-                    // Create one sale item per submitted row
+                    /*
+                |--------------------------------------------------------------------------
+                | Create sale item
+                |--------------------------------------------------------------------------
+                */
+
                     SaleItem::create([
-                        'sale_id' => $sale->id,
-                        'item_id' => $itemId,
-                        'qty' => $qty,
-
-                        // Weighted-average inventory cost
-                        'base_price' => $averageCost,
-
+                        'sale_id'            => $sale->id,
+                        'item_id'            => $itemId,
+                        'qty'                => $qty,
+                        'base_price'         => $averageCost,
                         'sale_price_foreign' => $usdPrice,
-                        'sub_total_foreign' => $subtotalUsd,
-
-                        'sale_price' => $salePriceLkr,
-                        'subtotal' => $subtotalLkr,
+                        'sub_total_foreign'  => $subtotalUsd,
+                        'sale_price'         => $salePriceLkr,
+                        'subtotal'           => $subtotalLkr,
                     ]);
 
                     $totalUsd += $subtotalUsd;
@@ -1270,65 +1375,84 @@ class SaleController extends Controller
                 }
 
                 /*
-             * STEP 4:
-             * Update sale totals.
-             */
+            |--------------------------------------------------------------------------
+            | STEP 6: Update sale totals and details
+            |--------------------------------------------------------------------------
+            */
+
                 $sale->update([
-                    'customer_id' => $customer->id,
-                    'exchange_rate' => $exchangeRate,
-                    'total_foreign' => $totalUsd,
-                    'total' => $totalLkr,
-                    'balance_amount' => $totalLkr - (float) $sale->total_paid,
-                    'cost_of_goods_sold' => $cogs,
+                    'customer_id'        => $customer->id,
+                    'exchange_rate'      => $exchangeRate,
+                    'total_foreign'      => $totalUsd,
+                    'total'              => $totalLkr,
+                    'status'             => $newStatus,            
                 ]);
 
                 /*
-             * STEP 5:
-             * Post the updated accounting journal.
-             */
-                $journal = Accounting::postJournal([
-                    'branch_id' => $sale->branch_id,
-                    'date' => $sale->sale_date,
-                    'description' => 'Export Sale - Invoice ' . $sale->invoice_id,
-                    'entries' => [
-                        [
-                            'ledger_id' => 6,
-                            'sub_ledger_id' => $customer->receivable_sub_ledger_id,
-                            'debit' => $totalLkr,
-                            'credit' => 0,
-                        ],
-                        [
-                            'ledger_id' => 11,
-                            'sub_ledger_id' => null,
-                            'debit' => 0,
-                            'credit' => $totalLkr,
-                        ],
-                        [
-                            'ledger_id' => 13,
-                            'sub_ledger_id' => null,
-                            'debit' => $cogs,
-                            'credit' => 0,
-                        ],
-                        [
-                            'ledger_id' => 7,
-                            'sub_ledger_id' => 1,
-                            'debit' => 0,
-                            'credit' => $cogs,
-                        ],
-                    ],
-                ]);
+            |--------------------------------------------------------------------------
+            | STEP 7: Post journal only when confirmed
+            |--------------------------------------------------------------------------
+            */
 
-                JournalEntryReference::create([
-                    'journal_entry_id' => $journal->id,
-                    'model_type' => Sale::class,
-                    'model_id' => $sale->id,
-                    'action' => 'updated',
-                ]);
+                if ($newStatus === 'confirmed') {
+
+                    $journal = Accounting::postJournal([
+                        'branch_id'   => $sale->branch_id,
+                        'date'        => $sale->sale_date,
+                        'description' => 'Export Sale - Invoice ' . $sale->invoice_id,
+
+                        'entries' => [
+                            // Customer receivable
+                            [
+                                'ledger_id'     => 6,
+                                'sub_ledger_id' => $customer->receivable_sub_ledger_id,
+                                'debit'         => $totalLkr,
+                                'credit'        => 0,
+                            ],
+
+                            // Sales revenue
+                            [
+                                'ledger_id'     => 12,
+                                'sub_ledger_id' => null,
+                                'debit'         => 0,
+                                'credit'        => $totalLkr,
+                            ],
+
+                            // Cost of goods sold
+                            [
+                                'ledger_id'     => 14,
+                                'sub_ledger_id' => null,
+                                'debit'         => $cogs,
+                                'credit'        => 0,
+                            ],
+
+                            // Inventory
+                            [
+                                'ledger_id'     => 7,
+                                'sub_ledger_id' => 1,
+                                'debit'         => 0,
+                                'credit'        => $cogs,
+                            ],
+                        ],
+                    ]);
+
+                    JournalEntryReference::create([
+                        'journal_entry_id' => $journal->id,
+                        'model_type'       => Sale::class,
+                        'model_id'         => $sale->id,
+                        'action'           => 'updated',
+                    ]);
+                }
             });
 
             return redirect()
                 ->route('export-sales.index')
-                ->with('success', 'Export sale updated successfully.');
+                ->with(
+                    'success',
+                    $request->status === 'draft'
+                        ? 'Export sale draft updated successfully.'
+                        : 'Export sale confirmed/updated successfully.'
+                );
         } catch (ValidationException $e) {
 
             return back()
@@ -1346,6 +1470,7 @@ class SaleController extends Controller
                 ->with('error', 'Unable to update export sale. Please try again.');
         }
     }
+
 
     public function destroy(int $id)
     {
