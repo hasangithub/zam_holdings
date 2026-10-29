@@ -451,7 +451,7 @@ class FreightController extends Controller
     }
 
     public function storeOpeningBalance(Request $request, $id)
-    {
+    { 
         $request->validate([
             'opening_date' => ['required', 'date'],
             'opening_amount' => ['required', 'numeric', 'gt:0'],
@@ -480,22 +480,11 @@ class FreightController extends Controller
                 ]);
             }
 
-            $openingLedgerId = (int) config(
-                'accounting.opening_balance_ledger_id'
-            );
-
-            if (!$openingLedgerId) {
-                throw ValidationException::withMessages([
-                    'opening_amount' => 'Configure the opening balance ledger ID first.',
-                ]);
-            }
-
-            $liabilitySubLedger = SubLedger::where(
+            $freightService = FreightService::where(
                 'id',
-                $service->liability_sub_ledger_id
+                $freight->freight_service_id
             )
-                ->where('ledger_id', 5)
-                ->where('branch_id', $branchId)
+               
                 ->firstOrFail();
 
             $amount = (float) $request->opening_amount;
@@ -505,19 +494,19 @@ class FreightController extends Controller
                 'date' => $request->opening_date,
                 'created_by' => auth()->id(),
                 'description' => 'Freight Opening Balance - '
-                    . $service->name
+                    . $freightService->name
                     . ' - Freight ID: '
                     . $freight->id,
                 'entries' => [
                     [
-                        'ledger_id' => $openingLedgerId,
+                        'ledger_id' => 17,
                         'sub_ledger_id' => null,
                         'debit' => $amount,
                         'credit' => 0,
                     ],
                     [
                         'ledger_id' => 5,
-                        'sub_ledger_id' => $liabilitySubLedger->id,
+                        'sub_ledger_id' => $freightService->liability_sub_ledger_id,  // liabilty sub ledger
                         'debit' => 0,
                         'credit' => $amount,
                     ],
