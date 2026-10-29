@@ -184,50 +184,7 @@
                         </small>
                     </div>
 
-                    {{-- DEFAULT QUANTITY AND SALE PRICE --}}
-                    <div class="row">
-                        <div class="col-md-6">
-                            <div class="form-group">
-                                <label for="default_qty">
-                                    Default Quantity <span class="text-danger">*</span>
-                                </label>
-
-                                <input type="number"
-                                    id="default_qty"
-                                    class="form-control"
-                                    min="0.001"
-                                    step="0.001"
-                                    value="{{ old('default_qty', '0') }}"
-                                    required>
-
-                                <small class="form-text text-muted">
-                                    Applied to each selected item in Step 2.
-                                </small>
-                            </div>
-                        </div>
-
-                        <div class="col-md-6">
-                            <div class="form-group">
-                                <label for="default_sale_price">
-                                    Default Sale Price <span class="text-danger">*</span>
-                                </label>
-
-                                <input type="number"
-                                    id="default_sale_price"
-                                    class="form-control"
-                                    min="0"
-                                    step="0.01"
-                                    value="{{ old('default_sale_price', '0.00') }}"
-                                    placeholder="Enter default sale price"
-                                    required>
-
-                                <small class="form-text text-muted">
-                                    Applied to each selected item. You can change individual prices in Step 2.
-                                </small>
-                            </div>
-                        </div>
-                    </div>
-
+                   
                     <div class="d-flex justify-content-between align-items-center mt-4">
                         <a href="{{ route('sales.index') }}" class="btn btn-secondary">
                             <i class="fas fa-arrow-left mr-1"></i>
@@ -324,8 +281,8 @@
             const customerSelect = document.getElementById('customer_id');
             const itemPickerElement = document.getElementById('itemPicker');
             const saleDateInput = document.getElementById('sale_date');
-            const defaultQtyInput = document.getElementById('default_qty');
-            const defaultPriceInput = document.getElementById('default_sale_price');
+            const defaultQtyInput = 0;
+            const defaultPriceInput = 0.00;
 
             const step1 = document.getElementById('wizardStep1');
             const step2 = document.getElementById('wizardStep2');
@@ -537,21 +494,7 @@
                     return;
                 }
 
-                const defaultQty = parseFloat(defaultQtyInput.value);
-                if (!Number.isFinite(defaultQty)) {
-                    alert('Please enter a valid default quantity.');
-                    defaultQtyInput.focus();
-                    return;
-                }
-
-                const defaultPrice = parseFloat(defaultPriceInput.value);
-                if (defaultPriceInput.value === '' ||
-                    !Number.isFinite(defaultPrice)) {
-                    alert('Please enter a valid default sale price.');
-                    defaultPriceInput.focus();
-                    return;
-                }
-
+            
                 if (itemTomSelect.items.length === 0) {
                     alert('Please select at least one item.');
                     itemTomSelect.focus();

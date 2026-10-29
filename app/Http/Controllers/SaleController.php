@@ -46,7 +46,10 @@ class SaleController extends Controller
     {
         $branchId = (int) auth()->user()->branch_id;
 
-        $customers = Customer::orderBy('name')->get();
+        $customers = Customer::where('branch_id', $branchId)
+            ->where('customer_type', 'local')
+            ->orderBy('name')
+            ->get();
 
         $stocks = DB::table('branch_item_stocks')
             ->join('items', 'items.id', '=', 'branch_item_stocks.item_id')
@@ -68,7 +71,10 @@ class SaleController extends Controller
     {
         $branchId = (int) auth()->user()->branch_id;
 
-        $customers = Customer::orderBy('name')->get();
+        $customers = Customer::where('branch_id', $branchId)
+            ->where('customer_type', 'export')
+            ->orderBy('name')
+            ->get();
 
         $stocks = DB::table('branch_item_stocks')
             ->join('items', 'items.id', '=', 'branch_item_stocks.item_id')
@@ -892,11 +898,11 @@ class SaleController extends Controller
     }
 
     public function update(Request $request, $id)
-    {   
-            $validated = $request->validate([
+    {
+        $validated = $request->validate([
 
             'customer_id' => ['required', 'exists:customers,id'],
-            
+
             'status' => ['required', 'in:draft,completed'],
 
             'items' => ['required', 'array', 'min:1'],
@@ -1073,7 +1079,7 @@ class SaleController extends Controller
 
                 // Update the sale.
                 $sale->customer_id = $customer->id;
-               
+
                 $sale->status = $newStatus;
                 $sale->total = $total;
                 $sale->total_foreign = 0;
@@ -1142,7 +1148,7 @@ class SaleController extends Controller
 
             return back()
                 ->withInput()
-                 ->with('error', $e->getMessage());
+                ->with('error', $e->getMessage());
         }
     }
 
@@ -1393,7 +1399,7 @@ class SaleController extends Controller
                     'exchange_rate'      => $exchangeRate,
                     'total_foreign'      => $totalUsd,
                     'total'              => $totalLkr,
-                    'status'             => $newStatus,            
+                    'status'             => $newStatus,
                 ]);
 
                 /*
