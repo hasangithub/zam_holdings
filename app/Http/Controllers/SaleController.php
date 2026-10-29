@@ -918,6 +918,12 @@ class SaleController extends Controller
                 $oldStatus = $sale->status ?? 'completed';
                 $newStatus = $validated['status'];
 
+                if ($oldStatus === 'completed' && $newStatus === 'draft') {
+                    throw ValidationException::withMessages([
+                        'status' => 'A confirmed sale cannot be changed back to draft.',
+                    ]);
+                }
+
                 // Lock the customer
                 $customer = Customer::lockForUpdate()
                     ->findOrFail($validated['customer_id']);
