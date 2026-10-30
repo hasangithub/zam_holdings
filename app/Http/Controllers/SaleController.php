@@ -1154,34 +1154,34 @@ class SaleController extends Controller
 
 
 
+
     public function updateExport(Request $request, $id)
     {
-        $request->validate([
-            'customer_id'                => 'required|exists:customers,id',
-            'exchange_rate'              => 'required|numeric|gt:0',
-            'status'                     => 'required|in:draft,confirmed',
-            'items'                      => 'required|array|min:1',
-            'items.*.item_id'            => 'required|integer|distinct|exists:items,id',
-            'items.*.qty'                => 'required|numeric|gt:0',
-            'items.*.sale_price_foreign' => 'nullable|numeric|min:0',
+        $validated = $request->validate([
+            'customer_id' => ['required', 'exists:customers,id'],
+            'exchange_rate' => ['required', 'numeric', 'gt:0'],
+            'status' => ['required', 'in:draft,confirmed'],
+
+            'items' => ['required', 'array', 'min:1'],
+            'items.*.item_id' => ['required', 'integer', 'distinct', 'exists:items,id'],
+            'items.*.qty' => ['required', 'numeric', 'gt:0'],
+            'items.*.sale_price_foreign' => ['required', 'numeric', 'gte:0'],
         ]);
 
         try {
-            DB::transaction(function () use ($request, $id) {
+            DB::transaction(function () use ($validated, $id) {
 
                 $branchId = (int) auth()->user()->branch_id;
 
                 /*
             |--------------------------------------------------------------------------
-            | STEP 1: Lock and validate sale
+            | STEP 1: Lock sale
             |--------------------------------------------------------------------------
             */
 
-                $sale = Sale::lockForUpdate()->findOrFail($id);
-
-                if ((int) $sale->branch_id !== $branchId) {
-                    abort(403, 'You are not allowed to update this sale.');
-                }
+                $sale = Sale::where('branch_id', $branchId)
+                    ->lockForUpdate()
+                    ->findOrFail($id);
 
                 if ($sale->status === 'cancelled') {
                     throw ValidationException::withMessages([
@@ -1190,7 +1190,7 @@ class SaleController extends Controller
                 }
 
                 $oldStatus = $sale->status;
-                $newStatus = $request->status;
+                $newStatus = $validated['status'];
 
                 if ($oldStatus === 'confirmed' && $newStatus === 'draft') {
                     throw ValidationException::withMessages([
@@ -1200,32 +1200,78 @@ class SaleController extends Controller
 
                 /*
             |--------------------------------------------------------------------------
-            | STEP 2: Lock customer and old items
+            | STEP 2: Lock customer
             |--------------------------------------------------------------------------
             */
 
                 $customer = Customer::lockForUpdate()
-                    ->findOrFail($request->customer_id);
+                    ->findOrFail($validated['customer_id']);
 
-                $oldItems = $sale->items()
-                    ->lockForUpdate()
-                    ->get();
+                if (!$customer->receivable_sub_ledger_id) {
+                    throw ValidationException::withMessages([
+                        'customer_id' => 'Selected customer does not have a receivable sub-ledger.',
+                    ]);
+                }
 
                 /*
             |--------------------------------------------------------------------------
-            | Preserve existing item prices.
-            |
-            | Existing item: use sale_items.sale_price_foreign.
-            | New item: use the submitted sale_price_foreign.
+            | STEP 3: Get old sale items
             |--------------------------------------------------------------------------
             */
 
-                $existingItems = $oldItems->keyBy('item_id');
+                $oldItems = SaleItem::where('sale_id', $sale->id)
+                    ->lockForUpdate()
+                    ->get();
+
+                $oldItemsByItemId = $oldItems->keyBy('item_id');
 
                 /*
             |--------------------------------------------------------------------------
-            | STEP 3: Restore all previous quantities to stock
+            | STEP 4: Draft quantity restriction
             |--------------------------------------------------------------------------
+            |
+            | If the original sale is draft, existing item quantities
+            | cannot be changed. Removed items are allowed.
+            |
+            */
+
+                if ($oldStatus === 'draft') {
+
+                    foreach ($validated['items'] as $row) {
+
+                        $itemId = (int) $row['item_id'];
+
+                        if ($oldItemsByItemId->has($itemId)) {
+
+                            $originalQty = (float) $oldItemsByItemId[$itemId]->qty;
+                            $submittedQty = (float) $row['qty'];
+
+                            if (abs($originalQty - $submittedQty) > 0.000001) {
+                                throw ValidationException::withMessages([
+                                    'items' => 'Quantity cannot be changed for existing draft items.',
+                                ]);
+                            }
+                        }
+                    }
+                }
+
+                /*
+            |--------------------------------------------------------------------------
+            | STEP 5: Reverse previous journal
+            |--------------------------------------------------------------------------
+            */
+
+                if ($oldStatus === 'confirmed') {
+                    Accounting::reverse(Sale::class, $sale->id);
+                }
+
+                /*
+            |--------------------------------------------------------------------------
+            | STEP 6: Restore previous stock and weighted-average cost
+            |--------------------------------------------------------------------------
+            |
+            | Restore ALL old items, including removed items.
+            |
             */
 
                 foreach ($oldItems as $oldItem) {
@@ -1236,82 +1282,59 @@ class SaleController extends Controller
                         ->first();
 
                     if (!$stock) {
-                        throw new \Exception(
-                            "Branch stock not found for item ID {$oldItem->item_id}."
-                        );
+                        throw ValidationException::withMessages([
+                            'items' => "Stock record not found for item ID {$oldItem->item_id}.",
+                        ]);
                     }
 
-                    $stock->qty = (float) $stock->qty
-                        + (float) $oldItem->qty;
+                    $currentQty = (float) $stock->qty;
+                    $restoredQty = (float) $oldItem->qty;
+                    $oldBasePrice = (float) $oldItem->base_price;
 
+                    $newQty = $currentQty + $restoredQty;
+
+                    // Restore weighted-average valuation.
+                    $stock->average_cost = $newQty > 0
+                        ? (
+                            ($currentQty * (float) $stock->average_cost)
+                            + ($restoredQty * $oldBasePrice)
+                        ) / $newQty
+                        : 0;
+
+                    $stock->qty = $newQty;
                     $stock->save();
                 }
 
                 /*
             |--------------------------------------------------------------------------
-            | STEP 4: Reverse old journal only for confirmed sales
+            | STEP 7: Delete old sale items
             |--------------------------------------------------------------------------
+            |
+            | Only submitted items will be recreated.
+            |
             */
 
-                if ($oldStatus === 'confirmed') {
-                    Accounting::reverse(Sale::class, $sale->id);
-                }
+                SaleItem::where('sale_id', $sale->id)->delete();
 
                 /*
             |--------------------------------------------------------------------------
-            | Delete old sale items.
-            | Removed items remain restored in branch stock.
-            |--------------------------------------------------------------------------
-            */
-
-                $sale->items()->delete();
-
-                /*
-            |--------------------------------------------------------------------------
-            | STEP 5: Re-create submitted items
+            | STEP 8: Re-create submitted items
             |--------------------------------------------------------------------------
             */
 
                 $totalUsd = 0;
                 $totalLkr = 0;
-                $cogs = 0;
+                $totalCogs = 0;
 
-                $exchangeRate = (float) $request->exchange_rate;
+                $exchangeRate = (float) $validated['exchange_rate'];
 
-                foreach ($request->items as $row) {
+                foreach ($validated['items'] as $row) {
 
                     $itemId = (int) $row['item_id'];
                     $qty = (float) $row['qty'];
 
-                    /*
-                |--------------------------------------------------------------------------
-                | Determine selling price
-                |--------------------------------------------------------------------------
-                |
-                | Existing item: preserve its saved USD selling price.
-                | New item: use the price submitted by the form.
-                |--------------------------------------------------------------------------
-                */
-
-                    if ($existingItems->has($itemId)) {
-
-                        $usdPrice = (float) $existingItems
-                            ->get($itemId)
-                            ->sale_price_foreign;
-                    } else {
-
-                        if (
-                            !isset($row['sale_price_foreign']) ||
-                            !is_numeric($row['sale_price_foreign']) ||
-                            (float) $row['sale_price_foreign'] < 0
-                        ) {
-                            throw ValidationException::withMessages([
-                                'items' => "Please enter a valid USD selling price for new item ID {$itemId}.",
-                            ]);
-                        }
-
-                        $usdPrice = (float) $row['sale_price_foreign'];
-                    }
+                    // Always use the updated selling price from the form.
+                    $usdPrice = (float) $row['sale_price_foreign'];
 
                     /*
                 |--------------------------------------------------------------------------
@@ -1326,7 +1349,7 @@ class SaleController extends Controller
 
                     if (!$stock) {
                         throw ValidationException::withMessages([
-                            'items' => "Stock not found for item ID {$itemId}.",
+                            'items' => "Stock record not found for item ID {$itemId}.",
                         ]);
                     }
 
@@ -1335,31 +1358,50 @@ class SaleController extends Controller
                     if ($availableQty < $qty) {
                         throw ValidationException::withMessages([
                             'items' => "Insufficient stock for item ID {$itemId}. "
-                                . 'Available quantity: '
-                                . number_format($availableQty, 3)
-                                . ', requested quantity: '
-                                . number_format($qty, 3)
-                                . '.',
+                                . 'Available: ' . number_format($availableQty, 3)
+                                . ', requested: ' . number_format($qty, 3),
                         ]);
                     }
 
                     /*
                 |--------------------------------------------------------------------------
-                | Use weighted-average cost from branch stock
+                | Determine base price
                 |--------------------------------------------------------------------------
+                |
+                | Original sale was draft:
+                |   Existing item = original sale_items.base_price
+                |   New item = current branch average_cost
+                |
+                | Original sale was confirmed:
+                |   All items = current branch average_cost
+                |
                 */
 
-                    $averageCost = (float) $stock->average_cost;
+                    if ($oldStatus === 'draft' && $oldItemsByItemId->has($itemId)) {
 
-                    $subtotalUsd = $qty * $usdPrice;
-                    $subtotalLkr = $subtotalUsd * $exchangeRate;
-                    $salePriceLkr = $usdPrice * $exchangeRate;
+                        $basePrice = (float) $oldItemsByItemId
+                            ->get($itemId)
+                            ->base_price;
+                    } else {
 
-                    $itemCost = $qty * $averageCost;
+                        $basePrice = (float) $stock->average_cost;
+                    }
 
                     /*
                 |--------------------------------------------------------------------------
-                | Deduct stock for the submitted quantity
+                | Calculate amounts
+                |--------------------------------------------------------------------------
+                */
+
+                    $subtotalUsd = $qty * $usdPrice;
+                    $salePriceLkr = $usdPrice * $exchangeRate;
+                    $subtotalLkr = $subtotalUsd * $exchangeRate;
+
+                    $itemCogs = $qty * $basePrice;
+
+                    /*
+                |--------------------------------------------------------------------------
+                | Deduct branch stock
                 |--------------------------------------------------------------------------
                 */
 
@@ -1373,88 +1415,91 @@ class SaleController extends Controller
                 */
 
                     SaleItem::create([
-                        'sale_id'            => $sale->id,
-                        'item_id'            => $itemId,
-                        'qty'                => $qty,
-                        'base_price'         => $averageCost,
+                        'sale_id' => $sale->id,
+                        'item_id' => $itemId,
+                        'qty' => $qty,
+
+                        'base_price' => $basePrice,
+
                         'sale_price_foreign' => $usdPrice,
-                        'sub_total_foreign'  => $subtotalUsd,
-                        'sale_price'         => $salePriceLkr,
-                        'subtotal'           => $subtotalLkr,
+                        'sub_total_foreign' => $subtotalUsd,
+
+                        'sale_price' => $salePriceLkr,
+                        'subtotal' => $subtotalLkr,
                     ]);
 
                     $totalUsd += $subtotalUsd;
                     $totalLkr += $subtotalLkr;
-                    $cogs += $itemCost;
+                    $totalCogs += $itemCogs;
                 }
 
                 /*
             |--------------------------------------------------------------------------
-            | STEP 6: Update sale totals and details
+            | STEP 9: Update sale
             |--------------------------------------------------------------------------
             */
 
-                $sale->update([
-                    'customer_id'        => $customer->id,
-                    'exchange_rate'      => $exchangeRate,
-                    'total_foreign'      => $totalUsd,
-                    'total'              => $totalLkr,
-                    'status'             => $newStatus,
-                ]);
+                $sale->customer_id = $customer->id;
+                $sale->exchange_rate = $exchangeRate;
+                $sale->total_foreign = $totalUsd;
+                $sale->total = $totalLkr;
+                $sale->status = $newStatus;
+                $sale->save();
 
                 /*
             |--------------------------------------------------------------------------
-            | STEP 7: Post journal only when confirmed
+            | STEP 10: Post accounting only when confirmed
             |--------------------------------------------------------------------------
             */
 
                 if ($newStatus === 'confirmed') {
 
                     $journal = Accounting::postJournal([
-                        'branch_id'   => $sale->branch_id,
-                        'date'        => $sale->sale_date,
+                        'branch_id' => $branchId,
+                        'date' => $sale->sale_date,
                         'description' => 'Export Sale - Invoice ' . $sale->invoice_id,
 
                         'entries' => [
+
                             // Customer receivable
                             [
-                                'ledger_id'     => 6,
+                                'ledger_id' => 6,
                                 'sub_ledger_id' => $customer->receivable_sub_ledger_id,
-                                'debit'         => $totalLkr,
-                                'credit'        => 0,
+                                'debit' => $totalLkr,
+                                'credit' => 0,
                             ],
 
-                            // Sales revenue
+                            // Export sales revenue
                             [
-                                'ledger_id'     => 12,
+                                'ledger_id' => 12,
                                 'sub_ledger_id' => null,
-                                'debit'         => 0,
-                                'credit'        => $totalLkr,
+                                'debit' => 0,
+                                'credit' => $totalLkr,
                             ],
 
                             // Cost of goods sold
                             [
-                                'ledger_id'     => 14,
+                                'ledger_id' => 14,
                                 'sub_ledger_id' => null,
-                                'debit'         => $cogs,
-                                'credit'        => 0,
+                                'debit' => $totalCogs,
+                                'credit' => 0,
                             ],
 
                             // Inventory
                             [
-                                'ledger_id'     => 7,
+                                'ledger_id' => 7,
                                 'sub_ledger_id' => 1,
-                                'debit'         => 0,
-                                'credit'        => $cogs,
+                                'debit' => 0,
+                                'credit' => $totalCogs,
                             ],
                         ],
                     ]);
 
                     JournalEntryReference::create([
                         'journal_entry_id' => $journal->id,
-                        'model_type'       => Sale::class,
-                        'model_id'         => $sale->id,
-                        'action'           => 'updated',
+                        'model_type' => Sale::class,
+                        'model_id' => $sale->id,
+                        'action' => 'updated',
                     ]);
                 }
             });
@@ -1463,15 +1508,13 @@ class SaleController extends Controller
                 ->route('export-sales.index')
                 ->with(
                     'success',
-                    $request->status === 'draft'
+                    $validated['status'] === 'draft'
                         ? 'Export sale draft updated successfully.'
                         : 'Export sale confirmed/updated successfully.'
                 );
         } catch (ValidationException $e) {
 
-            return back()
-                ->withErrors($e->errors())
-                ->withInput();
+            throw $e;
         } catch (\Symfony\Component\HttpKernel\Exception\HttpException $e) {
 
             throw $e;
@@ -1481,9 +1524,10 @@ class SaleController extends Controller
 
             return back()
                 ->withInput()
-                ->with('error', 'Unable to update export sale. Please try again.');
+                ->with('error', $e->getMessage());
         }
     }
+
 
 
     public function destroy(int $id)
