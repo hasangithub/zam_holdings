@@ -8,6 +8,7 @@ use App\Models\Item;
 use App\Models\Packing;
 use App\Models\PackingItem;
 use App\Models\PackingItemCustomer;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -166,5 +167,22 @@ class PackingController extends Controller
             '0',
             STR_PAD_LEFT
         );
+    }
+
+    public function pdf(int $id)
+    {
+        $customers = Customer::all();
+
+        $packing = Packing::with([
+            'items.item.category',
+            'items.customers.customer',
+        ])->findOrFail($id);
+
+        $pdf = Pdf::loadView('packings.pdf', compact(
+            'packing',
+            'customers'
+        ))->setPaper('a4', 'landscape');
+
+        return $pdf->stream('packing-' . $packing->packing_no . '.pdf');
     }
 }

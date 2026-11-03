@@ -135,9 +135,9 @@ Route::middleware(['auth'])->group(function () {
 
     Route::resource('fixed-assets', FixedAssetController::class);
     Route::post('/fixed-assets/{id}/opening-balance', [
-    FixedAssetController::class,
-    'storeOpeningBalance',
-])->name('fixed-assets.opening-balance');
+        FixedAssetController::class,
+        'storeOpeningBalance',
+    ])->name('fixed-assets.opening-balance');
     Route::get('/purchases/{purchase}/invoice', [PurchaseController::class, 'invoice'])->name('purchases.invoice');
     Route::get('/purchases/{purchase}/invoice/pdf',  [PurchaseController::class, 'invoicePdf'])->name('purchases.invoice.pdf');
     Route::get('/sales/{sale}/invoice', [SaleController::class, 'invoice'])->name('sales.invoice');
@@ -189,17 +189,27 @@ Route::middleware(['auth'])->group(function () {
     });
 
     Route::resource('shipment-plans', ShipmentPlanController::class);
+    Route::get('/shipment-plans/{id}/pdf', [ShipmentPlanController::class, 'pdf'])
+        ->name('shipment-plans.pdf');
     Route::resource('packings', PackingController::class);
+    Route::get('/packings/{id}/pdf', [PackingController::class, 'pdf'])
+        ->name('packings.pdf');
     Route::prefix('reports')->group(function () {
 
         Route::get('/item-profit-analysis', [ReportController::class, 'itemProfitAnalysis'])
             ->name('reports.item-profit-analysis');
+
+        Route::get('/item-profit-analysis/pdf', [ReportController::class, 'itemProfitAnalysisPdf'])
+            ->name('reports.item-profit-analysis-pdf');
 
         Route::get('/invoice-profit-analysis', [ReportController::class, 'invoiceProfitAnalysis'])
             ->name('reports.invoice-profit-analysis');
 
         Route::post('/invoice-profit-analysis-save', [ReportController::class, 'invoiceProfitAnalysisStore'])
             ->name('reports.invoice-profit-analysis-save');
+
+        Route::get('/invoice-profit-analysis/{sale}/pdf', [ReportController::class, 'invoiceProfitAnalysisPdf'])
+            ->name('reports.invoice-profit-analysis-pdf');
 
         Route::get('/branch-comparison', [ReportController::class, 'indexBranchComparison'])
             ->name('reports.branch-comparison');
@@ -238,20 +248,27 @@ Route::middleware(['auth'])->group(function () {
                 SalesProfitLossController::class,
                 'update'
             ])->name('update');
+
+            Route::get(
+                '/{sale}/pdf',
+                [SalesProfitLossController::class, 'pdf']
+            )->name('pdf');
         });
 
     Route::resource('freight-records', FreightRecordController::class);
+    Route::get('/freight-records/{id}/pdf', [FreightRecordController::class, 'pdf'])
+        ->name('freight-records.pdf');
     Route::resource('/landing-costs', LandingCostController::class);
 
     Route::get('/freight-expenses/{id}/statement', [
-    FreightController::class,
-    'statement',
-])->name('freight-expenses.statement');
+        FreightController::class,
+        'statement',
+    ])->name('freight-expenses.statement');
 
-Route::post('/freight-expenses/{id}/opening-balance', [
-    FreightController::class,
-    'storeOpeningBalance',
-])->name('freight-expenses.opening-balance');
+    Route::post('/freight-expenses/{id}/opening-balance', [
+        FreightController::class,
+        'storeOpeningBalance',
+    ])->name('freight-expenses.opening-balance');
 
     Route::resource('freight-services', FreightServiceController::class)->except(['show', 'destroy']);
     Route::resource('freights', FreightController::class)->only(['index', 'create', 'store', 'show']);

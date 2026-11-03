@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\FreightRecord;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 
 class FreightRecordController extends Controller
@@ -65,5 +66,15 @@ class FreightRecordController extends Controller
     public function destroy(FreightRecord $freightRecord)
     {
         return back();
+    }
+
+    public function pdf($id)
+    {
+        $record = FreightRecord::findOrFail($id);
+
+        $pdf = Pdf::loadView('freights.pdf', compact('record'))
+            ->setPaper('a4', 'portrait');
+
+        return $pdf->stream('freight-record-' . $record->id . '.pdf');
     }
 }

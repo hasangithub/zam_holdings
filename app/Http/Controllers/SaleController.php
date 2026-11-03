@@ -831,7 +831,10 @@ class SaleController extends Controller
             abort(403, 'You are not allowed to edit this sale.');
         }
 
-        $customers = Customer::orderBy('name')->get();
+        $customers = Customer::where('branch_id', $branchId)
+            ->where('customer_type', 'local')
+            ->orderBy('name')
+            ->get();
 
         $items = Item::query()
             ->leftJoin('branch_item_stocks', function ($join) use ($branchId) {
@@ -862,13 +865,19 @@ class SaleController extends Controller
 
     public function editExport($id)
     {
+        $branchId = (int) auth()->user()->branch_id;
         $sale = Sale::with('items')->findOrFail($id);
+
+        $customers = Customer::where('branch_id', $branchId)
+            ->where('customer_type', 'export')
+            ->orderBy('name')
+            ->get();
 
         if ((int) $sale->branch_id !== (int) auth()->user()->branch_id) {
             abort(403, 'You are not allowed to edit this sale.');
         }
 
-        $branchId = (int) auth()->user()->branch_id;
+
 
         $items = Item::query()
             ->leftJoin('branch_item_stocks', function ($join) use ($branchId) {
@@ -892,7 +901,7 @@ class SaleController extends Controller
 
         return view('sales.export_edit', [
             'sale' => $sale,
-            'customers' => Customer::all(),
+            'customers' => $customers,
             'items' => $items,
         ]);
     }

@@ -212,103 +212,138 @@
 @push('scripts')
 
 <script>
-    document.addEventListener('DOMContentLoaded', function() {
+  
+document.addEventListener('DOMContentLoaded', function () {
 
-        let rowIndex = {{ count($sale->items) }};
-        let exportMode = "{{ $sale->currency }}" === "USD";
+    let rowIndex = {{ count($sale->items) }};
+    let exportMode = "{{ $sale->currency }}" === "USD";
 
-        const itemOptions = `
+    const itemOptions = `
         <option value="">Select Item</option>
         @foreach($items as $item)
             <option value="{{ $item->id }}">{{ addslashes($item->name) }}</option>
         @endforeach
     `;
 
-        document.getElementById('addRow').addEventListener('click', function() {
+    // ADD NEW ROW
+    document.getElementById('addRow').addEventListener('click', function () {
 
-            let row = `
+        let i = rowIndex++;
+
+        let row = `
             <tr>
                 <td>
                     <select name="items[${i}][item_id]"
-                        class="form-control form-control-sm" required>
+                            class="form-control form-control-sm"
+                            required>
                         ${itemOptions}
                     </select>
                 </td>
 
                 <td>
                     <input type="number"
-                        name="items[${i}][qty]"
-                        class="form-control form-control-sm"
-                        min="0.01"
-                        step="0.01"
-                        required>
+                           name="items[${i}][qty]"
+                           class="form-control form-control-sm"
+                           min="0.001"
+                           step="0.001"
+                           required>
                 </td>
 
                 <td>
                     <input type="number"
-                        name="items[${i}][base_price]"
-                        class="form-control form-control-sm"
-                        step="0.01"
-                        required>
+                           name="items[${i}][base_price]"
+                           class="form-control form-control-sm"
+                           step="0.01"
+                           readonly>
                 </td>
 
                 <td>
                     <input type="number"
-                        name="items[${i}][sale_price]"
-                        class="form-control form-control-sm"
-                        step="0.01">
+                           name="items[${i}][sale_price]"
+                           class="form-control form-control-sm"
+                           step="0.01">
                 </td>
 
                 ${exportMode ? `
                     <td>
                         <input type="number"
-                            step="0.01"
-                            name="items[${i}][sale_price_foreign]"
-                            class="form-control form-control-sm">
+                               name="items[${i}][sale_price_foreign]"
+                               class="form-control form-control-sm"
+                               step="0.01"
+                               min="0"
+                               required>
                     </td>
 
                     <td>
                         <input type="number"
-                            class="form-control form-control-sm subtotal"
-                            readonly>
+                               class="form-control form-control-sm subtotal"
+                               readonly>
                     </td>
                 ` : ''}
 
                 <td class="text-center">
                     <button type="button"
-                        class="btn btn-danger btn-xs removeRow">
+                            class="btn btn-danger btn-xs removeRow">
                         <i class="fas fa-times"></i>
                     </button>
                 </td>
             </tr>
         `;
 
-            document.querySelector('#salesTable tbody')
-                .insertAdjacentHTML('beforeend', row);
-
-            i++;
-        });
-
-        document.addEventListener('click', function(e) {
-            if (e.target.closest('.removeRow')) {
-                e.target.closest('tr').remove();
-            }
-        });
-
-        document.addEventListener('input', function(e) {
-            if (e.target.name && e.target.name.includes('sale_price_foreign')) {
-                let row = e.target.closest('tr');
-                let qty = parseFloat(row.querySelector('input[name*="[qty]"]').value) || 0;
-                let price = parseFloat(e.target.value) || 0;
-                let subtotal = row.querySelector('.subtotal');
-
-                if (subtotal) {
-                    subtotal.value = (qty * price).toFixed(2);
-                }
-            }
-        });
-
+        document.querySelector('#salesTable tbody')
+            .insertAdjacentHTML('beforeend', row);
     });
+
+    // REMOVE ROW
+    document.addEventListener('click', function (e) {
+
+        let button = e.target.closest('.removeRow');
+
+        if (button) {
+            button.closest('tr').remove();
+        }
+    });
+
+    // UPDATE USD SUBTOTAL
+    document.addEventListener('input', function (e) {
+
+        if (e.target.name && e.target.name.includes('sale_price_foreign')) {
+
+            let row = e.target.closest('tr');
+
+            let qty = parseFloat(
+                row.querySelector('input[name*="[qty]"]').value
+            ) || 0;
+
+            let price = parseFloat(e.target.value) || 0;
+
+            let subtotal = row.querySelector('.subtotal');
+
+            if (subtotal) {
+                subtotal.value = (qty * price).toFixed(2);
+            }
+        }
+
+        // Also update subtotal when quantity changes.
+        if (e.target.name && e.target.name.includes('[qty]')) {
+
+            let row = e.target.closest('tr');
+
+            let priceInput = row.querySelector('input[name*="[sale_price_foreign]"]');
+            let subtotal = row.querySelector('.subtotal');
+
+            if (priceInput && subtotal) {
+
+                let qty = parseFloat(e.target.value) || 0;
+                let price = parseFloat(priceInput.value) || 0;
+
+                subtotal.value = (qty * price).toFixed(2);
+            }
+        }
+    });
+
+});
+
 </script>
 
 @endpush

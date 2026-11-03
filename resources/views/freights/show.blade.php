@@ -13,9 +13,23 @@
 
             <div class="card-tools">
                 <a href="{{ route('freight-records.index') }}"
-                   class="btn btn-secondary btn-sm">
+                    class="btn btn-secondary btn-sm">
                     <i class="fas fa-arrow-left"></i> Back
                 </a>
+            </div>
+            <div class="card-tools">
+
+                <a href="{{ route('freight-records.pdf', $record->id) }}"
+                    target="_blank"
+                    class="btn btn-danger btn-sm">
+                    <i class="fas fa-file-pdf"></i> PDF
+                </a>
+
+                <a href="{{ route('freight-records.index') }}"
+                    class="btn btn-secondary btn-sm">
+                    <i class="fas fa-arrow-left"></i> Back
+                </a>
+
             </div>
         </div>
 

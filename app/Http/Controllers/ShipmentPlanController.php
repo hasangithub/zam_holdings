@@ -7,6 +7,7 @@ use App\Models\Customer;
 use App\Models\ShipmentPlan;
 use App\Models\ShipmentPlanItem;
 use App\Models\ShipmentPlanItemCustomer;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -76,7 +77,7 @@ class ShipmentPlanController extends Controller
                     if (!empty($item['customers'])) {
 
                         foreach ($item['customers'] as $customerId => $weight) {
-                                                
+
                             if (($weight ?? 0) <= 0) {
                                 continue;
                             }
@@ -159,7 +160,7 @@ class ShipmentPlanController extends Controller
 
     public function show(int $id)
     {
-    
+
         $customers = Customer::orderBy('name')->get();
 
         $shipmentPlan = ShipmentPlan::with([
@@ -195,6 +196,25 @@ class ShipmentPlanController extends Controller
             5,
             '0',
             STR_PAD_LEFT
+        );
+    }
+
+    public function pdf(int $id)
+    {
+        $customers = Customer::orderBy('name')->get();
+
+        $shipmentPlan = ShipmentPlan::with([
+            'items.item',
+            'items.customers.customer'
+        ])->findOrFail($id);
+
+        $pdf = Pdf::loadView(
+            'shipment_plans.pdf',
+            compact('shipmentPlan', 'customers')
+        )->setPaper('a4', 'portrait');
+
+        return $pdf->download(
+            'Shipment-Plan-' . $shipmentPlan->id . '.pdf'
         );
     }
 }

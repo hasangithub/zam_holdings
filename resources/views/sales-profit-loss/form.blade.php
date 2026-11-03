@@ -8,12 +8,20 @@
 
         <h4>Sales Profit & Loss</h4>
 
-        <a href="{{ route('sales-profit-loss.index') }}"
-            class="btn btn-secondary">
+        <div>
+            @if($sale)
+            <a href="{{ route('sales-profit-loss.pdf', $sale->id) }}"
+                class="btn btn-danger"
+                target="_blank">
+                <i class="fas fa-file-pdf"></i> Download PDF
+            </a>
+            @endif
 
-            Back
-
-        </a>
+            <a href="{{ route('sales-profit-loss.index') }}"
+                class="btn btn-secondary">
+                Back
+            </a>
+        </div>
 
     </div>
 
@@ -60,7 +68,7 @@
 
                             <option value="{{ $item->id }}">
 
-                                {{ $item->invoice_no }}
+                                {{ $item->invoice_id }}
 
                                 -
 
@@ -434,99 +442,99 @@
 
 @push('scripts')
 <script>
-function calculateProfitLoss() {
+    function calculateProfitLoss() {
 
-    let totalWeight = 0;
-    let totalCost = 0;
-    let totalSales = 0;
-    let totalProfitLoss = 0;
+        let totalWeight = 0;
+        let totalCost = 0;
+        let totalSales = 0;
+        let totalProfitLoss = 0;
 
-    document.querySelectorAll('#profitLossTable tbody tr').forEach(function(row) {
+        document.querySelectorAll('#profitLossTable tbody tr').forEach(function(row) {
 
-        let weight = parseFloat(
-            row.querySelector('.sales-weight')?.value
-        ) || 0;
+            let weight = parseFloat(
+                row.querySelector('.sales-weight')?.value
+            ) || 0;
 
-        let salesPrice = parseFloat(
-            row.querySelector('.sales-price')?.value
-        ) || 0;
+            let salesPrice = parseFloat(
+                row.querySelector('.sales-price')?.value
+            ) || 0;
 
-        let purchasePrice = parseFloat(
-            row.querySelector('.purchase-price')?.value
-        ) || 0;
+            let purchasePrice = parseFloat(
+                row.querySelector('.purchase-price')?.value
+            ) || 0;
 
-        let otherExpense = parseFloat(
-            row.querySelector('.other-expense')?.value
-        ) || 0;
-
-
-        // Purchase Cost / Kg
-        let purchaseCost = purchasePrice + otherExpense;
-
-        // Total Cost
-        let cost = weight * purchaseCost;
-
-        // Sales Amount
-        let salesAmount = weight * salesPrice;
-
-        // Profit / Loss
-        let profitLoss = salesAmount - cost;
+            let otherExpense = parseFloat(
+                row.querySelector('.other-expense')?.value
+            ) || 0;
 
 
-        // Display values
-        row.querySelector('.purchase-cost').innerText =
-            purchaseCost.toFixed(2);
+            // Purchase Cost / Kg
+            let purchaseCost = purchasePrice + otherExpense;
 
-        row.querySelector('.total-cost').innerText =
-            cost.toFixed(2);
+            // Total Cost
+            let cost = weight * purchaseCost;
 
-        row.querySelector('.sales-amount').innerText =
-            salesAmount.toFixed(2);
+            // Sales Amount
+            let salesAmount = weight * salesPrice;
 
-        row.querySelector('.profit-loss').innerText =
-            profitLoss.toFixed(2);
+            // Profit / Loss
+            let profitLoss = salesAmount - cost;
 
 
-        // Totals
-        totalWeight += weight;
-        totalCost += cost;
-        totalSales += salesAmount;
-        totalProfitLoss += profitLoss;
+            // Display values
+            row.querySelector('.purchase-cost').innerText =
+                purchaseCost.toFixed(2);
+
+            row.querySelector('.total-cost').innerText =
+                cost.toFixed(2);
+
+            row.querySelector('.sales-amount').innerText =
+                salesAmount.toFixed(2);
+
+            row.querySelector('.profit-loss').innerText =
+                profitLoss.toFixed(2);
+
+
+            // Totals
+            totalWeight += weight;
+            totalCost += cost;
+            totalSales += salesAmount;
+            totalProfitLoss += profitLoss;
+        });
+
+
+        document.getElementById('totalSalesWeight').innerText =
+            totalWeight.toFixed(3);
+
+        document.getElementById('totalCost').innerText =
+            totalCost.toFixed(2);
+
+        document.getElementById('totalSalesAmount').innerText =
+            totalSales.toFixed(2);
+
+        document.getElementById('totalProfitLoss').innerText =
+            totalProfitLoss.toFixed(2);
+    }
+
+
+    // Recalculate when values change
+    document.addEventListener('input', function(e) {
+
+        if (
+            e.target.classList.contains('sales-weight') ||
+            e.target.classList.contains('sales-price') ||
+            e.target.classList.contains('purchase-price') ||
+            e.target.classList.contains('other-expense')
+        ) {
+            calculateProfitLoss();
+        }
+
     });
 
 
-    document.getElementById('totalSalesWeight').innerText =
-        totalWeight.toFixed(3);
-
-    document.getElementById('totalCost').innerText =
-        totalCost.toFixed(2);
-
-    document.getElementById('totalSalesAmount').innerText =
-        totalSales.toFixed(2);
-
-    document.getElementById('totalProfitLoss').innerText =
-        totalProfitLoss.toFixed(2);
-}
-
-
-// Recalculate when values change
-document.addEventListener('input', function(e) {
-
-    if (
-        e.target.classList.contains('sales-weight') ||
-        e.target.classList.contains('sales-price') ||
-        e.target.classList.contains('purchase-price') ||
-        e.target.classList.contains('other-expense')
-    ) {
+    // Calculate when page loads
+    document.addEventListener('DOMContentLoaded', function() {
         calculateProfitLoss();
-    }
-
-});
-
-
-// Calculate when page loads
-document.addEventListener('DOMContentLoaded', function() {
-    calculateProfitLoss();
-});
+    });
 </script>
 @endpush

@@ -6,11 +6,22 @@
 
 <div class="container-fluid">
     <div class="card card-outline card-primary">
-        <div class="card-header">
+        <div class="card-header d-flex justify-content-between align-items-center">
+
             <h3 class="card-title">
                 <i class="fas fa-list mr-1"></i>
-                 Shipment Plan #{{ $shipmentPlan->id }}
+                Shipment Plan #{{ $shipmentPlan->id }}
             </h3>
+
+            <a href="{{ route('shipment-plans.pdf', $shipmentPlan->id) }}"
+                target="_blank"
+                class="btn btn-danger btn-sm">
+
+                <i class="fas fa-file-pdf"></i>
+                Download PDF
+
+            </a>
+
         </div>
 
         <div class="card-body">
@@ -62,7 +73,7 @@
                             @endphp
 
                             <td class="text-right">
-                                 {{ optional($customerMap->get($customer->id))->planned_weight ?? '' }}
+                                {{ optional($customerMap->get($customer->id))->planned_weight ?? '' }}
                             </td>
 
                             @endforeach

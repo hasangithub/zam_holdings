@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Sale;
 use App\Models\SalesProfitLoss;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -19,7 +20,7 @@ class SalesProfitLossController extends Controller
             'profitLoss',
         ]);
 
-         $query->where('branch_id', auth()->user()->branch_id);
+        $query->where('branch_id', auth()->user()->branch_id);
 
         if ($request->filled('search')) {
 
@@ -55,7 +56,7 @@ class SalesProfitLossController extends Controller
      * Show invoice selection screen.
      */
     public function create(Request $request)
-    {  
+    {
         $sale = null;
 
         $sales = Sale::with('customer')->where('branch_id', auth()->user()->branch_id)
@@ -324,34 +325,34 @@ class SalesProfitLossController extends Controller
             $profitLoss->items()->create([
 
                 'item_id' =>
-                    $item['product_id'] ?? null,
+                $item['product_id'] ?? null,
 
                 'item_name' =>
-                    $item['item_name'] ?? null,
+                $item['item_name'] ?? null,
 
                 'sales_weight' =>
-                    $salesWeight,
+                $salesWeight,
 
                 'sales_price' =>
-                    $salesPrice,
+                $salesPrice,
 
                 'purchase_price' =>
-                    $purchasePrice,
+                $purchasePrice,
 
                 'other_expense_per_kg' =>
-                    $otherExpense,
+                $otherExpense,
 
                 'purchase_cost_per_kg' =>
-                    $purchaseCostPerKg,
+                $purchaseCostPerKg,
 
                 'total_cost' =>
-                    $itemTotalCost,
+                $itemTotalCost,
 
                 'sales_amount' =>
-                    $salesAmount,
+                $salesAmount,
 
                 'profit_loss' =>
-                    $profitLossAmount,
+                $profitLossAmount,
             ]);
 
             $totalSalesWeight += $salesWeight;
@@ -366,16 +367,93 @@ class SalesProfitLossController extends Controller
         $profitLoss->update([
 
             'total_sales_weight' =>
-                $totalSalesWeight,
+            $totalSalesWeight,
 
             'total_cost' =>
-                $totalCost,
+            $totalCost,
 
             'total_sales_amount' =>
-                $totalSalesAmount,
+            $totalSalesAmount,
 
             'total_profit_loss' =>
-                $totalProfitLoss,
+            $totalProfitLoss,
         ]);
+    }
+
+
+    public function pdf($id)
+    {
+        $sale = Sale::where('branch_id', auth()->user()->branch_id)
+            ->with([
+                'customer',
+                'items.item',
+                'profitLoss.items',
+            ])
+            ->findOrFail($id);
+
+        $profitLoss = $sale->profitLoss;
+
+        $rows = collect();
+
+        if ($profitLoss && $profitLoss->items->count()) {
+
+            // Use saved Profit & Loss data.
+            foreach ($profitLoss->items as $item) {
+
+                $rows->push([
+                    'item_name' => $item->item_name,
+                    'sales_weight' => (float) $item->sales_weight,
+                    'sales_price' => (float) $item->sales_price,
+                    'purchase_price' => (float) $item->purchase_price,
+                    'other_expense_per_kg' => (float) $item->other_expense_per_kg,
+                    'purchase_cost_per_kg' => (float) $item->purchase_cost_per_kg,
+                    'total_cost' => (float) $item->total_cost,
+                    'sales_amount' => (float) $item->sales_amount,
+                    'profit_loss' => (float) $item->profit_loss,
+                ]);
+            }
+        } else {
+
+            // No saved Profit & Loss yet: use sale item data.
+            foreach ($sale->items as $item) {
+
+                $weight = (float) $item->qty;
+                $salesPrice = (float) $item->sale_price;
+                $purchasePrice = (float) $item->base_price;
+                $otherExpense = 0;
+
+                $purchaseCost = $purchasePrice + $otherExpense;
+                $totalCost = $weight * $purchaseCost;
+                $salesAmount = $weight * $salesPrice;
+
+                $rows->push([
+                    'item_name' => optional($item->item)->name,
+                    'sales_weight' => $weight,
+                    'sales_price' => $salesPrice,
+                    'purchase_price' => $purchasePrice,
+                    'other_expense_per_kg' => $otherExpense,
+                    'purchase_cost_per_kg' => $purchaseCost,
+                    'total_cost' => $totalCost,
+                    'sales_amount' => $salesAmount,
+                    'profit_loss' => $salesAmount - $totalCost,
+                ]);
+            }
+        }
+
+        $totals = [
+            'sales_weight' => $rows->sum('sales_weight'),
+            'total_cost' => $rows->sum('total_cost'),
+            'sales_amount' => $rows->sum('sales_amount'),
+            'profit_loss' => $rows->sum('profit_loss'),
+        ];
+
+        $pdf = Pdf::loadView(
+            'sales-profit-loss.pdf',
+            compact('sale', 'rows', 'totals')
+        )->setPaper('a4', 'landscape');
+
+        return $pdf->download(
+            'Sales-Profit-Loss-' . $sale->invoice_no . '.pdf'
+        );
     }
 }

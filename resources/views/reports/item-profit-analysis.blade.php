@@ -64,6 +64,21 @@
 
                     </div>
 
+                    <div class="col-md-2">
+
+                        <label>&nbsp;</label>
+
+                        <a href="{{ route('reports.item-profit-analysis-pdf', request()->only('from', 'to')) }}"
+                            target="_blank"
+                            class="btn btn-danger btn-block">
+
+                            <i class="fas fa-file-pdf"></i>
+                            Download PDF
+
+                        </a>
+
+                    </div>
+
                 </div>
 
             </form>

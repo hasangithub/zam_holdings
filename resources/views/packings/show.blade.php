@@ -13,6 +13,13 @@
                 <i class="fas fa-list mr-1"></i>
                 Shipment Weight #{{ $packing->packing_no }}
             </h3>
+            <div class="card-tools">
+                <a href="{{ route('packings.pdf', $packing->id) }}"
+                    target="_blank"
+                    class="btn btn-sm btn-danger">
+                    <i class="fas fa-file-pdf"></i> PDF
+                </a>
+            </div>
         </div>
 
         <div class="card-body">
@@ -41,14 +48,14 @@
 
                     <tbody>
                         @php
-                            $currentCategory = null;
-                            $catActual = 0;
-                            $catCustomer = 0;
-                            $catReject = 0;
-                            $catMarket = 0;
-                            $catStock = 0;
-                            $catAllocated = 0;
-                            $catDifference = 0;
+                        $currentCategory = null;
+                        $catActual = 0;
+                        $catCustomer = 0;
+                        $catReject = 0;
+                        $catMarket = 0;
+                        $catStock = 0;
+                        $catAllocated = 0;
+                        $catDifference = 0;
                         @endphp
 
                         @foreach($packing->items as $packingItem)

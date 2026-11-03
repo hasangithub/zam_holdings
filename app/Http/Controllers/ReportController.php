@@ -13,6 +13,7 @@ use App\Models\Ledger;
 use App\Models\Sale;
 use App\Models\SaleItem;
 use App\Models\Supplier;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -65,6 +66,61 @@ class ReportController extends Controller
                 'to'
             )
         );
+    }
+
+    public function itemProfitAnalysisPdf(Request $request)
+    {
+        $from = $request->from;
+        $to = $request->to;
+
+        $query = SaleItem::query()
+            ->join('items', 'sale_items.item_id', '=', 'items.id')
+            ->join('sales', 'sale_items.sale_id', '=', 'sales.id');
+
+        if ($from) {
+            $query->whereDate('sales.sale_date', '>=', $from);
+        }
+
+        if ($to) {
+            $query->whereDate('sales.sale_date', '<=', $to);
+        }
+
+        $report = $query
+            ->select(
+                'sale_items.item_id',
+                'items.name as item_name',
+                DB::raw('SUM(sale_items.qty) as sold_qty'),
+                DB::raw('SUM(sale_items.qty * sale_items.sale_price) as sales_amount'),
+                DB::raw('SUM(sale_items.qty * sale_items.base_price) as cost_amount'),
+                DB::raw('SUM(
+                (sale_items.qty * sale_items.sale_price) -
+                (sale_items.qty * sale_items.base_price)
+            ) as gross_profit')
+            )
+            ->groupBy(
+                'sale_items.item_id',
+                'items.name'
+            )
+            ->orderBy('items.name')
+            ->get();
+
+        $totals = [
+            'qty' => $report->sum('sold_qty'),
+            'sales' => $report->sum('sales_amount'),
+            'cost' => $report->sum('cost_amount'),
+            'profit' => $report->sum('gross_profit'),
+        ];
+
+        $totals['profit_percentage'] = $totals['sales'] > 0
+            ? ($totals['profit'] / $totals['sales']) * 100
+            : 0;
+
+        $pdf = Pdf::loadView(
+            'reports.item-profit-analysis-pdf',
+            compact('report', 'from', 'to', 'totals')
+        )->setPaper('a4', 'landscape');
+
+        return $pdf->download('Item-Profit-Analysis.pdf');
     }
 
     public function invoiceProfitAnalysis(Request $request)
@@ -917,5 +973,118 @@ class ReportController extends Controller
             'liabilitiesTotal',
             'equityTotal'
         ));
+    }
+
+    public function invoiceProfitAnalysisPdf($id)
+    {
+        // Load invoice
+        $sale = Sale::with('customer')->findOrFail($id);
+
+        // Load invoice aggregated items
+        $invoiceItems = DB::table('sale_items')
+            ->join('items', 'sale_items.item_id', '=', 'items.id')
+            ->where('sale_items.sale_id', $sale->id)
+            ->select(
+                'sale_items.item_id',
+                'items.name',
+                DB::raw('SUM(sale_items.qty) as qty'),
+                DB::raw('ROUND(
+                SUM(sale_items.qty * sale_items.base_price) /
+                NULLIF(SUM(sale_items.qty), 0), 2
+            ) as avg_cost')
+            )
+            ->groupBy(
+                'sale_items.item_id',
+                'items.name'
+            )
+            ->orderBy('items.name')
+            ->get();
+
+        // Load saved report
+        $report = InvoiceProfitReport::with('items')
+            ->where('sale_id', $sale->id)
+            ->first();
+
+        $reportItems = $report
+            ? $report->items->keyBy('item_id')
+            : collect();
+
+        // Use saved report values
+        $exchangeRate = (float) ($report->exchange_rate ?? 330);
+        $fpPerKg = (float) ($report->fp_perkg ?? 0);
+
+        // Calculate item rows
+        $items = $invoiceItems->map(function ($invItem) use (
+            $reportItems,
+            $exchangeRate,
+            $fpPerKg
+        ) {
+            $rep = $reportItems[$invItem->item_id] ?? null;
+
+            $qty = (float) $invItem->qty;
+            $avgCost = (float) $invItem->avg_cost;
+
+            $salePriceUsd = (float) ($rep->sale_price_usd ?? 0);
+            $marketPrice = (float) ($rep->market_price ?? 0);
+
+            // Sales price in LKR
+            $salesPriceLkr = $salePriceUsd * $exchangeRate;
+
+            // Sales price after F & P
+            $salesAfterFp = $salesPriceLkr - $fpPerKg;
+
+            // Purchase amount
+            $purchaseAmount = $qty * $avgCost;
+
+            // Total cost
+            $totalCost = $purchaseAmount + ($qty * $fpPerKg);
+
+            // Total sales
+            $totalSalesLkr = $salesAfterFp * $qty;
+            $totalSalesUsd = $salePriceUsd * $qty;
+
+            // Profit / Loss
+            $profit = $totalSalesLkr - $totalCost;
+
+            return [
+                'name' => $invItem->name,
+                'qty' => $qty,
+                'sale_price_usd' => $salePriceUsd,
+                'market_price' => $marketPrice,
+                'avg_cost' => $avgCost,
+                'sales_price_lkr' => $salesPriceLkr,
+                'sales_after_fp' => $salesAfterFp,
+                'purchase_amount' => $purchaseAmount,
+                'total_cost' => $totalCost,
+                'total_sales_lkr' => $totalSalesLkr,
+                'total_sales_usd' => $totalSalesUsd,
+                'profit' => $profit,
+            ];
+        });
+
+        // Grand totals
+        $totals = [
+            'qty' => $items->sum('qty'),
+            'purchase_amount' => $items->sum('purchase_amount'),
+            'total_cost' => $items->sum('total_cost'),
+            'total_sales_lkr' => $items->sum('total_sales_lkr'),
+            'total_sales_usd' => $items->sum('total_sales_usd'),
+            'profit' => $items->sum('profit'),
+        ];
+
+        $pdf = Pdf::loadView(
+            'reports.invoice-profit-analysis-pdf',
+            compact(
+                'sale',
+                'items',
+                'totals',
+                'exchangeRate',
+                'fpPerKg'
+            )
+        )->setPaper('a3', 'landscape');
+
+        return $pdf->download(
+            'Invoice-Profit-Analysis-' . $sale->id . '.pdf'
+        );
     }
 }

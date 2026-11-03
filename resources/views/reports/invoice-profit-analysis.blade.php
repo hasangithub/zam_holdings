@@ -11,7 +11,7 @@
         <div class="card-header py-2">
             <h3 class="card-title">
                 <i class="fas fa-chart-line mr-1"></i>
-                Invoice Profit Analysis  @if($report)
+                Invoice Profit Analysis @if($report)
                 <small class="text-muted d-block">
                     Snapshot:
                     <strong>
@@ -23,6 +23,15 @@
             </h3>
             <div class="d-flex justify-content-end">
                 @if($sale)
+                <a href="{{ route('reports.invoice-profit-analysis-pdf', $sale->id) }}"
+                    target="_blank"
+                    class="btn btn-danger btn-sm mr-2">
+
+                    <i class="fas fa-file-pdf"></i>
+                    Download PDF
+
+                </a>
+
                 <button type="button"
                     id="saveReportBtn"
                     class="btn btn-success btn-sm">
@@ -693,7 +702,7 @@
                     msg = xhr.responseJSON.message;
                 }
 
-                 toastr.error(msg);
+                toastr.error(msg);
             },
             complete: function() {
 
