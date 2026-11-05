@@ -927,3 +927,197 @@
     </div>
 
 </aside>
+
+
+<style>
+/* =========================================
+   SIDEBAR GENERAL
+========================================= */
+
+.main-sidebar {
+    background-color: #1f2937 !important;
+}
+
+.nav-sidebar {
+    padding: 5px 8px;
+}
+
+.nav-sidebar .nav-item {
+    margin-bottom: 3px;
+}
+
+/* =========================================
+   LEVEL 1 - MAIN MENUS
+========================================= */
+
+.nav-sidebar > .nav-item > .nav-link {
+    font-size: 13.5px !important;
+    font-weight: 600 !important;
+    color: #e5e7eb !important;
+    padding: 10px 10px !important;
+    border-radius: 5px !important;
+    margin-bottom: 4px;
+    line-height: 1.35;
+    white-space: normal;
+}
+
+/* Main menu icons */
+.nav-sidebar > .nav-item > .nav-link > .nav-icon {
+    font-size: 15px !important;
+    margin-right: 8px;
+}
+
+/* Main menu hover */
+.nav-sidebar > .nav-item > .nav-link:hover {
+    background-color: #374151 !important;
+    color: #ffffff !important;
+}
+
+/* Main menu parent distinction */
+.nav-sidebar > .nav-item.has-treeview > .nav-link {
+    background-color: #293548;
+    border-left: 3px solid #64748b;
+}
+
+/* Expanded parent */
+.nav-sidebar > .nav-item.has-treeview.menu-open > .nav-link {
+    background-color: #34445b !important;
+    border-left: 3px solid #3b82f6;
+    color: #ffffff !important;
+}
+
+/* Active main menu */
+.nav-sidebar > .nav-item > .nav-link.active {
+    background-color: #2563eb !important;
+    color: #ffffff !important;
+}
+
+/* =========================================
+   LEVEL 2 - SUBMENUS
+========================================= */
+
+.nav-sidebar .nav-treeview {
+    background-color: #182230;
+    margin: 3px 0 7px 8px;
+    padding: 5px 0 5px 7px;
+    border-left: 2px solid #475569;
+    border-radius: 0 4px 4px 0;
+}
+
+.nav-sidebar .nav-treeview > .nav-item > .nav-link {
+    font-size: 12px !important;
+    font-weight: 400 !important;
+    color: #cbd5e1 !important;
+    padding: 8px 8px 8px 10px !important;
+    margin: 2px 0;
+    border-radius: 4px;
+    line-height: 1.35;
+    white-space: normal;
+}
+
+/* Submenu icons */
+.nav-sidebar .nav-treeview > .nav-item > .nav-link > .nav-icon {
+    font-size: 11px !important;
+    width: 17px;
+    margin-right: 6px;
+}
+
+/* Submenu hover */
+.nav-sidebar .nav-treeview > .nav-item > .nav-link:hover {
+    background-color: #334155 !important;
+    color: #ffffff !important;
+}
+
+/* Active submenu */
+.nav-sidebar .nav-treeview > .nav-item > .nav-link.active {
+    background-color: #1e40af !important;
+    color: #ffffff !important;
+    font-weight: 600 !important;
+}
+
+/* =========================================
+   LEVEL 3 - NESTED SUBMENUS
+   Example: Reports > Sales & Profitability
+========================================= */
+
+.nav-sidebar .nav-treeview .nav-treeview {
+    background-color: #111b29;
+    margin-left: 10px;
+    padding-left: 8px;
+    border-left: 2px solid #64748b;
+}
+
+.nav-sidebar .nav-treeview .nav-treeview > .nav-item > .nav-link {
+    font-size: 11.5px !important;
+    font-weight: 400 !important;
+    padding: 7px 6px 7px 8px !important;
+    color: #b9c5d4 !important;
+    line-height: 1.3;
+    white-space: normal;
+}
+
+.nav-sidebar .nav-treeview .nav-treeview > .nav-item > .nav-link > .nav-icon {
+    font-size: 10px !important;
+    width: 15px;
+}
+
+/* Nested active item */
+.nav-sidebar .nav-treeview .nav-treeview > .nav-item > .nav-link.active {
+    background-color: #1d4ed8 !important;
+    color: #ffffff !important;
+    font-weight: 600 !important;
+}
+
+/* Nested menu parent */
+.nav-sidebar .nav-treeview > .nav-item.has-treeview > .nav-link {
+    font-weight: 600 !important;
+    color: #e2e8f0 !important;
+    background-color: #263548;
+}
+
+/* =========================================
+   MENU ARROWS
+========================================= */
+
+.nav-sidebar .right {
+    font-size: 11px;
+    margin-top: 3px;
+}
+
+/* =========================================
+   LONG MENU NAMES
+========================================= */
+
+.nav-sidebar .nav-link p {
+    white-space: normal !important;
+    line-height: 1.35;
+    margin-bottom: 0;
+}
+
+/* Slightly smaller labels for long submenu items */
+.nav-sidebar .nav-treeview .nav-link p {
+    font-size: 12px;
+}
+
+.nav-sidebar .nav-treeview .nav-treeview .nav-link p {
+    font-size: 11.5px;
+}
+
+/* =========================================
+   SCROLLBAR
+========================================= */
+
+.main-sidebar .sidebar {
+    scrollbar-width: thin;
+    scrollbar-color: #64748b #1f2937;
+}
+
+.main-sidebar .sidebar::-webkit-scrollbar {
+    width: 5px;
+}
+
+.main-sidebar .sidebar::-webkit-scrollbar-thumb {
+    background-color: #64748b;
+    border-radius: 5px;
+}
+</style>

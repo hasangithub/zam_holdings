@@ -17,8 +17,13 @@
             </h3>
 
             <div class="card-tools">
+                <a href="{{ route('payment-entries.index') }}"
+                    class="btn btn-primary btn-sm">
+                    <i class="fas fa-plus"></i>
+                    Cash Entry
+                </a>
                 <a href="{{ route('cashbooks.create') }}"
-                   class="btn btn-primary btn-sm">
+                    class="btn btn-primary btn-sm">
                     <i class="fas fa-plus"></i>
                     New Transaction
                 </a>
@@ -30,8 +35,8 @@
 
             {{-- FILTERS --}}
             <form method="GET"
-                  action="{{ route('cashbooks.index') }}"
-                  class="mb-3">
+                action="{{ route('cashbooks.index') }}"
+                class="mb-3">
 
                 <div class="row">
 
@@ -40,14 +45,14 @@
                         <label>Cash Book</label>
 
                         <select name="cashbook_sub_ledger_id"
-                                class="form-control form-control-sm">
+                            class="form-control form-control-sm">
 
                             @foreach($cashBooks as $cashBook)
 
-                                <option value="{{ $cashBook->id }}"
-                                    {{ $cashbookId == $cashBook->id ? 'selected' : '' }}>
-                                    {{ $cashBook->name }}
-                                </option>
+                            <option value="{{ $cashBook->id }}"
+                                {{ $cashbookId == $cashBook->id ? 'selected' : '' }}>
+                                {{ $cashBook->name }}
+                            </option>
 
                             @endforeach
 
@@ -59,9 +64,9 @@
                         <label>From Date</label>
 
                         <input type="date"
-                               name="from_date"
-                               value="{{ request('from_date') }}"
-                               class="form-control form-control-sm">
+                            name="from_date"
+                            value="{{ request('from_date') }}"
+                            class="form-control form-control-sm">
                     </div>
 
                     {{-- TO DATE --}}
@@ -69,9 +74,9 @@
                         <label>To Date</label>
 
                         <input type="date"
-                               name="to_date"
-                               value="{{ request('to_date') }}"
-                               class="form-control form-control-sm">
+                            name="to_date"
+                            value="{{ request('to_date') }}"
+                            class="form-control form-control-sm">
                     </div>
 
                     {{-- BUTTONS --}}
@@ -80,13 +85,13 @@
 
                         <div>
                             <button type="submit"
-                                    class="btn btn-primary btn-sm">
+                                class="btn btn-primary btn-sm">
                                 <i class="fas fa-filter"></i>
                                 Filter
                             </button>
 
                             <a href="{{ route('cashbooks.index') }}"
-                               class="btn btn-secondary btn-sm">
+                                class="btn btn-secondary btn-sm">
                                 Reset
                             </a>
                         </div>
@@ -178,90 +183,90 @@
 
                         @forelse($transactions as $transaction)
 
-                            <tr>
+                        <tr>
 
-                                <td>
-                                    {{ $loop->iteration }}
-                                </td>
+                            <td>
+                                {{ $loop->iteration }}
+                            </td>
 
-                                <td>
-                                    {{ \Carbon\Carbon::parse($transaction->transaction_date)->format('Y-m-d') }}
-                                </td>
+                            <td>
+                                {{ \Carbon\Carbon::parse($transaction->transaction_date)->format('Y-m-d') }}
+                            </td>
 
-                                <td>
+                            <td>
 
-                                    @if($transaction->type === 'in')
+                                @if($transaction->type === 'in')
 
-                                        <span class="badge badge-success">
-                                            <i class="fas fa-arrow-down"></i>
-                                            Cash In
-                                        </span>
+                                <span class="badge badge-success">
+                                    <i class="fas fa-arrow-down"></i>
+                                    Cash In
+                                </span>
 
-                                    @else
+                                @else
 
-                                        <span class="badge badge-danger">
-                                            <i class="fas fa-arrow-up"></i>
-                                            Cash Out
-                                        </span>
+                                <span class="badge badge-danger">
+                                    <i class="fas fa-arrow-up"></i>
+                                    Cash Out
+                                </span>
 
-                                    @endif
+                                @endif
 
-                                </td>
+                            </td>
 
-                                <td>
-                                    {{ $transaction->reference ?: '-' }}
-                                </td>
+                            <td>
+                                {{ $transaction->reference ?: '-' }}
+                            </td>
 
-                                <td>
-                                    {{ $transaction->ledger->name ?? '-' }}
-                                </td>
+                            <td>
+                                {{ $transaction->ledger->name ?? '-' }}
+                            </td>
 
-                                <td>
-                                    {{ $transaction->subLedger->name ?? '-' }}
-                                </td>
+                            <td>
+                                {{ $transaction->subLedger->name ?? '-' }}
+                            </td>
 
-                                <td>
-                                    {{ $transaction->description ?: '-' }}
-                                </td>
+                            <td>
+                                {{ $transaction->description ?: '-' }}
+                            </td>
 
-                                <td class="text-right font-weight-bold">
+                            <td class="text-right font-weight-bold">
 
-                                    {{ number_format($transaction->amount, 2) }}
+                                {{ number_format($transaction->amount, 2) }}
 
-                                </td>
+                            </td>
 
-                                <td>
+                            <td>
 
-                                    @if($transaction->journal_entry_id)
+                                @if($transaction->journal_entry_id)
 
-                                        <span class="badge badge-info">
-                                            JE #{{ $transaction->journal_entry_id }}
-                                        </span>
+                                <span class="badge badge-info">
+                                    JE #{{ $transaction->journal_entry_id }}
+                                </span>
 
-                                    @else
+                                @else
 
-                                        -
+                                -
 
-                                    @endif
+                                @endif
 
-                                </td>
+                            </td>
 
-                                <td>
-                                    {{ $transaction->creator->name ?? '-' }}
-                                </td>
+                            <td>
+                                {{ $transaction->creator->name ?? '-' }}
+                            </td>
 
-                            </tr>
+                        </tr>
 
                         @empty
 
-                            <tr>
-                                <td colspan="10"
-                                    class="text-center text-muted py-4">
+                        <tr>
+                            <td colspan="10"
+                                class="text-center text-muted py-4">
 
-                                    No cash book transactions found.
+                                No cash book transactions found.
 
-                                </td>
-                            </tr>
+                            </td>
+                        </tr>
 
                         @endforelse
 

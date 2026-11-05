@@ -36,6 +36,7 @@ use App\Http\Controllers\GeneralLedgerController;
 use App\Http\Controllers\BranchController;
 use App\Http\Controllers\EmployeeController;
 use App\Http\Controllers\InvoiceCompanyProfileController;
+use App\Http\Controllers\PaymentEntryController;
 
 // Route::get('/', function () {
 //     return view('welcome');
@@ -254,6 +255,16 @@ Route::middleware(['auth'])->group(function () {
                 [SalesProfitLossController::class, 'pdf']
             )->name('pdf');
         });
+
+    Route::get('/payment-entries', [PaymentEntryController::class, 'index'])
+        ->name('payment-entries.index');
+
+    Route::get('/payment-entries/parties', [PaymentEntryController::class, 'getParties'])
+        ->name('payment-entries.parties');
+
+    Route::post('/payment-entries', [PaymentEntryController::class, 'store'])
+        ->name('payment-entries.store');
+
 
     Route::resource('freight-records', FreightRecordController::class);
     Route::get('/freight-records/{id}/pdf', [FreightRecordController::class, 'pdf'])
