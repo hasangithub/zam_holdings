@@ -34,17 +34,17 @@
 
             <div class="col-md-2">
                 <small class="text-muted">Invoice</small>
-                <div><strong>{{ $freight->sale->invoice_id }}</strong></div>
+                <div><strong>{{ $freight->invoice_id }}</strong></div>
             </div>
 
             <div class="col-md-2">
                 <small class="text-muted">Airway No.</small>
-                <div>{{ $freight->sale->airway_number }}</div>
+                <div>{{ $freight->sale->airway_number ?? '-'}}</div>
             </div>
 
             <div class="col-md-2">
                 <small class="text-muted">Consignor</small>
-                <div>{{ $freight->sale->consignor }}</div>
+                <div>{{ $freight->sale->consignor?? '-' }}</div>
             </div>
 
             <div class="col-md-2">
