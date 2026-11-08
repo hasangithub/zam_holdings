@@ -151,13 +151,13 @@ class FreightController extends Controller
                         . $freight->id,
                     'entries' => [
                         [
-                            'ledger_id' => 17,
+                            'ledger_id' => 15,
                             'sub_ledger_id' => null,
                             'debit' => $amountLkr,
                             'credit' => 0,
                         ],
                         [
-                            'ledger_id' => 5,
+                            'ledger_id' => 18,
                             'sub_ledger_id' => $freight->liability_sub_ledger_id,  // liabilty sub ledger
                             'debit' => 0,
                             'credit' => $amountLkr,
