@@ -509,7 +509,7 @@ class FreightController extends Controller
             ->orderBy('name')
             ->get();
 
-        return view('freight_expenses.statement_service', compact(
+        return view('freight_expenses.statement', compact(
             'freight',
             'ledger',
             'all',
