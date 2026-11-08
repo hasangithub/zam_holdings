@@ -257,12 +257,12 @@ class SaleController extends Controller
     }
 
     public function storeExport(Request $request)
-    {
+    {dd($request);
         $request->validate([
             'customer_id'                => 'required|exists:customers,id',
             'exchange_rate'              => 'required|numeric|gt:0',
             'sale_date'                  => 'required|date',
-            'status'                     => 'required|in:draft,confirmed',
+            'status'                     => 'required|in:draft,completed',
 
             'items'                      => 'required|array|min:1',
             'items.*.item_id'            => 'required|integer|distinct|exists:items,id',
@@ -426,7 +426,7 @@ class SaleController extends Controller
             |--------------------------------------------------------------------------
             */
 
-                if ($status === 'confirmed') {
+                if ($status === 'completed') {
 
                     $journal = Accounting::postJournal([
                         'branch_id'   => $branchId,
@@ -1169,7 +1169,7 @@ class SaleController extends Controller
         $validated = $request->validate([
             'customer_id' => ['required', 'exists:customers,id'],
             'exchange_rate' => ['required', 'numeric', 'gt:0'],
-            'status' => ['required', 'in:draft,confirmed'],
+            'status' => ['required', 'in:draft,completed'],
 
             'items' => ['required', 'array', 'min:1'],
             'items.*.item_id' => ['required', 'integer', 'distinct', 'exists:items,id'],
@@ -1201,7 +1201,7 @@ class SaleController extends Controller
                 $oldStatus = $sale->status;
                 $newStatus = $validated['status'];
 
-                if ($oldStatus === 'confirmed' && $newStatus === 'draft') {
+                if ($oldStatus === 'completed' && $newStatus === 'draft') {
                     throw ValidationException::withMessages([
                         'status' => 'A confirmed sale cannot be changed back to draft.',
                     ]);
@@ -1270,7 +1270,7 @@ class SaleController extends Controller
             |--------------------------------------------------------------------------
             */
 
-                if ($oldStatus === 'confirmed') {
+                if ($oldStatus === 'completed') {
                     Accounting::reverse(Sale::class, $sale->id);
                 }
 
@@ -1461,7 +1461,7 @@ class SaleController extends Controller
             |--------------------------------------------------------------------------
             */
 
-                if ($newStatus === 'confirmed') {
+                if ($newStatus === 'completed') {
 
                     $journal = Accounting::postJournal([
                         'branch_id' => $branchId,

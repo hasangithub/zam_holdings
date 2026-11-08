@@ -81,12 +81,12 @@
 
                         <select name="status" id="status" class="form-control" required>
                             <option value="draft"
-                                {{ old('status', $sale->status ?? 'confirmed') === 'draft' ? 'selected' : '' }}>
+                                {{ old('status', $sale->status ?? 'completed') === 'draft' ? 'selected' : '' }}>
                                 Save as Draft
                             </option>
 
-                            <option value="confirmed"
-                                {{ old('status', $sale->status ?? 'confirmed') === 'confirmed' ? 'selected' : '' }}>
+                            <option value="completed"
+                                {{ old('status', $sale->status ?? 'completed') === 'completed' ? 'selected' : '' }}>
                                 Confirm Sale
                             </option>
                         </select>
