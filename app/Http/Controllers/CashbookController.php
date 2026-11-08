@@ -17,22 +17,55 @@ class CashbookController extends Controller
      */
     public function index(Request $request)
     {
-        $cashBankLedger = Ledger::where('id', '1')
-            ->firstOrFail();
+        $branchId = auth()->user()->branch_id;
+        $userId = auth()->id();
 
-        // Only current user's cashbooks in current branch
-        $cashBooks = SubLedger::where('ledger_id', $cashBankLedger->id)
-            ->where('branch_id', auth()->user()->branch_id)
+        $request->validate([
+            'cashbook_sub_ledger_id' => 'nullable|integer',
+            'from_date' => 'nullable|date',
+            'to_date' => 'nullable|date|after_or_equal:from_date',
+        ]);
+
+        /*
+    |--------------------------------------------------------------------------
+    | Cash Books
+    |--------------------------------------------------------------------------
+    | Only cash/bank subledgers assigned to this branch and user.
+    */
+        $cashBooks = SubLedger::with('ledger')
+            ->where('branch_id', $branchId)
+            ->whereHas('ledger.accountGroup', function ($query) {
+                $query->where('id', '1');
+            })
             ->orderBy('name')
             ->get();
 
-        $cashbookId = $request->cashbook_sub_ledger_id;
+        /*
+    |--------------------------------------------------------------------------
+    | Selected Cash Book
+    |--------------------------------------------------------------------------
+    */
+        $cashbookId = $request->input('cashbook_sub_ledger_id');
 
-        // Default to first available cashbook
-        if (!$cashbookId && $cashBooks->count()) {
-            $cashbookId = $cashBooks->first()->id;
+        if ($cashbookId) {
+            // Ensure selected cashbook belongs to this user and branch.
+            $selectedCashBook = $cashBooks->firstWhere('id', $cashbookId);
+
+            if (!$selectedCashBook) {
+                abort(403, 'You are not authorized to access this cash book.');
+            }
+        } else {
+            $cashbookId = optional($cashBooks->first())->id;
         }
 
+        $fromDate = $request->input('from_date');
+        $toDate = $request->input('to_date');
+
+        /*
+    |--------------------------------------------------------------------------
+    | Cash Book Transactions
+    |--------------------------------------------------------------------------
+    */
         $transactions = collect();
 
         $totalCashIn = 0;
@@ -40,38 +73,22 @@ class CashbookController extends Controller
 
         if ($cashbookId) {
 
-            // Security: selected cashbook MUST belong
-            // to current branch and current user
-            $cashbook = $cashBooks->firstWhere('id', $cashbookId);
-
-            if (!$cashbook) {
-                abort(403, 'Invalid cashbook selected.');
-            }
-
-            $query = CashbookTransaction::with([
+            $transactionQuery = CashbookTransaction::with([
                 'ledger',
                 'subLedger',
+                'creator',
+                'journalEntry',
             ])
-                ->where('branch_id', auth()->user()->branch_id)
-                ->where('cashbook_sub_ledger_id', $cashbookId);
+                ->where('branch_id', $branchId)
+                ->where('cashbook_sub_ledger_id', $cashbookId)
+                ->when($fromDate, function ($query) use ($fromDate) {
+                    $query->whereDate('transaction_date', '>=', $fromDate);
+                })
+                ->when($toDate, function ($query) use ($toDate) {
+                    $query->whereDate('transaction_date', '<=', $toDate);
+                });
 
-            if ($request->filled('from_date')) {
-                $query->whereDate(
-                    'transaction_date',
-                    '>=',
-                    $request->from_date
-                );
-            }
-
-            if ($request->filled('to_date')) {
-                $query->whereDate(
-                    'transaction_date',
-                    '<=',
-                    $request->to_date
-                );
-            }
-
-            $transactions = $query
+            $transactions = $transactionQuery
                 ->orderBy('transaction_date')
                 ->orderBy('id')
                 ->get();
@@ -85,17 +102,50 @@ class CashbookController extends Controller
                 ->sum('amount');
         }
 
+        /*
+    |--------------------------------------------------------------------------
+    | Journal Summary
+    |--------------------------------------------------------------------------
+    */
+        $journalSummary = [
+            'openingBalance' => 0,
+            'journals' => collect(),
+            'totalDebit' => 0,
+            'totalCredit' => 0,
+            'closingBalance' => 0,
+        ];
+
+        if ($cashbookId) {
+            $journalSummary = $this->getCashBookJournalSummary(
+                (int) $cashbookId,
+                (int) $branchId,
+                $fromDate,
+                $toDate
+            );
+        }
+
+        $journalOpeningBalance = $journalSummary['openingBalance'];
+        $journalEntries = $journalSummary['journals'];
+        $journalTotalDebit = $journalSummary['totalDebit'];
+        $journalTotalCredit = $journalSummary['totalCredit'];
+        $journalClosingBalance = $journalSummary['closingBalance'];
+
         return view('cashbooks.index', compact(
             'cashBooks',
-            'transactions',
             'cashbookId',
+            'transactions',
             'totalCashIn',
-            'totalCashOut'
+            'totalCashOut',
+            'journalOpeningBalance',
+            'journalEntries',
+            'journalTotalDebit',
+            'journalTotalCredit',
+            'journalClosingBalance'
         ));
     }
 
     public function subLedgers($ledgerId)
-    {  
+    {
         $ledger = Ledger::findOrFail($ledgerId);
 
         /*
@@ -153,7 +203,7 @@ class CashbookController extends Controller
      */
     public function store(Request $request)
     {
-        
+
 
         $request->validate([
             'cashbook_sub_ledger_id' => [
@@ -269,7 +319,7 @@ class CashbookController extends Controller
         |--------------------------------------------------------------------------
         */
 
-       
+
 
         DB::transaction(function () use (
             $request,
@@ -375,5 +425,121 @@ class CashbookController extends Controller
         return redirect()
             ->route('cashbooks.index')
             ->with('success', 'Cash book transaction recorded successfully.');
+    }
+
+    private function getCashBookJournalSummary(
+        int $cashbookId,
+        int $branchId,
+        ?string $fromDate = null,
+        ?string $toDate = null
+    ) {
+        /*
+    |--------------------------------------------------------------------------
+    | Validate Cash Book
+    |--------------------------------------------------------------------------
+    */
+        $cashBook = SubLedger::where('branch_id', $branchId)
+            ->findOrFail($cashbookId);
+
+        /*
+    |--------------------------------------------------------------------------
+    | Base Journal Query
+    |--------------------------------------------------------------------------
+    */
+        $baseQuery = DB::table('journal_entry_details as jed')
+            ->join(
+                'journal_entries as je',
+                'je.id',
+                '=',
+                'jed.journal_entry_id'
+            )
+            ->where('je.branch_id', $branchId)
+            ->where('jed.sub_ledger_id', $cashBook->id);
+
+        /*
+    |--------------------------------------------------------------------------
+    | Opening Balance
+    |--------------------------------------------------------------------------
+    | All journal movements before From Date.
+    */
+        $openingBalance = 0;
+
+        if ($fromDate) {
+
+            $opening = (clone $baseQuery)
+                ->whereDate('je.journal_date', '<', $fromDate)
+                ->selectRaw('
+                COALESCE(SUM(jed.debit), 0) as total_debit,
+                COALESCE(SUM(jed.credit), 0) as total_credit
+            ')
+                ->first();
+
+            $openingBalance =
+                (float) $opening->total_debit -
+                (float) $opening->total_credit;
+        }
+
+        /*
+    |--------------------------------------------------------------------------
+    | Journal Entries
+    |--------------------------------------------------------------------------
+    */
+        $journals = (clone $baseQuery)
+            ->when($fromDate, function ($query) use ($fromDate) {
+                $query->whereDate('je.journal_date', '>=', $fromDate);
+            })
+            ->when($toDate, function ($query) use ($toDate) {
+                $query->whereDate('je.journal_date', '<=', $toDate);
+            })
+            ->select([
+                'je.id as journal_entry_id',
+                'je.journal_date',
+                'je.description',
+                'je.created_by',
+                'jed.id as detail_id',
+                'jed.ledger_id',
+                'jed.sub_ledger_id',
+                'jed.debit',
+                'jed.credit',
+            ])
+            ->orderBy('je.journal_date')
+            ->orderBy('je.id')
+            ->orderBy('jed.id')
+            ->get();
+
+        /*
+    |--------------------------------------------------------------------------
+    | Running Balance
+    |--------------------------------------------------------------------------
+    */
+        $runningBalance = $openingBalance;
+
+        foreach ($journals as $journal) {
+
+            $debit = (float) $journal->debit;
+            $credit = (float) $journal->credit;
+
+            $runningBalance += $debit - $credit;
+
+            $journal->running_balance = $runningBalance;
+        }
+
+        /*
+    |--------------------------------------------------------------------------
+    | Totals
+    |--------------------------------------------------------------------------
+    */
+        $totalDebit = (float) $journals->sum('debit');
+        $totalCredit = (float) $journals->sum('credit');
+
+        $closingBalance = $openingBalance + $totalDebit - $totalCredit;
+
+        return [
+            'openingBalance' => $openingBalance,
+            'journals' => $journals,
+            'totalDebit' => $totalDebit,
+            'totalCredit' => $totalCredit,
+            'closingBalance' => $closingBalance,
+        ];
     }
 }

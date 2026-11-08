@@ -281,10 +281,7 @@ Route::middleware(['auth'])->group(function () {
         'storeOpeningBalance',
     ])->name('freight-expenses.opening-balance');
 
-    Route::get(
-    '/freight-expenses/{id}/statement-service',
-    [FreightController::class, 'statementService']
-)->name('freight-services.statement');
+    Route::get('/freight-expenses/{id}/statement-service',[FreightController::class, 'statementService'])->name('freight-services.statement');
 
     Route::resource('freight-services', FreightServiceController::class)->except(['show', 'destroy']);
     Route::resource('freights', FreightController::class)->only(['index', 'create', 'store', 'show']);
