@@ -243,7 +243,7 @@ class FreightController extends Controller
                         'credit' => $request->amount,
                     ],
                     [
-                        'ledger_id' => 5,
+                        'ledger_id' => 18,
                         'sub_ledger_id' =>  $freight->service->liability_sub_ledger_id,
                         'debit' => $request->amount,
                         'credit' => 0,
@@ -285,13 +285,13 @@ class FreightController extends Controller
 
                 'entries' => [
                     [
-                        'ledger_id' => 10,
+                        'ledger_id' => 15,
                         'sub_ledger_id' => null,
                         'debit' => 0,
                         'credit' => $freight->amount_lkr,
                     ],
                     [
-                        'ledger_id' => 5,
+                        'ledger_id' => 18,
                         'sub_ledger_id' =>  $freight->service->liability_sub_ledger_id,
                         'debit' =>  $freight->amount_lkr,
                         'credit' => 0,
