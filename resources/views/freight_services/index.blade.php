@@ -10,7 +10,7 @@
 
         <div class="card-tools">
             <a href="{{ route('freight-services.create') }}"
-               class="btn btn-primary btn-sm">
+                class="btn btn-primary btn-sm">
                 <i class="fas fa-plus"></i> Add Service
             </a>
         </div>
@@ -30,32 +30,37 @@
 
             <tbody>
                 @forelse($services as $service)
-                    <tr>
-                        <td>{{ $loop->iteration }}</td>
+                <tr>
+                    <td>{{ $loop->iteration }}</td>
 
-                        <td>{{ $service->name }}</td>
+                    <td>{{ $service->name }}</td>
 
-                        <td>
-                            @if($service->active)
-                                <span class="badge badge-success">Active</span>
-                            @else
-                                <span class="badge badge-secondary">Inactive</span>
-                            @endif
-                        </td>
+                    <td>
+                        @if($service->active)
+                        <span class="badge badge-success">Active</span>
+                        @else
+                        <span class="badge badge-secondary">Inactive</span>
+                        @endif
+                    </td>
 
-                        <td>
-                            <a href="{{ route('freight-services.edit',$service->id) }}"
-                               class="btn btn-info btn-sm">
-                                <i class="fas fa-edit"></i>
-                            </a>
-                        </td>
-                    </tr>
+                    <td>
+                        <a href="{{ route('freight-services.edit',$service->id) }}"
+                            class="btn btn-info btn-sm">
+                            <i class="fas fa-edit"></i>
+                        </a>
+                        <a href="{{ route('freight-services.statement', $service->id) }}"
+                            class="btn btn-sm btn-info"
+                            title="Statement">
+                            <i class="fas fa-file-invoice-dollar"></i>
+                        </a>
+                    </td>
+                </tr>
                 @empty
-                    <tr>
-                        <td colspan="4" class="text-center">
-                            No freight services found.
-                        </td>
-                    </tr>
+                <tr>
+                    <td colspan="4" class="text-center">
+                        No freight services found.
+                    </td>
+                </tr>
                 @endforelse
             </tbody>
         </table>

@@ -509,7 +509,7 @@ class FreightController extends Controller
             ->orderBy('name')
             ->get();
 
-        return view('freight_expenses.statement', compact(
+        return view('freight_expenses.statement_service', compact(
             'freight',
             'ledger',
             'all',
@@ -596,5 +596,241 @@ class FreightController extends Controller
         return redirect()
             ->route('freight-expenses.statement', $id)
             ->with('success', 'Opening balance recorded successfully.');
+    }
+
+    public function statementService(Request $request, $id)
+    {
+        $branchId = auth()->user()->branch_id;
+
+        $service = FreightService::findOrFail($id);
+
+        $all = $request->boolean('all');
+
+        $fromDate = $request->input(
+            'from_date',
+            now()->subDays(6)->toDateString()
+        );
+
+        $toDate = $request->input(
+            'to_date',
+            now()->toDateString()
+        );
+
+        $request->validate([
+            'from_date' => 'nullable|date',
+            'to_date' => 'nullable|date|after_or_equal:from_date',
+        ]);
+
+        $fromDate = Carbon::parse($fromDate)->toDateString();
+        $toDate = Carbon::parse($toDate)->toDateString();
+
+        /*
+    |--------------------------------------------------------------------------
+    | Get all freight records for this service
+    |--------------------------------------------------------------------------
+    */
+
+        $freights = Freight::with('sale')
+            ->where('branch_id', $branchId)
+            ->where('freight_service_id', $service->id)
+            ->orderBy('date')
+            ->orderBy('id')
+            ->get();
+
+        $freightIds = $freights->pluck('id');
+
+        /*
+    |--------------------------------------------------------------------------
+    | Build complete statement
+    |--------------------------------------------------------------------------
+    */
+
+        $completeLedger = collect();
+
+        // Freight invoices and opening balances
+        foreach ($freights as $freight) {
+
+            $isOpening = (bool) $freight->is_opening_balance;
+
+            $invoiceId = $freight->invoice_id
+                ?? ($freight->sale->invoice_number ?? '-');
+
+            $completeLedger->push([
+                'date' => Carbon::parse($freight->date)->toDateString(),
+
+                'module' => 'Freight',
+
+                'reference' => 'Freight #' . $freight->id
+                    . ' / Invoice #' . $invoiceId,
+
+                'type' => $isOpening ? 'Opening Balance' : 'Invoice',
+
+                'description' => $isOpening
+                    ? 'Opening Balance - Invoice #' . $invoiceId
+                    : 'Freight Invoice - Invoice #' . $invoiceId,
+
+                'debit' => (float) $freight->amount_lkr,
+
+                'credit' => 0,
+
+                'sequence' => 1,
+
+                'id' => $freight->id,
+            ]);
+        }
+
+        /*
+    |--------------------------------------------------------------------------
+    | Freight payments
+    |--------------------------------------------------------------------------
+    */
+
+        $payments = FreightPayment::whereIn('freight_id', $freightIds)
+            ->orderBy('payment_date')
+            ->orderBy('id')
+            ->get();
+
+        foreach ($payments as $payment) {
+
+            $completeLedger->push([
+                'date' => Carbon::parse($payment->payment_date)->toDateString(),
+
+                'module' => 'Freight',
+
+                'reference' => 'Payment #' . $payment->id
+                    . ' / Freight #' . $payment->freight_id,
+
+                'type' => 'Payment',
+
+                'description' => $payment->note ?: 'Freight Payment',
+
+                'debit' => 0,
+
+                'credit' => (float) $payment->amount,
+
+                'sequence' => 2,
+
+                'id' => $payment->id,
+            ]);
+        }
+
+        /*
+    |--------------------------------------------------------------------------
+    | Sort complete history
+    |--------------------------------------------------------------------------
+    */
+
+        $completeLedger = $completeLedger
+            ->sortBy([
+                ['date', 'asc'],
+                ['sequence', 'asc'],
+                ['id', 'asc'],
+            ])
+            ->values();
+
+        /*
+    |--------------------------------------------------------------------------
+    | Calculate running balance
+    |--------------------------------------------------------------------------
+    */
+
+        $runningBalance = 0;
+
+        $completeLedger = $completeLedger->map(function ($row) use (&$runningBalance) {
+
+            $runningBalance += $row['debit'] - $row['credit'];
+
+            $row['balance'] = $runningBalance;
+
+            return $row;
+        });
+
+        /*
+    |--------------------------------------------------------------------------
+    | Apply date filtering
+    |--------------------------------------------------------------------------
+    */
+
+        if ($all) {
+
+            $ledger = $completeLedger->values();
+
+            $openingBalance = 0;
+        } else {
+
+            $openingBalance = (float) $completeLedger
+                ->filter(function ($row) use ($fromDate) {
+                    return $row['date'] < $fromDate;
+                })
+                ->sum(function ($row) {
+                    return $row['debit'] - $row['credit'];
+                });
+
+            $ledger = $completeLedger
+                ->filter(function ($row) use ($fromDate, $toDate) {
+                    return $row['date'] >= $fromDate
+                        && $row['date'] <= $toDate;
+                })
+                ->values();
+        }
+
+        /*
+    |--------------------------------------------------------------------------
+    | Period totals and outstanding balance
+    |--------------------------------------------------------------------------
+    */
+
+        $periodPurchase = (float) $ledger->sum('debit');
+
+        $periodPaid = (float) $ledger->sum('credit');
+
+        $balance = $all
+            ? (float) ($ledger->last()['balance'] ?? 0)
+            : $openingBalance + $periodPurchase - $periodPaid;
+
+        /*
+    |--------------------------------------------------------------------------
+    | Recalculate displayed running balances
+    |--------------------------------------------------------------------------
+    */
+
+        if (!$all) {
+
+            $runningBalance = $openingBalance;
+
+            $ledger = $ledger->map(function ($row) use (&$runningBalance) {
+
+                $runningBalance += $row['debit'] - $row['credit'];
+
+                $row['balance'] = $runningBalance;
+
+                return $row;
+            });
+        }
+
+        /*
+    |--------------------------------------------------------------------------
+    | Payment accounts
+    |--------------------------------------------------------------------------
+    */
+
+        $paymentSubLedgers = SubLedger::where('ledger_id', 1)
+            ->where('branch_id', $branchId)
+            ->orderBy('name')
+            ->get();
+
+        return view('freight_expenses.statement_service', compact(
+            'service',
+            'freights',
+            'ledger',
+            'all',
+            'fromDate',
+            'toDate',
+            'openingBalance',
+            'periodPurchase',
+            'periodPaid',
+            'balance',
+            'paymentSubLedgers'
+        ));
     }
 }
