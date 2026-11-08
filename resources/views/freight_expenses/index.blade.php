@@ -67,15 +67,15 @@
                 @forelse($freights as $freight)
 
                 <tr>
-                    <td>{{ $freight->sale->invoice_id }}</td>
+                    <td>{{ $freight->invoice_id }}</td>
 
                     <td>
                         {{ \Carbon\Carbon::parse($freight->date)->format('Y-m-d') }}
                     </td>
 
-                    <td>{{ $freight->sale->airway_number }}</td>
+                    <td>{{ $freight->sale?->airway_number }}</td>
 
-                    <td>{{ $freight->sale->consignor }}</td>
+                    <td>{{ $freight->sale?->consignor }}</td>
 
                     <td>{{ $freight->service->name }}</td>
 

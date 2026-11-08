@@ -9,6 +9,8 @@ class Freight extends Model
     protected $fillable = [
         'branch_id',
         'sale_id',
+        'is_opening_balance',
+        'invoice_id',
         'freight_service_id',
         'date',
         'exchange_rate',

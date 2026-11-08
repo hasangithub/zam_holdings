@@ -48,8 +48,6 @@ class FreightController extends Controller
             ->latest()
             ->get();
 
-
-
         $services = FreightService::where('active', true)
             ->orderBy('name')
             ->get();
@@ -63,51 +61,111 @@ class FreightController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'sale_id' => 'required|exists:sales,id',
-            'freight_service_id' =>
-            'required|exists:freight_services,id',
+            'invoice_type' => 'required|in:invoice,opening',
+            'sale_id' => 'required_if:invoice_type,invoice|nullable|exists:sales,id',
+            'invoice_id' => 'required_if:invoice_type,opening|nullable|string|max:255',
+            'freight_service_id' => 'required|exists:freight_services,id',
             'date' => 'required|date',
             'exchange_rate' => 'required|numeric|gt:0',
             'amount_usd' => 'required|numeric|gt:0',
         ]);
 
-        $sale = Sale::where('branch_id', auth()->user()->branch_id)->findOrFail($request->sale_id);
+        $branchId = auth()->user()->branch_id;
 
-        $amountLkr = $request->amount_usd * $request->exchange_rate;
+        DB::transaction(function () use ($request, $branchId) {
 
-        $freight = Freight::create([
-            'branch_id' => auth()->user()->branch_id,
-            'sale_id' => $sale->id,
-            'freight_service_id' => $request->freight_service_id,
-            'date' => $request->date,
-            'exchange_rate' => $request->exchange_rate,
-            'amount_usd' => $request->amount_usd,
-            'amount_lkr' => $amountLkr,
-            'total_paid' => 0,
-            'balance_amount' => $amountLkr,
-            'status' => 'active',
-        ]);
+            $saleId = null;
+            $invoiceId = null;
+            $isOpeningBalance = 0;
 
-        Accounting::postJournal([
-            'branch_id' => auth()->user()->branch_id,
-            'date' => $request->date,
-            'description' => 'Freight Expense - Freight #' . $freight->id . ' - Invoice #' . $sale->invoice_number,
+            if ($request->invoice_type === 'invoice') {
 
-            'entries' => [
-                [
-                    'ledger_id' => 10,
-                    'sub_ledger_id' => null,
-                    'debit' => $amountLkr,
-                    'credit' => 0,
-                ],
-                [
-                    'ledger_id' => 5,
-                    'sub_ledger_id' =>  $freight->service->liability_sub_ledger_id,
-                    'debit' => 0,
-                    'credit' => $amountLkr,
-                ],
-            ]
-        ]);
+                $sale = Sale::where('branch_id', $branchId)
+                    ->lockForUpdate()
+                    ->findOrFail($request->sale_id);
+
+                $saleId = $sale->id;
+
+                // Use the invoice number from the existing sales table
+                $invoiceId = $sale->invoice_id;
+
+                $isOpeningBalance = 0;
+            } else {
+
+                $saleId = null;
+
+                // Old-system invoice number entered manually
+                $invoiceId = trim($request->invoice_id);
+
+                $isOpeningBalance = 1;
+            }
+
+            $amountLkr = $request->amount_usd * $request->exchange_rate;
+
+            $freight = Freight::create([
+                'branch_id' => $branchId,
+                'sale_id' => $saleId,
+                'is_opening_balance' => $isOpeningBalance,
+                'invoice_id' => $invoiceId,
+                'freight_service_id' => $request->freight_service_id,
+                'date' => $request->date,
+                'exchange_rate' => $request->exchange_rate,
+                'amount_usd' => $request->amount_usd,
+                'amount_lkr' => $amountLkr,
+                'total_paid' => 0,
+                'balance_amount' => $amountLkr,
+                'status' => 'active',
+            ]);
+
+            if ($request->invoice_type === 'invoice') {
+                Accounting::postJournal([
+                    'branch_id' => $branchId,
+                    'date' => $request->date,
+
+                    'description' => 'Freight Expense - Freight #' .
+                        $freight->id . ' - Invoice #' . $invoiceId,
+
+                    'entries' => [
+                        [
+                            'ledger_id' => 10,
+                            'sub_ledger_id' => null,
+                            'debit' => $amountLkr,
+                            'credit' => 0,
+                        ],
+                        [
+                            'ledger_id' => 5,
+                            'sub_ledger_id' => $freight->service->liability_sub_ledger_id,
+                            'debit' => 0,
+                            'credit' => $amountLkr,
+                        ],
+                    ]
+                ]);
+            } else {
+                $journal = Accounting::postJournal([
+                    'branch_id' => $branchId,
+                    'date' => $request->date,
+                    'created_by' => auth()->id(),
+                    'description' => 'Freight Opening Balance - '
+                        . $freight->service->name
+                        . ' - Freight ID: '
+                        . $freight->id,
+                    'entries' => [
+                        [
+                            'ledger_id' => 17,
+                            'sub_ledger_id' => null,
+                            'debit' => $amountLkr,
+                            'credit' => 0,
+                        ],
+                        [
+                            'ledger_id' => 5,
+                            'sub_ledger_id' => $freight->liability_sub_ledger_id,  // liabilty sub ledger
+                            'debit' => 0,
+                            'credit' => $amountLkr,
+                        ],
+                    ],
+                ]);
+            }
+        });
 
         return redirect()
             ->route('freights.index')
@@ -250,7 +308,11 @@ class FreightController extends Controller
 
     public function statement(Request $request, $id)
     {
-        $freight = Freight::with(['sale', 'service', 'openingJournalEntry'])
+        $freight = Freight::with([
+            'sale',
+            'service',
+            'openingJournalEntry'
+        ])
             ->where('branch_id', auth()->user()->branch_id)
             ->findOrFail($id);
 
@@ -276,86 +338,71 @@ class FreightController extends Controller
 
         /*
     |--------------------------------------------------------------------------
-    | Opening balance journal
-    |--------------------------------------------------------------------------
-    | The journal credits ledger 5 / the freight service liability subledger.
-    | In this supplier-style statement, that amount increases the payable
-    | balance, so it is displayed as a debit in the statement.
-    */
-
-        $openingAmount = 0;
-        $openingDate = null;
-
-        if (
-            $freight->opening_journal_entry_id &&
-            $freight->service &&
-            $freight->service->liability_sub_ledger_id
-        ) {
-            $openingQuery = DB::table('journal_entry_details')
-                ->where(
-                    'journal_entry_id',
-                    $freight->opening_journal_entry_id
-                )
-                ->where('ledger_id', 5)
-                ->where(
-                    'sub_ledger_id',
-                    $freight->service->liability_sub_ledger_id
-                );
-
-            $openingAmount = (float) (clone $openingQuery)->sum('credit');
-
-            $openingDate = DB::table('journal_entries')
-                ->where('id', $freight->opening_journal_entry_id)
-                ->value('journal_date');
-        }
-
-        /*
-    |--------------------------------------------------------------------------
-    | Build the complete statement
+    | Build complete statement
     |--------------------------------------------------------------------------
     */
 
         $completeLedger = collect();
 
-        // Opening balance journal
-        if ($openingAmount > 0 && $openingDate) {
+        /*
+    |--------------------------------------------------------------------------
+    | Opening Balance Freight
+    |--------------------------------------------------------------------------
+    | If is_opening_balance = 1, the freight itself represents the
+    | opening balance from the old system.
+    */
+
+        if ($freight->is_opening_balance) {
+
             $completeLedger->push([
-                'date' => Carbon::parse($openingDate)->toDateString(),
+                'date' => Carbon::parse($freight->date)->toDateString(),
                 'module' => 'Freight',
-                'reference' => 'Journal #' . $freight->opening_journal_entry_id,
+                'reference' => 'Opening Invoice #' . $freight->invoice_id,
                 'type' => 'Opening Balance',
-                'description' => 'Freight Opening Balance',
-                'debit' => $openingAmount,
+                'description' => 'Freight Opening Balance - Invoice #'
+                    . $freight->invoice_id,
+                'debit' => (float) $freight->amount_lkr,
+                'credit' => 0,
+            ]);
+        } else {
+
+            /*
+        |--------------------------------------------------------------------------
+        | Normal Sales Invoice Freight
+        |--------------------------------------------------------------------------
+        | Connected through sale_id.
+        */
+
+            $invoiceNumber = $freight->sale->invoice_number
+                ?? $freight->invoice_id
+                ?? $freight->sale_id;
+
+            $completeLedger->push([
+                'date' => Carbon::parse($freight->date)->toDateString(),
+                'module' => 'Freight',
+                'reference' => 'Freight #' . $freight->id,
+                'type' => 'Invoice',
+                'description' => 'Freight Invoice - '
+                    . ($freight->service->name ?? 'Freight Service')
+                    . ' (Invoice: ' . $invoiceNumber . ')',
+                'debit' => (float) $freight->amount_lkr,
                 'credit' => 0,
             ]);
         }
 
-        // Freight invoice
-        $invoiceDate = $freight->created_at
-            ? $freight->created_at->toDateString()
-            : now()->toDateString();
+        /*
+    |--------------------------------------------------------------------------
+    | Payments
+    |--------------------------------------------------------------------------
+    */
 
-        $invoiceAmount = (float) $freight->amount_lkr;
-
-        $completeLedger->push([
-            'date' => $invoiceDate,
-            'module' => 'Freight',
-            'reference' => 'Freight #' . $freight->id,
-            'type' => 'Invoice',
-            'description' => 'Freight Invoice - '
-                . ($freight->service->name ?? 'Freight Service')
-                . ' (Sale ID: ' . $freight->sale_id . ')',
-            'debit' => $invoiceAmount,
-            'credit' => 0,
-        ]);
-
-        // Payments made against this freight
         $payments = FreightPayment::where('freight_id', $freight->id)
             ->orderBy('payment_date')
             ->orderBy('id')
             ->get();
 
         foreach ($payments as $payment) {
+
             $completeLedger->push([
                 'date' => Carbon::parse($payment->payment_date)->toDateString(),
                 'module' => 'Freight',
@@ -367,7 +414,12 @@ class FreightController extends Controller
             ]);
         }
 
-        // Sort by date, then calculate balances over the complete history.
+        /*
+    |--------------------------------------------------------------------------
+    | Sort and calculate running balance
+    |--------------------------------------------------------------------------
+    */
+
         $completeLedger = $completeLedger
             ->sortBy('date')
             ->values();
@@ -375,7 +427,9 @@ class FreightController extends Controller
         $runningBalance = 0;
 
         $completeLedger = $completeLedger->map(function ($row) use (&$runningBalance) {
+
             $runningBalance += $row['debit'] - $row['credit'];
+
             $row['balance'] = $runningBalance;
 
             return $row;
@@ -383,14 +437,17 @@ class FreightController extends Controller
 
         /*
     |--------------------------------------------------------------------------
-    | Apply date filtering after calculating the complete running balance
+    | Apply date filtering
     |--------------------------------------------------------------------------
     */
 
         if ($all) {
+
             $ledger = $completeLedger->values();
+
             $openingBalance = 0;
         } else {
+
             $openingBalance = (float) $completeLedger
                 ->filter(function ($row) use ($fromDate) {
                     return $row['date'] < $fromDate;
@@ -407,29 +464,45 @@ class FreightController extends Controller
                 ->values();
         }
 
-        // Period totals exclude the brought-forward balance.
+        /*
+    |--------------------------------------------------------------------------
+    | Period totals
+    |--------------------------------------------------------------------------
+    */
+
         $periodPurchase = (float) $ledger->sum('debit');
+
         $periodPaid = (float) $ledger->sum('credit');
 
-        // The final balance must include the brought-forward amount.
         $balance = $all
             ? (float) ($ledger->last()['balance'] ?? 0)
             : $openingBalance + $periodPurchase - $periodPaid;
 
         /*
-     * Recalculate displayed balances from the brought-forward amount so the
-     * first row in a filtered period continues from the opening balance.
-     */
+    |--------------------------------------------------------------------------
+    | Recalculate displayed balances
+    |--------------------------------------------------------------------------
+    */
+
         if (!$all) {
+
             $runningBalance = $openingBalance;
 
             $ledger = $ledger->map(function ($row) use (&$runningBalance) {
+
                 $runningBalance += $row['debit'] - $row['credit'];
+
                 $row['balance'] = $runningBalance;
 
                 return $row;
             });
         }
+
+        /*
+    |--------------------------------------------------------------------------
+    | Cash / Bank subledgers
+    |--------------------------------------------------------------------------
+    */
 
         $paymentSubLedgers = \App\Models\SubLedger::where('ledger_id', 1)
             ->where('branch_id', auth()->user()->branch_id)
@@ -451,7 +524,7 @@ class FreightController extends Controller
     }
 
     public function storeOpeningBalance(Request $request, $id)
-    { 
+    {
         $request->validate([
             'opening_date' => ['required', 'date'],
             'opening_amount' => ['required', 'numeric', 'gt:0'],
@@ -484,7 +557,7 @@ class FreightController extends Controller
                 'id',
                 $freight->freight_service_id
             )
-               
+
                 ->firstOrFail();
 
             $amount = (float) $request->opening_amount;
