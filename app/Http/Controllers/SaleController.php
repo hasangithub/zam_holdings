@@ -257,7 +257,7 @@ class SaleController extends Controller
     }
 
     public function storeExport(Request $request)
-    {dd($request);
+    {
         $request->validate([
             'customer_id'                => 'required|exists:customers,id',
             'exchange_rate'              => 'required|numeric|gt:0',
@@ -1513,8 +1513,7 @@ class SaleController extends Controller
                 }
             });
 
-            return redirect()
-                ->route('export-sales.index')
+            return redirect()->route('export-sales.index')
                 ->with(
                     'success',
                     $validated['status'] === 'draft'
