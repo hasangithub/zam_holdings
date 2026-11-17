@@ -58,6 +58,10 @@ Route::middleware(['auth'])->group(function () {
 
 
     Route::resource('employees', EmployeeController::class)->except(['show']);
+    Route::put(
+    '/employees/{employee}/salary-advances/{salaryAdvance}/payments/{payment}',
+    [SalaryAdvanceController::class, 'updateReturn']
+)->name('employees.salary-advances.payments.update');
     Route::resource(
         'invoice-company-profiles',
         InvoiceCompanyProfileController::class
@@ -133,6 +137,10 @@ Route::middleware(['auth'])->group(function () {
     Route::get('customers/customer-summary-local', [ReportController::class, 'customerSummaryLocal'])->name('reports.customer-summary-local');
     Route::get('customers/customer-summary-export', [ReportController::class, 'customerSummaryExport'])->name('reports.customer-summary-export');
     Route::resource('customers', CustomerController::class);
+    Route::put(
+    '/customers/{customerId}/payments/{paymentId}',
+    [CustomerController::class, 'updatePayment']
+)->name('customers.payments.update');
 
     Route::resource('fixed-assets', FixedAssetController::class);
     Route::post('/fixed-assets/{id}/opening-balance', [
@@ -170,6 +178,10 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/suppliers/{id}/inventory-payment', [SupplierController::class, 'storeInventoryPayment'])->name('suppliers.inventory.payment.store');
     Route::post('/suppliers/{id}/asset-payment', [SupplierController::class, 'storeAssetPayment'])->name('suppliers.asset.payment.store');
     Route::post('/suppliers/{supplier}/opening-balance', [SupplierController::class, 'storeOpeningBalance'])->name('suppliers.opening-balance');
+    Route::put(
+    '/suppliers/{supplierId}/payments/{paymentId}',
+    [SupplierController::class, 'updatePayment']
+)->name('suppliers.payment.update');
     Route::post('/customers/{customer}/opening-balance', [CustomerController::class, 'storeOpeningBalance'])->name('customers.opening-balance');
 
     Route::get('/salaryadvances/employees', [EmployeeController::class, 'salaryAdvanceIndex'])
@@ -287,6 +299,10 @@ Route::middleware(['auth'])->group(function () {
     Route::resource('freights', FreightController::class)->only(['index', 'create', 'store', 'show']);
     Route::post('freights/{id}/payment', [FreightController::class, 'payment'])->name('freights.payment');
     Route::post('freights/{id}/cancel', [FreightController::class, 'cancel'])->name('freights.cancel');
+    Route::put(
+    '/freight-services/{serviceId}/payments/{paymentId}',
+    [FreightController::class, 'updateServicePayment']
+)->name('freight-services.payment.update');
 });
 
 Route::middleware(['auth'])->prefix('accounting')->name('accounting.')->group(function () {

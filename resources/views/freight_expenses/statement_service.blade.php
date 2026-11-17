@@ -23,7 +23,7 @@
 
         <div>
             <a href="{{ route('freight-services.index') }}"
-               class="btn btn-secondary">
+                class="btn btn-secondary">
                 <i class="fas fa-arrow-left"></i> Back
             </a>
         </div>
@@ -32,15 +32,15 @@
 
     {{-- ERRORS --}}
     @if($errors->any())
-        <div class="alert alert-danger">
-            <strong>Please correct the following errors:</strong>
+    <div class="alert alert-danger">
+        <strong>Please correct the following errors:</strong>
 
-            <ul class="mb-0 mt-2">
-                @foreach($errors->all() as $error)
-                    <li>{{ $error }}</li>
-                @endforeach
-            </ul>
-        </div>
+        <ul class="mb-0 mt-2">
+            @foreach($errors->all() as $error)
+            <li>{{ $error }}</li>
+            @endforeach
+        </ul>
+    </div>
     @endif
 
     {{-- DATE FILTER --}}
@@ -49,7 +49,7 @@
         <div class="card-body py-2">
 
             <form method="GET"
-                  action="{{ route('freight-services.statement', $service->id) }}">
+                action="{{ route('freight-services.statement', $service->id) }}">
 
                 <div class="form-row align-items-end">
 
@@ -57,30 +57,30 @@
                         <label class="mb-1">From Date</label>
 
                         <input type="date"
-                               name="from_date"
-                               class="form-control"
-                               value="{{ $fromDate }}">
+                            name="from_date"
+                            class="form-control"
+                            value="{{ $fromDate }}">
                     </div>
 
                     <div class="col-md-3">
                         <label class="mb-1">To Date</label>
 
                         <input type="date"
-                               name="to_date"
-                               class="form-control"
-                               value="{{ $toDate }}">
+                            name="to_date"
+                            class="form-control"
+                            value="{{ $toDate }}">
                     </div>
 
                     <div class="col-md-2">
                         <button type="submit"
-                                class="btn btn-primary btn-block">
+                            class="btn btn-primary btn-block">
                             <i class="fas fa-filter"></i> Filter
                         </button>
                     </div>
 
                     <div class="col-md-2">
                         <a href="{{ route('freight-services.statement', $service->id) }}"
-                           class="btn btn-secondary btn-block">
+                            class="btn btn-secondary btn-block">
                             Last 7 Days
                         </a>
                     </div>
@@ -90,7 +90,7 @@
                             'id' => $service->id,
                             'all' => 1
                         ]) }}"
-                           class="btn btn-info btn-block">
+                            class="btn btn-info btn-block">
                             All
                         </a>
                     </div>
@@ -105,19 +105,19 @@
     {{-- OPENING BALANCE --}}
     @if(!$all)
 
-        <div class="card shadow-sm border-0 mb-3">
+    <div class="card shadow-sm border-0 mb-3">
 
-            <div class="card-body py-2 d-flex justify-content-between">
+        <div class="card-body py-2 d-flex justify-content-between">
 
-                <strong>Opening Balance</strong>
+            <strong>Opening Balance</strong>
 
-                <strong class="{{ $openingBalance > 0 ? 'text-danger' : 'text-success' }}">
-                    {{ number_format($openingBalance, 2) }}
-                </strong>
-
-            </div>
+            <strong class="{{ $openingBalance > 0 ? 'text-danger' : 'text-success' }}">
+                {{ number_format($openingBalance, 2) }}
+            </strong>
 
         </div>
+
+    </div>
 
     @endif
 
@@ -210,13 +210,13 @@
                 <strong>Freight Service Transaction Statement</strong>
 
                 @if(!$all)
-                    <span class="text-muted small">
-                        {{ \Carbon\Carbon::parse($fromDate)->format('d M Y') }}
-                        -
-                        {{ \Carbon\Carbon::parse($toDate)->format('d M Y') }}
-                    </span>
+                <span class="text-muted small">
+                    {{ \Carbon\Carbon::parse($fromDate)->format('d M Y') }}
+                    -
+                    {{ \Carbon\Carbon::parse($toDate)->format('d M Y') }}
+                </span>
                 @else
-                    <span class="badge badge-info">All Transactions</span>
+                <span class="badge badge-info">All Transactions</span>
                 @endif
 
             </div>
@@ -240,6 +240,7 @@
                             <th class="text-right">Debit</th>
                             <th class="text-right">Credit</th>
                             <th class="text-right">Balance</th>
+                            <th class="text-center" width="80">Action</th>
                         </tr>
 
                     </thead>
@@ -248,77 +249,96 @@
 
                         @if(!$all)
 
-                            <tr class="bg-light font-weight-bold">
+                        <tr class="bg-light font-weight-bold">
 
-                                <td>
-                                    {{ \Carbon\Carbon::parse($fromDate)->format('d M Y') }}
-                                </td>
+                            <td>
+                                {{ \Carbon\Carbon::parse($fromDate)->format('d M Y') }}
+                            </td>
 
-                                <td colspan="6">Opening Balance</td>
+                            <td colspan="6">Opening Balance</td>
 
-                                <td class="text-right">
-                                    {{ number_format($openingBalance, 2) }}
-                                </td>
+                            <td class="text-right">
+                                {{ number_format($openingBalance, 2) }}
+                            </td>
 
-                            </tr>
+                        </tr>
 
                         @endif
 
                         @forelse($ledger as $row)
 
-                            <tr>
+                        <tr>
 
-                                <td>
-                                    {{ \Carbon\Carbon::parse($row['date'])->format('d M Y') }}
-                                </td>
+                            <td>
+                                {{ \Carbon\Carbon::parse($row['date'])->format('d M Y') }}
+                            </td>
 
-                                <td>{{ $row['module'] }}</td>
+                            <td>{{ $row['module'] }}</td>
 
-                                <td>{{ $row['reference'] }}</td>
+                            <td>{{ $row['reference'] }}</td>
 
-                                <td>
+                            <td>
 
-                                    @if($row['type'] === 'Invoice')
-                                        <span class="badge badge-danger">Invoice</span>
+                                @if($row['type'] === 'Invoice')
+                                <span class="badge badge-danger">Invoice</span>
 
-                                    @elseif($row['type'] === 'Payment')
-                                        <span class="badge badge-success">Payment</span>
+                                @elseif($row['type'] === 'Payment')
+                                <span class="badge badge-success">Payment</span>
 
-                                    @elseif($row['type'] === 'Opening Balance')
-                                        <span class="badge badge-warning">Opening Balance</span>
+                                @elseif($row['type'] === 'Opening Balance')
+                                <span class="badge badge-warning">Opening Balance</span>
 
-                                    @endif
+                                @endif
 
-                                </td>
+                            </td>
 
-                                <td>{{ $row['description'] }}</td>
+                            <td>{{ $row['description'] }}</td>
 
-                                <td class="text-right text-danger">
-                                    {{ $row['debit'] > 0
+                            <td class="text-right text-danger">
+                                {{ $row['debit'] > 0
                                         ? number_format($row['debit'], 2)
                                         : '-' }}
-                                </td>
+                            </td>
 
-                                <td class="text-right text-success">
-                                    {{ $row['credit'] > 0
+                            <td class="text-right text-success">
+                                {{ $row['credit'] > 0
                                         ? number_format($row['credit'], 2)
                                         : '-' }}
-                                </td>
+                            </td>
 
-                                <td class="text-right font-weight-bold">
-                                    {{ number_format($row['balance'], 2) }}
-                                </td>
+                            <td class="text-right font-weight-bold">
+                                {{ number_format($row['balance'], 2) }}
+                            </td>
 
-                            </tr>
+                            <td class="text-center">
+
+                                @if($row['type'] === 'Payment' && !empty($row['payment_id']))
+
+                                <button type="button"
+                                    class="btn btn-xs btn-primary edit-freight-payment"
+                                    data-id="{{ $row['payment_id'] }}"
+                                    data-amount="{{ $row['credit'] }}"
+                                    data-date="{{ $row['date'] }}"
+                                    title="Edit Payment">
+
+                                    <i class="fas fa-edit"></i>
+
+                                </button>
+
+                                @endif
+
+                            </td>
+
+                        </tr>
 
                         @empty
 
-                            <tr>
-                                <td colspan="8"
-                                    class="text-center text-muted py-4">
-                                    No transactions found.
-                                </td>
-                            </tr>
+                        <tr>
+                            <td colspan="8"
+                                class="text-center text-muted py-4">
+                                No transactions found.
+                            </td>
+                        </tr>
 
                         @endforelse
 
@@ -326,29 +346,29 @@
 
                     @if($ledger->count())
 
-                        <tfoot class="font-weight-bold bg-light">
+                    <tfoot class="font-weight-bold bg-light">
 
-                            <tr>
+                        <tr>
 
-                                <td colspan="5" class="text-right">
-                                    Total
-                                </td>
+                            <td colspan="5" class="text-right">
+                                Total
+                            </td>
 
-                                <td class="text-right text-danger">
-                                    {{ number_format($periodPurchase, 2) }}
-                                </td>
+                            <td class="text-right text-danger">
+                                {{ number_format($periodPurchase, 2) }}
+                            </td>
 
-                                <td class="text-right text-success">
-                                    {{ number_format($periodPaid, 2) }}
-                                </td>
+                            <td class="text-right text-success">
+                                {{ number_format($periodPaid, 2) }}
+                            </td>
 
-                                <td class="text-right">
-                                    {{ number_format($balance, 2) }}
-                                </td>
+                            <td class="text-right">
+                                {{ number_format($balance, 2) }}
+                            </td>
 
-                            </tr>
+                        </tr>
 
-                        </tfoot>
+                    </tfoot>
 
                     @endif
 
@@ -362,4 +382,106 @@
 
 </div>
 
+{{-- EDIT FREIGHT PAYMENT MODAL --}}
+<div class="modal fade" id="editFreightPaymentModal" tabindex="-1">
+
+    <div class="modal-dialog modal-dialog-centered">
+
+        <form method="POST"
+            id="editFreightPaymentForm"
+            action="">
+
+            @csrf
+            @method('PUT')
+
+            <div class="modal-content">
+
+                <div class="modal-header">
+                    <h5 class="modal-title">Edit Freight Payment</h5>
+
+                    <button type="button"
+                        class="close"
+                        data-dismiss="modal">
+                        <span>&times;</span>
+                    </button>
+                </div>
+
+                <div class="modal-body">
+
+                    <div class="form-group">
+                        <label>Payment Date</label>
+
+                        <input type="date"
+                            name="payment_date"
+                            id="edit_payment_date"
+                            class="form-control"
+                            required>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Amount (LKR)</label>
+
+                        <input type="number"
+                            name="amount"
+                            id="edit_payment_amount"
+                            class="form-control"
+                            step="0.01"
+                            min="0.01"
+                            required>
+                    </div>
+
+                </div>
+
+                <div class="modal-footer">
+
+                    <button type="button"
+                        class="btn btn-secondary"
+                        data-dismiss="modal">
+                        Cancel
+                    </button>
+
+                    <button type="submit"
+                        class="btn btn-primary">
+                        <i class="fas fa-save"></i> Update Payment
+                    </button>
+
+                </div>
+
+            </div>
+
+        </form>
+
+    </div>
+
+</div>
+
 @endsection
+
+@push('scripts')
+<script>
+$(document).ready(function () {
+
+    $('.edit-freight-payment').on('click', function () {
+
+        let paymentId = $(this).data('id');
+        let amount = $(this).data('amount');
+        let date = $(this).data('date');
+
+        let url = "{{ route('freight-services.payment.update', [
+            'serviceId' => $service->id,
+            'paymentId' => '__PAYMENT_ID__'
+        ]) }}";
+
+        url = url.replace('__PAYMENT_ID__', paymentId);
+
+        $('#editFreightPaymentForm').attr('action', url);
+
+        $('#edit_payment_amount').val(amount);
+        $('#edit_payment_date').val(date);
+
+        $('#editFreightPaymentModal').modal('show');
+    });
+
+});
+</script>
+@endpush

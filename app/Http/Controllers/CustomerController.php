@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Accounting\Accounting;
 use App\Models\Customer;
+use App\Models\JournalEntryReference;
 use App\Models\Sale;
 use App\Models\SalesPayment;
 use App\Models\SubLedger;
@@ -170,8 +171,8 @@ class CustomerController extends Controller
     */
 
         $sales = Sale::where('customer_id', $id)
-        ->where('status', '!=', 'cancelled')
-        ->get();
+            ->where('status', '!=', 'cancelled')
+            ->get();
 
         $payments = SalesPayment::where('customer_id', $id)->get();
 
@@ -198,6 +199,7 @@ class CustomerController extends Controller
                 'date' => $payment->payment_date,
                 'module' => 'Sale',
                 'type' => 'Payment',
+                'payment_id' => $payment->id,
                 'debit' => 0,
                 'credit' => $payment->amount,
             ]);
@@ -209,15 +211,15 @@ class CustomerController extends Controller
     |--------------------------------------------------------------------------
     */
 
-       $ledger = $ledger
-    ->sortBy(function ($row) {
-        return [
-            $row['date'],
-            $row['type'],
-            $row['reference'] ?? '',
-        ];
-    })
-    ->values();
+        $ledger = $ledger
+            ->sortBy(function ($row) {
+                return [
+                    $row['date'],
+                    $row['type'],
+                    $row['reference'] ?? '',
+                ];
+            })
+            ->values();
 
 
         /*
@@ -346,7 +348,7 @@ class CustomerController extends Controller
                 $paymentLedgerId = 1;
                 $paymentSubLedgerId = $request->sub_ledger_id;
 
-                Accounting::postJournal([
+                $journal = Accounting::postJournal([
                     'branch_id' => $branchId,
                     'date' => $request->payment_date,
                     'description' => 'Payment for sale - ' . $customer->name,
@@ -365,6 +367,13 @@ class CustomerController extends Controller
                             'credit' => $amount,
                         ],
                     ]
+                ]);
+
+                JournalEntryReference::create([
+                    'journal_entry_id' => $journal->id,
+                    'model_type'       => SalesPayment::class,
+                    'model_id'         => $payment->id,
+                    'action'           => 'created',
                 ]);
             });
 
@@ -427,5 +436,120 @@ class CustomerController extends Controller
             'success',
             'Customer opening balance saved successfully.'
         );
+    }
+
+    public function updatePayment(Request $request, int $customerId, int $paymentId)
+    {
+        $request->validate([
+            'amount' => ['required', 'numeric', 'gt:0'],
+            'payment_date' => ['required', 'date'],
+        ]);
+
+        try {
+
+            DB::transaction(function () use ($request, $customerId, $paymentId) {
+
+                $branchId = auth()->user()->branch_id;
+
+                // Lock and validate customer.
+                $customer = Customer::where('branch_id', $branchId)
+                    ->lockForUpdate()
+                    ->findOrFail($customerId);
+
+                if (!$customer->receivable_sub_ledger_id) {
+                    throw ValidationException::withMessages([
+                        'amount' => 'This customer does not have a receivable sub-ledger.'
+                    ]);
+                }
+
+                // Lock the existing payment.
+                $payment = SalesPayment::where('customer_id', $customer->id)
+                    ->lockForUpdate()
+                    ->findOrFail($paymentId);
+
+                // Find the active journal reference for this payment.
+                $reference = JournalEntryReference::where(
+                    'model_type',
+                    SalesPayment::class
+                )
+                    ->where('model_id', $payment->id)
+                    ->whereIn('action', ['created', 'updated'])
+                    ->latest('id')
+                    ->first();
+
+                if (!$reference) {
+                    throw ValidationException::withMessages([
+                        'amount' => 'The original payment journal could not be found.'
+                    ]);
+                }
+
+                // Preserve the original cashbook subledger.
+                $cashSubLedgerId = DB::table('journal_entry_details')
+                    ->where('journal_entry_id', $reference->journal_entry_id)
+                    ->where('ledger_id', 1)
+                    ->where('debit', '>', 0)
+                    ->value('sub_ledger_id');
+
+                if (!$cashSubLedgerId) {
+                    throw ValidationException::withMessages([
+                        'amount' => 'The original cashbook subledger could not be identified.'
+                    ]);
+                }
+
+                // Reverse the previous payment journal.
+                Accounting::reverse(
+                    SalesPayment::class,
+                    $payment->id
+                );
+
+                $amount = (float) $request->amount;
+
+                // Update the existing payment record.
+                $payment->update([
+                    'amount' => $amount,
+                    'payment_date' => $request->payment_date,
+                ]);
+
+                // Post replacement journal.
+                $journal = Accounting::postJournal([
+                    'branch_id' => $branchId,
+                    'date' => $request->payment_date,
+                    'description' => 'Payment for sale - ' . $customer->name,
+
+                    'entries' => [
+                        [
+                            'ledger_id' => 1,
+                            'sub_ledger_id' => $cashSubLedgerId,
+                            'debit' => $amount,
+                            'credit' => 0,
+                        ],
+                        [
+                            'ledger_id' => 6,
+                            'sub_ledger_id' => $customer->receivable_sub_ledger_id,
+                            'debit' => 0,
+                            'credit' => $amount,
+                        ],
+                    ]
+                ]);
+
+                // Link the replacement journal to the existing payment.
+                JournalEntryReference::create([
+                    'journal_entry_id' => $journal->id,
+                    'model_type' => SalesPayment::class,
+                    'model_id' => $payment->id,
+                    'action' => 'updated',
+                ]);
+            });
+
+            return back()->with('success', 'Payment updated successfully.');
+        } catch (ValidationException $e) {
+
+            throw $e;
+        } catch (\Throwable $e) {
+
+            return back()
+                ->withInput()
+                ->with('error', 'Unable to update the payment.');
+        }
     }
 }

@@ -4,6 +4,8 @@
 
 @section('content')
 
+@include('partials.alerts')
+
 <div class="container-fluid">
 
     {{-- HEADER --}}
@@ -14,17 +16,17 @@
         </h3>
 
         <button class="btn btn-primary"
-                data-toggle="modal"
-                data-target="#paymentModal">
+            data-toggle="modal"
+            data-target="#paymentModal">
             + Customer Payment
         </button>
 
         <button type="button"
-                class="btn btn-primary"
-                data-toggle="modal"
-                data-target="#openingBalanceModal">
-                Opening Balance
-            </button>
+            class="btn btn-primary"
+            data-toggle="modal"
+            data-target="#openingBalanceModal">
+            Opening Balance
+        </button>
 
     </div>
 
@@ -35,7 +37,7 @@
         <div class="card-body py-2">
 
             <form method="GET"
-                  action="{{ route('customers.statement', $customer->id) }}">
+                action="{{ route('customers.statement', $customer->id) }}">
 
                 <div class="form-row align-items-end">
 
@@ -46,9 +48,9 @@
                         </label>
 
                         <input type="date"
-                               name="from_date"
-                               class="form-control"
-                               value="{{ $fromDate }}">
+                            name="from_date"
+                            class="form-control"
+                            value="{{ $fromDate }}">
 
                     </div>
 
@@ -60,9 +62,9 @@
                         </label>
 
                         <input type="date"
-                               name="to_date"
-                               class="form-control"
-                               value="{{ $toDate }}">
+                            name="to_date"
+                            class="form-control"
+                            value="{{ $toDate }}">
 
                     </div>
 
@@ -70,7 +72,7 @@
                     <div class="col-md-2">
 
                         <button type="submit"
-                                class="btn btn-primary btn-block">
+                            class="btn btn-primary btn-block">
 
                             <i class="fas fa-filter"></i>
                             Filter
@@ -83,7 +85,7 @@
                     <div class="col-md-2">
 
                         <a href="{{ route('customers.statement', $customer->id) }}"
-                           class="btn btn-secondary btn-block">
+                            class="btn btn-secondary btn-block">
 
                             Last 7 Days
 
@@ -98,7 +100,7 @@
                             'id' => $customer->id,
                             'all' => 1
                         ]) }}"
-                           class="btn btn-info btn-block">
+                            class="btn btn-info btn-block">
 
                             All
 
@@ -118,25 +120,25 @@
     {{-- OPENING BALANCE --}}
     @if(!$all)
 
-        <div class="card shadow-sm border-0 mb-3">
+    <div class="card shadow-sm border-0 mb-3">
 
-            <div class="card-body py-2">
+        <div class="card-body py-2">
 
-                <div class="d-flex justify-content-between">
+            <div class="d-flex justify-content-between">
 
-                    <strong>
-                        Opening Balance
-                    </strong>
+                <strong>
+                    Opening Balance
+                </strong>
 
-                    <strong class="text-danger">
-                        {{ number_format($openingBalance, 2) }}
-                    </strong>
-
-                </div>
+                <strong class="text-danger">
+                    {{ number_format($openingBalance, 2) }}
+                </strong>
 
             </div>
 
         </div>
+
+    </div>
 
     @endif
 
@@ -222,15 +224,15 @@
 
                 @if(!$all)
 
-                    <span class="text-muted small">
-                        {{ $fromDate }} to {{ $toDate }}
-                    </span>
+                <span class="text-muted small">
+                    {{ $fromDate }} to {{ $toDate }}
+                </span>
 
                 @else
 
-                    <span class="badge badge-info">
-                        All Transactions
-                    </span>
+                <span class="badge badge-info">
+                    All Transactions
+                </span>
 
                 @endif
 
@@ -272,6 +274,7 @@
                             <th class="text-right">
                                 Balance
                             </th>
+                            <th width="80">Action</th>
 
                         </tr>
 
@@ -284,21 +287,21 @@
                         {{-- OPENING --}}
                         @if(!$all)
 
-                            <tr class="bg-light font-weight-bold">
+                        <tr class="bg-light font-weight-bold">
 
-                                <td>
-                                    {{ $fromDate }}
-                                </td>
+                            <td>
+                                {{ $fromDate }}
+                            </td>
 
-                                <td colspan="4">
-                                    Opening Balance
-                                </td>
+                            <td colspan="4">
+                                Opening Balance
+                            </td>
 
-                                <td class="text-right">
-                                    {{ number_format($openingBalance, 2) }}
-                                </td>
+                            <td class="text-right">
+                                {{ number_format($openingBalance, 2) }}
+                            </td>
 
-                            </tr>
+                        </tr>
 
                         @endif
 
@@ -306,79 +309,101 @@
                         {{-- TRANSACTIONS --}}
                         @forelse($ledger as $row)
 
-                            <tr>
+                        <tr>
 
-                                <td>
-                                    {{ $row['date'] }}
-                                </td>
+                            <td>
+                                {{ $row['date'] }}
+                            </td>
 
-                                <td>
-                                    {{ $row['module'] }}
-                                </td>
+                            <td>
+                                {{ $row['module'] }}
+                            </td>
 
-                                <td>
+                            <td>
 
-                                    @if($row['type'] == 'Invoice')
+                                @if($row['type'] == 'Invoice')
 
-                                        <span class="badge badge-danger">
-                                            Invoice
-                                        </span>
+                                <span class="badge badge-danger">
+                                    Invoice
+                                </span>
 
-                                     @elseif($row['type'] == 'Payment')
+                                @elseif($row['type'] == 'Payment')
 
-                                        <span class="badge badge-success">
-                                            Payment
-                                        </span>
+                                <span class="badge badge-success">
+                                    Payment
+                                </span>
 
-                                    @elseif($row['type'] == 'Opening Balance')
+                                @elseif($row['type'] == 'Opening Balance')
 
-                                        <span class="badge badge-info">
-                                            Opening Balance
-                                        </span>
-                                    @endif
+                                <span class="badge badge-info">
+                                    Opening Balance
+                                </span>
+                                @endif
 
-                                </td>
+                            </td>
 
-                                <td class="text-right text-danger">
+                            <td class="text-right text-danger">
 
-                                    @if($row['debit'] > 0)
-                                        {{ number_format($row['debit'], 2) }}
-                                    @else
-                                        -
-                                    @endif
+                                @if($row['debit'] > 0)
+                                {{ number_format($row['debit'], 2) }}
+                                @else
+                                -
+                                @endif
 
-                                </td>
+                            </td>
 
-                                <td class="text-right text-success">
+                            <td class="text-right text-success">
 
-                                    @if($row['credit'] > 0)
-                                        {{ number_format($row['credit'], 2) }}
-                                    @else
-                                        -
-                                    @endif
+                                @if($row['credit'] > 0)
+                                {{ number_format($row['credit'], 2) }}
+                                @else
+                                -
+                                @endif
 
-                                </td>
+                            </td>
 
-                                <td class="text-right font-weight-bold">
+                            <td class="text-right font-weight-bold">
 
-                                    {{ number_format($row['balance'], 2) }}
+                                {{ number_format($row['balance'], 2) }}
 
-                                </td>
+                            </td>
 
-                            </tr>
+                            <td class="text-center">
+
+                                @if($row['type'] == 'Payment' && !empty($row['payment_id']))
+
+                                <button type="button"
+                                    class="btn btn-xs btn-primary edit-payment-btn"
+                                    data-id="{{ $row['payment_id'] }}"
+                                    data-amount="{{ $row['credit'] }}"
+                                    data-date="{{ $row['date'] }}"
+                                    title="Edit Payment">
+
+                                    <i class="fas fa-edit"></i>
+
+                                </button>
+
+                                @else
+
+                                -
+
+                                @endif
+
+                            </td>
+
+                        </tr>
 
                         @empty
 
-                            <tr>
+                        <tr>
 
-                                <td colspan="6"
-                                    class="text-center text-muted py-4">
+                            <td colspan="6"
+                                class="text-center text-muted py-4">
 
-                                    No transactions found
+                                No transactions found
 
-                                </td>
-
-                            </tr>
+                            </td>
+                        </tr>
 
                         @endforelse
 
@@ -388,38 +413,25 @@
                     {{-- TOTAL --}}
                     @if($ledger->isNotEmpty())
 
-                        <tfoot class="font-weight-bold bg-light">
+                    <tfoot class="font-weight-bold bg-light">
+                        <tr>
+                            <td colspan="3" class="text-right">Total</td>
 
-                            <tr>
+                            <td class="text-right text-danger">
+                                {{ number_format($periodSales, 2) }}
+                            </td>
 
-                                <td colspan="3"
-                                    class="text-right">
+                            <td class="text-right text-success">
+                                {{ number_format($periodPaid, 2) }}
+                            </td>
 
-                                    Total
+                            <td class="text-right">
+                                {{ number_format($ledger->last()['balance'], 2) }}
+                            </td>
 
-                                </td>
-
-                                <td class="text-right text-danger">
-
-                                    {{ number_format($periodSales, 2) }}
-
-                                </td>
-
-                                <td class="text-right text-success">
-
-                                    {{ number_format($periodPaid, 2) }}
-
-                                </td>
-
-                                <td class="text-right">
-
-                                    {{ number_format($ledger->last()['balance'], 2) }}
-
-                                </td>
-
-                            </tr>
-
-                        </tfoot>
+                            <td></td>
+                        </tr>
+                    </tfoot>
 
                     @endif
 
@@ -436,14 +448,14 @@
 <div class="modal fade" id="openingBalanceModal" tabindex="-1">
     <div class="modal-dialog">
         <form method="POST"
-              action="{{ route('customers.opening-balance', $customer->id) }}">
+            action="{{ route('customers.opening-balance', $customer->id) }}">
             @csrf
 
             <div class="modal-content">
                 <div class="modal-header">
                     <h5 class="modal-title">Customer Opening Balance</h5>
                     <button type="button" class="close"
-                            data-dismiss="modal">
+                        data-dismiss="modal">
                         <span>&times;</span>
                     </button>
                 </div>
@@ -452,26 +464,26 @@
                     <div class="form-group">
                         <label>Opening Balance Amount</label>
                         <input type="number"
-                               name="amount"
-                               class="form-control"
-                               min="0.01"
-                               step="0.01"
-                               required>
+                            name="amount"
+                            class="form-control"
+                            min="0.01"
+                            step="0.01"
+                            required>
                     </div>
 
                     <div class="form-group">
                         <label>Opening Balance Date</label>
                         <input type="date"
-                               name="date"
-                               class="form-control"
-                               value="{{ date('Y-m-d') }}"
-                               required>
+                            name="date"
+                            class="form-control"
+                            value="{{ date('Y-m-d') }}"
+                            required>
                     </div>
                 </div>
 
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary"
-                            data-dismiss="modal">
+                        data-dismiss="modal">
                         Cancel
                     </button>
 
@@ -490,4 +502,110 @@
 {{-- ========================================================= --}}
 
 @include('customers.payment_modal')
+
+{{-- EDIT CUSTOMER PAYMENT MODAL --}}
+<div class="modal fade" id="editPaymentModal" tabindex="-1">
+
+    <div class="modal-dialog">
+
+        <form method="POST"
+            id="editPaymentForm"
+            action="{{ route('customers.payments.update', [
+                    $customer->id,
+                    'PAYMENT_ID'
+              ]) }}">
+
+            @csrf
+            @method('PUT')
+
+            <div class="modal-content">
+
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        <i class="fas fa-edit"></i>
+                        Edit Customer Payment
+                    </h5>
+
+                    <button type="button"
+                        class="close"
+                        data-dismiss="modal">
+                        <span>&times;</span>
+                    </button>
+                </div>
+
+                <div class="modal-body">
+
+                    <div class="form-group">
+                        <label>Payment Amount</label>
+
+                        <input type="number"
+                            name="amount"
+                            id="edit_payment_amount"
+                            class="form-control"
+                            min="0.01"
+                            step="0.01"
+                            required>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Payment Date</label>
+
+                        <input type="date"
+                            name="payment_date"
+                            id="edit_payment_date"
+                            class="form-control"
+                            required>
+                    </div>
+
+                    <div class="alert alert-info mb-0">
+                        <i class="fas fa-info-circle"></i>
+                        The previous journal will be reversed and a new journal will be posted.
+                    </div>
+
+                </div>
+
+                <div class="modal-footer">
+
+                    <button type="button"
+                        class="btn btn-secondary"
+                        data-dismiss="modal">
+                        Cancel
+                    </button>
+
+                    <button type="submit"
+                        class="btn btn-primary">
+                        <i class="fas fa-save"></i>
+                        Update Payment
+                    </button>
+
+                </div>
+
+            </div>
+
+        </form>
+
+    </div>
+</div>
 @endsection
+
+@push('scripts')
+<script>
+    $(document).on('click', '.edit-payment-btn', function() {
+
+        let paymentId = $(this).data('id');
+        let amount = $(this).data('amount');
+        let date = $(this).data('date');
+
+        let url = $('#editPaymentForm')
+            .attr('action')
+            .replace('PAYMENT_ID', paymentId);
+
+        $('#editPaymentForm').attr('action', url);
+
+        $('#edit_payment_amount').val(amount);
+        $('#edit_payment_date').val(date);
+
+        $('#editPaymentModal').modal('show');
+    });
+</script>
+@endpush

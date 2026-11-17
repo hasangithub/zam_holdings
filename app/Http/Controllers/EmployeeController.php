@@ -129,7 +129,7 @@ class EmployeeController extends Controller
 
             if ($openingJournal) {
                 // Replace with your actual salary advance asset ledger ID.
-              
+
 
                 $openingAmount = (float) DB::table('journal_entry_details')
                     ->where('journal_entry_id', $openingJournal->id)
@@ -157,11 +157,12 @@ class EmployeeController extends Controller
     */
 
         $advances = SalaryAdvance::where('employee_id', $employee->id)
-            ->where('branch_id', $employee->branch_id)
+            ->where('branch_id', auth()->user()->branch_id)
             ->where('status', '!=', 'cancelled')
             ->with('payments')
             ->get();
 
+           
         foreach ($advances as $advance) {
             $ledger->push([
                 'date' => $advance->advance_date,
@@ -185,6 +186,8 @@ class EmployeeController extends Controller
                     'date' => $payment->payment_date,
                     'module' => 'Salary Advance',
                     'type' => 'Repayment',
+                    'payment_id' => $payment->id,
+                    'salary_advance_id' => $advance->id,
                     'reference' => $payment->reference
                         ?: 'PAY-' . $payment->id,
                     'description' => $payment->note
@@ -284,7 +287,7 @@ class EmployeeController extends Controller
         ]);
 
         if ((int) $employee->branch_id !== (int) auth()->user()->branch_id) {
-           // abort(403, 'You are not allowed to update this employee.');
+            // abort(403, 'You are not allowed to update this employee.');
         }
 
         DB::transaction(function () use ($request, $employee) {

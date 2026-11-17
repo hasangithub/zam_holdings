@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Accounting\Accounting;
 use App\Models\FixedAssetPayment;
 use App\Models\FixedAsset;
+use App\Models\JournalEntryReference;
 use App\Models\Purchase;
 use App\Models\PurchaseAmendment;
 use App\Models\PurchaseInventory;
@@ -330,6 +331,7 @@ class SupplierController extends Controller
                     'date' => $payment->payment_date,
                     'module' => 'Purchase',
                     'type' => 'Payment',
+                    'payment_id' => $payment->id,
                     'debit' => 0,
                     'credit' => (float) $payment->amount,
                 ]);
@@ -364,6 +366,7 @@ class SupplierController extends Controller
                     'date' => $payment->payment_date,
                     'module' => 'Fixed Asset',
                     'type' => 'Payment',
+                    'payment_id' => $payment->id,
                     'debit' => 0,
                     'credit' => (float) $payment->amount,
                 ]);
@@ -397,6 +400,7 @@ class SupplierController extends Controller
                     'date' => $payment->payment_date,
                     'module' => 'Inventory',
                     'type' => 'Payment',
+                    'payment_id' => $payment->id,
                     'debit' => 0,
                     'credit' => (float) $payment->amount,
                 ]);
@@ -592,7 +596,7 @@ class SupplierController extends Controller
                 $paymentLedgerId = 1;
                 $paymentSubLedgerId = $request->sub_ledger_id;
 
-                Accounting::postJournal([
+                $journal = Accounting::postJournal([
                     'branch_id' => $branchId,
                     'date' => $request->payment_date,
                     'description' => 'Payment for purchase - ' . $supplier->name,
@@ -611,6 +615,13 @@ class SupplierController extends Controller
                             'credit' => $amount,
                         ],
                     ]
+                ]);
+
+                JournalEntryReference::create([
+                    'journal_entry_id' => $journal->id,
+                    'model_type'       => PurchasePayment::class,
+                    'model_id'         => $payment->id,
+                    'action'           => 'created',
                 ]);
             });
 
@@ -674,7 +685,7 @@ class SupplierController extends Controller
                 $paymentLedgerId = 1;
                 $paymentSubLedgerId = $request->sub_ledger_id;
 
-                Accounting::postJournal([
+                $journal = Accounting::postJournal([
                     'branch_id' => $branchId,
                     'date' => $request->payment_date,
                     'description' => 'Payment for purchase - ' . $supplier->name,
@@ -693,6 +704,13 @@ class SupplierController extends Controller
                             'credit' => $amount,
                         ],
                     ]
+                ]);
+
+                JournalEntryReference::create([
+                    'journal_entry_id' => $journal->id,
+                    'model_type'       => PurchaseInventoryPayment::class,
+                    'model_id'         => $payment->id,
+                    'action'           => 'created',
                 ]);
             });
 
@@ -757,7 +775,7 @@ class SupplierController extends Controller
                 $paymentLedgerId = 1;
                 $paymentSubLedgerId = $request->sub_ledger_id;
 
-                Accounting::postJournal([
+                $journal = Accounting::postJournal([
                     'branch_id' => $branchId,
                     'date' => $request->payment_date,
                     'description' => 'Payment for purchase - ' . $supplier->name,
@@ -776,6 +794,13 @@ class SupplierController extends Controller
                             'credit' => $amount,
                         ],
                     ]
+                ]);
+
+                JournalEntryReference::create([
+                    'journal_entry_id' => $journal->id,
+                    'model_type'       => FixedAssetPayment::class,
+                    'model_id'         => $payment->id,
+                    'action'           => 'created',
                 ]);
             });
 
@@ -838,5 +863,210 @@ class SupplierController extends Controller
             'success',
             'Supplier opening balance saved successfully.'
         );
+    }
+
+    public function updatePayment(Request $request, int $supplierId, int $paymentId)
+    {
+        $request->validate([
+            'amount' => ['required', 'numeric', 'gt:0'],
+            'payment_date' => ['required', 'date'],
+        ]);
+
+        try {
+
+            DB::transaction(function () use ($request, $supplierId, $paymentId) {
+
+                $branchId = (int) auth()->user()->branch_id;
+
+                /*
+            |--------------------------------------------------------------------------
+            | Supplier
+            |--------------------------------------------------------------------------
+            */
+                $supplier = Supplier::where('branch_id', $branchId)
+                    ->lockForUpdate()
+                    ->findOrFail($supplierId);
+
+                /*
+            |--------------------------------------------------------------------------
+            | Identify Payment Model
+            |--------------------------------------------------------------------------
+            */
+                if ($supplier->supplier_type == 'Trading Goods') {
+
+                    $paymentModel = PurchasePayment::class;
+                } elseif ($supplier->supplier_type == 'Asset Providers') {
+
+                    $paymentModel = FixedAssetPayment::class;
+                } else {
+
+                    $paymentModel = PurchaseInventoryPayment::class;
+                }
+
+                /*
+            |--------------------------------------------------------------------------
+            | Get Existing Payment
+            |--------------------------------------------------------------------------
+            */
+                $payment = $paymentModel::where('supplier_id', $supplier->id)
+                    ->lockForUpdate()
+                    ->findOrFail($paymentId);
+
+                /*
+            |--------------------------------------------------------------------------
+            | Find Original Payment Journal Reference
+            |--------------------------------------------------------------------------
+            */
+                $reference = JournalEntryReference::where(
+                    'model_type',
+                    $paymentModel
+                )
+                    ->where('model_id', $payment->id)
+                    ->whereIn('action', ['created', 'updated'])
+                    ->latest('id')
+                    ->first();
+
+                if (!$reference) {
+                    throw ValidationException::withMessages([
+                        'amount' => 'Original payment journal reference not found.'
+                    ]);
+                }
+
+                /*
+            |--------------------------------------------------------------------------
+            | Get Original Journal
+            |--------------------------------------------------------------------------
+            */
+                $oldJournal = DB::table('journal_entries')
+                    ->where('id', $reference->journal_entry_id)
+                    ->where('branch_id', $branchId)
+                    ->first();
+
+                if (!$oldJournal) {
+                    throw ValidationException::withMessages([
+                        'amount' => 'Original payment journal not found.'
+                    ]);
+                }
+
+                /*
+            |--------------------------------------------------------------------------
+            | Preserve Original Journal Accounts
+            |--------------------------------------------------------------------------
+            */
+                $oldDetails = DB::table('journal_entry_details')
+                    ->where('journal_entry_id', $oldJournal->id)
+                    ->orderBy('id')
+                    ->get();
+
+                if ($oldDetails->isEmpty()) {
+                    throw ValidationException::withMessages([
+                        'amount' => 'Original journal details not found.'
+                    ]);
+                }
+
+                $entries = [];
+
+                $hasDebit = false;
+                $hasCredit = false;
+
+                foreach ($oldDetails as $detail) {
+
+                    $oldDebit = (float) $detail->debit;
+                    $oldCredit = (float) $detail->credit;
+
+                    if ($oldDebit > 0 && $oldCredit == 0) {
+
+                        $entries[] = [
+                            'ledger_id' => $detail->ledger_id,
+                            'sub_ledger_id' => $detail->sub_ledger_id,
+                            'debit' => (float) $request->amount,
+                            'credit' => 0,
+                        ];
+
+                        $hasDebit = true;
+                    } elseif ($oldCredit > 0 && $oldDebit == 0) {
+
+                        $entries[] = [
+                            'ledger_id' => $detail->ledger_id,
+                            'sub_ledger_id' => $detail->sub_ledger_id,
+                            'debit' => 0,
+                            'credit' => (float) $request->amount,
+                        ];
+
+                        $hasCredit = true;
+                    } else {
+
+                        throw ValidationException::withMessages([
+                            'amount' => 'Original payment journal contains an unsupported entry structure.'
+                        ]);
+                    }
+                }
+
+                if (!$hasDebit || !$hasCredit) {
+                    throw ValidationException::withMessages([
+                        'amount' => 'Original payment journal must contain debit and credit entries.'
+                    ]);
+                }
+
+                /*
+            |--------------------------------------------------------------------------
+            | Reverse Previous Journal
+            |--------------------------------------------------------------------------
+            */
+                Accounting::reverse(
+                    $paymentModel,
+                    $payment->id
+                );
+
+                /*
+            |--------------------------------------------------------------------------
+            | Update Correct Payment Table
+            |--------------------------------------------------------------------------
+            */
+                $payment->update([
+                    'amount' => $request->amount,
+                    'payment_date' => $request->payment_date,
+                ]);
+
+                /*
+            |--------------------------------------------------------------------------
+            | Post Replacement Journal
+            |--------------------------------------------------------------------------
+            */
+                $journal = Accounting::postJournal([
+                    'branch_id' => $branchId,
+                    'date' => $request->payment_date,
+                    'description' => $oldJournal->description,
+                    'entries' => $entries,
+                ]);
+
+                /*
+            |--------------------------------------------------------------------------
+            | Create New Journal Reference
+            |--------------------------------------------------------------------------
+            */
+                JournalEntryReference::create([
+                    'journal_entry_id' => $journal->id,
+                    'model_type' => $paymentModel,
+                    'model_id' => $payment->id,
+                    'action' => 'updated',
+                ]);
+            });
+
+            return back()->with(
+                'success',
+                'Supplier payment updated successfully.'
+            );
+        } catch (ValidationException $e) {
+
+            throw $e;
+        } catch (\Throwable $e) {
+
+            report($e);
+
+            return back()
+                ->withInput()
+                ->with('error', 'Unable to update supplier payment.');
+        }
     }
 }

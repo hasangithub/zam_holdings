@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Accounting\Accounting;
 use App\Models\SalaryAdvance;
 use App\Models\SalaryAdvancePayment;
 use App\Models\Employee;
@@ -9,9 +10,11 @@ use App\Models\Ledger;
 use App\Models\SubLedger;
 use App\Models\JournalEntry;
 use App\Models\JournalEntryDetail;
+use App\Models\JournalEntryReference;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class SalaryAdvanceController extends Controller
 {
@@ -27,10 +30,10 @@ class SalaryAdvanceController extends Controller
             'employee',
             'payments'
         ])
-        ->where('branch_id', auth()->user()->branch_id)
-        ->latest('advance_date')
-        ->latest('id')
-        ->get();
+            ->where('branch_id', auth()->user()->branch_id)
+            ->latest('advance_date')
+            ->latest('id')
+            ->get();
 
         return view(
             'salary-advances.index',
@@ -48,7 +51,7 @@ class SalaryAdvanceController extends Controller
     public function create()
     {
         $employees = Employee::orderBy('name')
-        ->get();
+            ->get();
 
         /*
         |--------------------------------------------------------------------------
@@ -71,7 +74,7 @@ class SalaryAdvanceController extends Controller
             'id',
             '1'
         )->firstOrFail();
- 
+
 
         /*
         |--------------------------------------------------------------------------
@@ -83,13 +86,13 @@ class SalaryAdvanceController extends Controller
             'ledger_id',
             $cashBankLedger->id
         )
-        ->where(
-            'branch_id',
-            auth()->user()->branch_id
-        )
-       
-        ->orderBy('name')
-        ->get();
+            ->where(
+                'branch_id',
+                auth()->user()->branch_id
+            )
+
+            ->orderBy('name')
+            ->get();
 
         return view(
             'salary-advances.create',
@@ -111,11 +114,11 @@ class SalaryAdvanceController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'employee_id' => ['required','exists:employees,id'],
-            'advance_date' => ['required','date'],
-            'amount' => ['required','numeric','min:0.01'],
-            'payment_sub_ledger_id' => ['required','exists:sub_ledgers,id'],
-            'description' => ['nullable','string'],
+            'employee_id' => ['required', 'exists:employees,id'],
+            'advance_date' => ['required', 'date'],
+            'amount' => ['required', 'numeric', 'min:0.01'],
+            'payment_sub_ledger_id' => ['required', 'exists:sub_ledgers,id'],
+            'description' => ['nullable', 'string'],
         ]);
 
         $employee = Employee::where('id', $request->employee_id)->firstOrFail();
@@ -124,16 +127,16 @@ class SalaryAdvanceController extends Controller
         $cashBankLedger = Ledger::where('id', '1')->firstOrFail();
 
         $paymentAccount = SubLedger::where('id', $request->payment_sub_ledger_id)
-        ->where('ledger_id', $cashBankLedger->id)
-        ->where('branch_id', auth()->user()->branch_id)
-        ->first();
+            ->where('ledger_id', $cashBankLedger->id)
+            ->where('branch_id', auth()->user()->branch_id)
+            ->first();
 
         if (!$paymentAccount) {
             return back()
                 ->withInput()
                 ->withErrors([
                     'payment_sub_ledger_id' =>
-                        'Invalid payment account.'
+                    'Invalid payment account.'
                 ]);
         }
 
@@ -270,7 +273,7 @@ class SalaryAdvanceController extends Controller
         $cashBankLedger = Ledger::where('id', 1)->firstOrFail();
 
         $paymentAccounts = SubLedger::where('ledger_id', $cashBankLedger->id)->where('branch_id', auth()->user()->branch_id)
-       ->orderBy('name')->get();
+            ->orderBy('name')->get();
 
         return view(
             'salary-advances.return',
@@ -306,7 +309,7 @@ class SalaryAdvanceController extends Controller
         if ($outstanding <= 0) {
             return back()->withErrors([
                 'amount' =>
-                    'This salary advance is already fully returned.'
+                'This salary advance is already fully returned.'
             ]);
         }
 
@@ -343,12 +346,12 @@ class SalaryAdvanceController extends Controller
         $cashBankLedger = Ledger::where('id', 1)->firstOrFail();
 
         $paymentAccount = SubLedger::where('id', $request->payment_sub_ledger_id)
-        ->where('ledger_id', $cashBankLedger->id)->where('branch_id', auth()->user()->branch_id) ->first();
+            ->where('ledger_id', $cashBankLedger->id)->where('branch_id', auth()->user()->branch_id)->first();
 
         if (!$paymentAccount) {
             return back()->withErrors([
                 'payment_sub_ledger_id' =>
-                    'Invalid payment account.'
+                'Invalid payment account.'
             ]);
         }
 
@@ -367,17 +370,17 @@ class SalaryAdvanceController extends Controller
 
             $journal = JournalEntry::create([
                 'branch_id' =>
-                    auth()->user()->branch_id,
+                auth()->user()->branch_id,
 
                 'journal_date' =>
-                    $request->payment_date,
+                $request->payment_date,
 
                 'description' =>
-                    'Salary Advance Return - '
+                'Salary Advance Return - '
                     . $salaryAdvance->employee->name,
 
                 'created_by' =>
-                    auth()->id(),
+                auth()->id(),
             ]);
 
             /*
@@ -414,30 +417,37 @@ class SalaryAdvanceController extends Controller
             |--------------------------------------------------------------------------
             */
 
-            SalaryAdvancePayment::create([
+            $salaryAdvancePayment = SalaryAdvancePayment::create([
                 'salary_advance_id' =>
-                    $salaryAdvance->id,
+                $salaryAdvance->id,
 
                 'payment_date' =>
-                    $request->payment_date,
+                $request->payment_date,
 
                 'amount' =>
-                    $request->amount,
+                $request->amount,
 
                 'payment_sub_ledger_id' =>
-                    $paymentAccount->id,
+                $paymentAccount->id,
 
                 'journal_entry_id' =>
-                    $journal->id,
+                $journal->id,
 
                 'reference' =>
-                    $request->reference,
+                $request->reference,
 
                 'note' =>
-                    $request->note,
+                $request->note,
 
                 'created_by' =>
-                    auth()->id(),
+                auth()->id(),
+            ]);
+
+            JournalEntryReference::create([
+                'journal_entry_id' => $journal->id,
+                'model_type' => SalaryAdvancePayment::class,
+                'model_id' => $salaryAdvancePayment->id,
+                'action' => 'created',
             ]);
 
             /*
@@ -453,7 +463,6 @@ class SalaryAdvanceController extends Controller
 
                 $salaryAdvance->status =
                     'fully_returned';
-
             } else {
 
                 $salaryAdvance->status =
@@ -472,5 +481,168 @@ class SalaryAdvanceController extends Controller
                 'success',
                 'Salary advance return recorded successfully.'
             );
+    }
+
+    public function updateReturn(
+        Request $request,
+        int $employeeId,
+        int $salaryAdvanceId,
+        int $paymentId
+    ) {
+        $request->validate([
+            'amount' => ['required', 'numeric', 'gt:0'],
+            'payment_date' => ['required', 'date'],
+        ]);
+
+        try {
+
+            DB::transaction(function () use (
+                $request,
+                $employeeId,
+                $salaryAdvanceId,
+                $paymentId
+            ) {
+
+                $branchId = auth()->user()->branch_id;
+
+                // Lock employee.
+                $employee = Employee::lockForUpdate()
+                    ->findOrFail($employeeId);
+
+                // Lock salary advance.
+                $advance = SalaryAdvance::where('branch_id', $branchId)
+                    ->where('employee_id', $branchId)
+                    ->lockForUpdate()
+                    ->findOrFail($salaryAdvanceId);
+
+                // Lock existing repayment.
+                $payment = SalaryAdvancePayment::where(
+                    'salary_advance_id',
+                    $advance->id
+                )
+                    ->lockForUpdate()
+                    ->findOrFail($paymentId);
+
+                $amount = (float) $request->amount;
+
+                // Calculate outstanding excluding the current payment.
+                $otherPayments = SalaryAdvancePayment::where(
+                    'salary_advance_id',
+                    $advance->id
+                )
+                    ->where('id', '!=', $payment->id)
+                    ->sum('amount');
+
+                $outstanding = (float) $advance->amount - (float) $otherPayments;
+
+                if ($amount > $outstanding) {
+                    throw ValidationException::withMessages([
+                        'amount' => 'Payment amount cannot exceed the outstanding salary advance balance.',
+                    ]);
+                }
+
+                // Find the latest journal reference.
+                $reference = JournalEntryReference::where(
+                    'model_type',
+                    SalaryAdvancePayment::class
+                )
+                    ->where('model_id', $payment->id)
+                    ->whereIn('action', ['created', 'updated'])
+                    ->latest('id')
+                    ->first();
+
+                if (!$reference) {
+                    throw ValidationException::withMessages([
+                        'amount' => 'The original payment journal could not be found.',
+                    ]);
+                }
+
+                // Get original journal debit and credit entries.
+                $debitEntry = DB::table('journal_entry_details')
+                    ->where('journal_entry_id', $reference->journal_entry_id)
+                    ->where('debit', '>', 0)
+                    ->first();
+
+                $creditEntry = DB::table('journal_entry_details')
+                    ->where('journal_entry_id', $reference->journal_entry_id)
+                    ->where('credit', '>', 0)
+                    ->first();
+
+                if (!$debitEntry || !$creditEntry) {
+                    throw ValidationException::withMessages([
+                        'amount' => 'Original payment journal entries could not be identified.',
+                    ]);
+                }
+
+                // Reverse previous payment journal.
+                Accounting::reverse(
+                    SalaryAdvancePayment::class,
+                    $payment->id
+                );
+
+                // Update existing payment.
+                $payment->update([
+                    'amount' => $amount,
+                    'payment_date' => $request->payment_date,
+                ]);
+
+                // Post replacement journal using original ledger mappings.
+                $journal = Accounting::postJournal([
+                    'branch_id' => $branchId,
+                    'date' => $request->payment_date,
+                    'description' => 'Salary Advance Repayment - ' . $employee->name,
+
+                    'entries' => [
+                        [
+                            'ledger_id' => $debitEntry->ledger_id,
+                            'sub_ledger_id' => $debitEntry->sub_ledger_id,
+                            'debit' => $amount,
+                            'credit' => 0,
+                        ],
+                        [
+                            'ledger_id' => $creditEntry->ledger_id,
+                            'sub_ledger_id' => $creditEntry->sub_ledger_id,
+                            'debit' => 0,
+                            'credit' => $amount,
+                        ],
+                    ],
+                ]);
+
+                // Update payment journal ID.
+                $payment->update([
+                    'journal_entry_id' => $journal->id,
+                ]);
+
+                // Create replacement journal reference.
+                JournalEntryReference::create([
+                    'journal_entry_id' => $journal->id,
+                    'model_type' => SalaryAdvancePayment::class,
+                    'model_id' => $payment->id,
+                    'action' => 'updated',
+                ]);
+
+                // Recalculate salary advance status.
+                $totalPaid = SalaryAdvancePayment::where(
+                    'salary_advance_id',
+                    $advance->id
+                )->sum('amount');
+
+                $advance->update([
+                    'status' => $totalPaid >= $advance->amount
+                        ? 'fully_returned'
+                        : 'partial',
+                ]);
+            });
+
+            return back()->with('success', 'Salary advance payment updated successfully.');
+        } catch (ValidationException $e) {
+
+            throw $e;
+        } catch (\Throwable $e) {
+
+            return back()
+                ->withInput()
+                ->with('error', 'Unable to update the salary advance payment.');
+        }
     }
 }

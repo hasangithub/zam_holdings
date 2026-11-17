@@ -435,6 +435,8 @@
                                 Balance
                             </th>
 
+                            <th width="70">Action</th>
+
                         </tr>
 
                     </thead>
@@ -643,6 +645,29 @@
 
                             </td>
 
+                            <td class="text-center">
+
+                                @if($row['type'] == 'Payment' && !empty($row['payment_id']))
+
+                                <button type="button"
+                                    class="btn btn-xs btn-primary edit-supplier-payment"
+                                    data-id="{{ $row['payment_id'] }}"
+                                    data-amount="{{ $row['credit'] }}"
+                                    data-date="{{ \Carbon\Carbon::parse($row['date'])->format('Y-m-d') }}"
+                                    title="Edit Payment">
+
+                                    <i class="fas fa-edit"></i>
+
+                                </button>
+
+                                @else
+
+                                -
+
+                                @endif
+
+                            </td>
+
                         </tr>
 
 
@@ -715,6 +740,7 @@
                                     ) }}
 
                             </td>
+                            <td></td>
 
                         </tr>
 
@@ -1126,7 +1152,7 @@
                             Amount
                         </label>
 
-                        <input type="text"
+                        <input type="hidden"
                             name="request_token"
                             value="{{ \Illuminate\Support\Str::uuid() }}">
 
@@ -1237,14 +1263,14 @@
 <div class="modal fade" id="openingBalanceModal" tabindex="-1">
     <div class="modal-dialog">
         <form method="POST"
-              action="{{ route('suppliers.opening-balance', $supplier->id) }}">
+            action="{{ route('suppliers.opening-balance', $supplier->id) }}">
             @csrf
 
             <div class="modal-content">
                 <div class="modal-header">
                     <h5 class="modal-title">Supplier Opening Balance</h5>
                     <button type="button" class="close"
-                            data-dismiss="modal">
+                        data-dismiss="modal">
                         <span>&times;</span>
                     </button>
                 </div>
@@ -1253,26 +1279,26 @@
                     <div class="form-group">
                         <label>Opening Balance Amount</label>
                         <input type="number"
-                               name="amount"
-                               class="form-control"
-                               min="0.01"
-                               step="0.01"
-                               required>
+                            name="amount"
+                            class="form-control"
+                            min="0.01"
+                            step="0.01"
+                            required>
                     </div>
 
                     <div class="form-group">
                         <label>Opening Balance Date</label>
                         <input type="date"
-                               name="date"
-                               class="form-control"
-                               value="{{ date('Y-m-d') }}"
-                               required>
+                            name="date"
+                            class="form-control"
+                            value="{{ date('Y-m-d') }}"
+                            required>
                     </div>
                 </div>
 
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary"
-                            data-dismiss="modal">
+                        data-dismiss="modal">
                         Cancel
                     </button>
 
@@ -1285,5 +1311,112 @@
     </div>
 </div>
 
+{{-- EDIT SUPPLIER PAYMENT MODAL --}}
+<div class="modal fade" id="editSupplierPaymentModal" tabindex="-1">
+
+    <div class="modal-dialog">
+
+        <form method="POST"
+              id="editSupplierPaymentForm"
+              action="{{ route('suppliers.payment.update', [
+                    $supplier->id,
+                    'PAYMENT_ID'
+              ]) }}">
+
+            @csrf
+            @method('PUT')
+
+            <div class="modal-content">
+
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        <i class="fas fa-edit"></i>
+                        Edit Supplier Payment
+                    </h5>
+
+                    <button type="button"
+                            class="close"
+                            data-dismiss="modal">
+                        <span>&times;</span>
+                    </button>
+                </div>
+
+                <div class="modal-body">
+
+                    <div class="form-group">
+                        <label>Payment Amount</label>
+
+                        <input type="number"
+                               name="amount"
+                               id="supplier_edit_amount"
+                               class="form-control"
+                               min="0.01"
+                               step="0.01"
+                               required>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Payment Date</label>
+
+                        <input type="date"
+                               name="payment_date"
+                               id="supplier_edit_payment_date"
+                               class="form-control"
+                               required>
+                    </div>
+
+                    <div class="alert alert-info mb-0">
+                        <i class="fas fa-info-circle"></i>
+                        The previous payment journal will be reversed and a replacement journal will be posted.
+                    </div>
+
+                </div>
+
+                <div class="modal-footer">
+
+                    <button type="button"
+                            class="btn btn-secondary"
+                            data-dismiss="modal">
+                        Cancel
+                    </button>
+
+                    <button type="submit"
+                            class="btn btn-primary">
+                        <i class="fas fa-save"></i>
+                        Update Payment
+                    </button>
+
+                </div>
+
+            </div>
+
+        </form>
+
+    </div>
+</div>
+
 
 @endsection
+
+@push('scripts')
+<script>
+    $(document).on('click', '.edit-supplier-payment', function () {
+
+        let paymentId = $(this).data('id');
+        let amount = $(this).data('amount');
+        let date = $(this).data('date');
+
+        let form = $('#editSupplierPaymentForm');
+
+        let url = form.attr('action')
+            .replace('PAYMENT_ID', paymentId);
+
+        form.attr('action', url);
+
+        $('#supplier_edit_amount').val(amount);
+        $('#supplier_edit_payment_date').val(date);
+
+        $('#editSupplierPaymentModal').modal('show');
+    });
+</script>
+@endpush

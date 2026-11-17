@@ -6,6 +6,9 @@ use App\Accounting\Accounting;
 use App\Models\Freight;
 use App\Models\FreightPayment;
 use App\Models\FreightService;
+use App\Models\JournalEntry;
+use App\Models\JournalEntryDetail;
+use App\Models\JournalEntryReference;
 use App\Models\Sale;
 use App\Models\SubLedger;
 use Carbon\Carbon;
@@ -215,7 +218,7 @@ class FreightController extends Controller
                 ]);
             }
 
-            FreightPayment::create([
+            $freightPayment = FreightPayment::create([
                 'freight_id' => $freight->id,
                 'payment_date' => $request->payment_date,
                 'amount' => $request->amount,
@@ -230,7 +233,7 @@ class FreightController extends Controller
                 $freight->balance_amount - $request->amount,
             ]);
 
-            Accounting::postJournal([
+            $journal = Accounting::postJournal([
                 'branch_id' => auth()->user()->branch_id,
                 'date' => $request->payment_date,
                 'description' => 'Freight Payment: ' . $freight->service->name . ' for Sale ID: ' . $freight->sale_id,
@@ -249,6 +252,13 @@ class FreightController extends Controller
                         'credit' => 0,
                     ],
                 ]
+            ]);
+
+            JournalEntryReference::create([
+                'journal_entry_id' => $journal->id,
+                'model_type'       => FreightPayment::class,
+                'model_id'         => $freightPayment->id,
+                'action'           => 'created',
             ]);
         });
 
@@ -711,6 +721,7 @@ class FreightController extends Controller
                 'sequence' => 2,
 
                 'id' => $payment->id,
+                'payment_id' => $payment->id,
             ]);
         }
 
@@ -832,5 +843,130 @@ class FreightController extends Controller
             'balance',
             'paymentSubLedgers'
         ));
+    }
+
+    public function updateServicePayment(Request $request, $serviceId, $paymentId)
+    {
+        $request->validate([
+            'amount' => ['required', 'numeric', 'gt:0'],
+            'payment_date' => ['required', 'date'],
+        ]);
+
+        $branchId = auth()->user()->branch_id;
+
+        try {
+            DB::transaction(function () use (
+                $request,
+                $serviceId,
+                $paymentId,
+                $branchId
+            ) {
+                // Confirm the freight service exists.
+                $service = FreightService::findOrFail($serviceId);
+
+                // Find a freight record belonging to this branch and service.
+                $freight = Freight::where('branch_id', $branchId)
+                    ->where('freight_service_id', $service->id)
+                    ->whereHas('payments', function ($query) use ($paymentId) {
+                        $query->where('id', $paymentId);
+                    })
+                    ->lockForUpdate()
+                    ->firstOrFail();
+
+                // Lock the existing payment.
+                $payment = FreightPayment::where('freight_id', $freight->id)
+                    ->where('id', $paymentId)
+                    ->lockForUpdate()
+                    ->firstOrFail();
+
+                // Find the latest active journal reference for this payment.
+                $reference = JournalEntryReference::where(
+                    'model_type',
+                    FreightPayment::class
+                )
+                    ->where('model_id', $payment->id)
+                    ->whereIn('action', ['created', 'updated'])
+                    ->latest('id')
+                    ->first();
+
+                if (!$reference) {
+                    throw ValidationException::withMessages([
+                        'amount' => 'No journal entry was found for this payment.',
+                    ]);
+                }
+
+                // Load and verify the original journal.
+                $oldJournal = JournalEntry::where('id', $reference->journal_entry_id)
+                    ->where('branch_id', $branchId)
+                    ->firstOrFail();
+
+                $oldDetails = JournalEntryDetail::where(
+                    'journal_entry_id',
+                    $oldJournal->id
+                )->get();
+
+                // This implementation expects one debit and one credit entry.
+                if (
+                    $oldDetails->count() !== 2 ||
+                    $oldDetails->where('debit', '>', 0)->count() !== 1 ||
+                    $oldDetails->where('credit', '>', 0)->count() !== 1
+                ) {
+                    throw ValidationException::withMessages([
+                        'amount' => 'The original payment journal does not have the expected debit and credit structure.',
+                    ]);
+                }
+
+                // Preserve the original ledger and subledger accounts.
+                $entries = [];
+
+                foreach ($oldDetails as $detail) {
+                    $entries[] = [
+                        'ledger_id' => $detail->ledger_id,
+                        'sub_ledger_id' => $detail->sub_ledger_id,
+                        'debit' => (float) $detail->debit > 0
+                            ? (float) $request->amount
+                            : 0,
+                        'credit' => (float) $detail->credit > 0
+                            ? (float) $request->amount
+                            : 0,
+                    ];
+                }
+
+                // Reverse the previous journal.
+                Accounting::reverse(FreightPayment::class, $payment->id);
+
+                // Update the existing payment record.
+                $payment->update([
+                    'amount' => $request->amount,
+                    'payment_date' => $request->payment_date,
+                ]);
+
+                // Post the replacement journal.
+                $newJournal = Accounting::postJournal([
+                    'branch_id' => $branchId,
+                    'date' => $request->payment_date,
+                    'description' => $oldJournal->description,
+                    'entries' => $entries,
+                ]);
+
+                // Link the replacement journal to the same payment.
+                JournalEntryReference::create([
+                    'journal_entry_id' => $newJournal->id,
+                    'model_type' => FreightPayment::class,
+                    'model_id' => $payment->id,
+                    'action' => 'updated',
+                ]);
+            });
+
+            return back()->with('success', 'Freight payment updated successfully.');
+        } catch (ValidationException $e) {
+            throw $e;
+        } catch (\Throwable $e) {
+            report($e);
+
+            return back()
+                ->withInput()
+                ->with('error', 'Unable to update the freight payment.');
+        }
     }
 }
