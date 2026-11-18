@@ -30,4 +30,9 @@ class Customer extends Model
     {
         return $this->hasMany(SalesPayment::class);
     }
+
+    public function salesAmendments()
+    {
+        return $this->hasMany(SalesAmendment::class);
+    }
 }

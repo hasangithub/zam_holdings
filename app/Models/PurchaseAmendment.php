@@ -10,22 +10,14 @@ class PurchaseAmendment extends Model
     protected $fillable = [
 
         'purchase_id',
-
         'supplier_id',
-
         'amendment_date',
-
         'amount',
-
         'reason',
-
         'notes',
-
         'status',
-
         'created_by',
         'journal_id',
-
     ];
 
 

@@ -35,6 +35,31 @@
     <div class="card shadow-sm border-0 mb-3">
 
         <div class="card-body py-2">
+            <div class="row">
+                <div class="col-md-4">
+                    <label>View Statement in Another Currency</label>
+
+                    <select id="currencyStatementSelect" class="form-control">
+                        <option value="">Select Currency</option>
+
+                        @foreach($currencyOptions as $code => $name)
+                        <option value="{{ $code }}">
+                            {{ $code }} - {{ $name }}
+                        </option>
+                        @endforeach
+                    </select>
+                </div>
+
+                <div class="col-md-2">
+                    <button type="button"
+                        id="openCurrencyStatement"
+                        class="btn btn-info btn-block">
+                        <i class="fas fa-external-link-alt"></i>
+                        Open Statement
+                    </button>
+                </div>
+            </div>
+
 
             <form method="GET"
                 action="{{ route('customers.statement', $customer->id) }}">
@@ -321,7 +346,16 @@
 
                             <td>
 
-                                @if($row['type'] == 'Invoice')
+                                @if($row['type'] === 'Amendment')
+
+                                <span
+                                    class="text-warning">
+
+                                    {{ $row['reference'] }}
+
+                                </span>
+
+                                @elseif($row['type'] == 'Invoice')
 
                                 <span class="badge badge-danger">
                                     Invoice
@@ -606,6 +640,20 @@
         $('#edit_payment_date').val(date);
 
         $('#editPaymentModal').modal('show');
+    });
+
+    document.getElementById('openCurrencyStatement').addEventListener('click', function() {
+
+        let currency = document.getElementById('currencyStatementSelect').value;
+
+        if (!currency) {
+            toastr.warning('Please select a currency.');
+            return;
+        }
+
+        let url = "{{ url('/customers/'.$customer->id.'/currency-statement') }}/" + currency;
+
+        window.location.href = url;
     });
 </script>
 @endpush

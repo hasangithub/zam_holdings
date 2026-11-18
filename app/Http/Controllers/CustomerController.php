@@ -4,8 +4,11 @@ namespace App\Http\Controllers;
 
 use App\Accounting\Accounting;
 use App\Models\Customer;
+use App\Models\CustomerCurrencyOpeningBalance;
+use App\Models\CustomerCurrencyPayment;
 use App\Models\JournalEntryReference;
 use App\Models\Sale;
+use App\Models\SalesAmendment;
 use App\Models\SalesPayment;
 use App\Models\SubLedger;
 use Illuminate\Http\Request;
@@ -207,6 +210,32 @@ class CustomerController extends Controller
 
         /*
     |--------------------------------------------------------------------------
+    | SALES AMENDMENTS
+    |--------------------------------------------------------------------------
+    */
+
+        $amendments = SalesAmendment::where('customer_id', $id)
+            ->where('status', 'approved')
+            ->get();
+
+        foreach ($amendments as $amendment) {
+
+            $amount = (float) $amendment->amount;
+
+            $ledger->push([
+                'date' => $amendment->amendment_date,
+                'module' => 'Sale',
+                'type' => 'Amendment',
+                'amendment_id' => $amendment->id,
+                'reference' => 'AMD-' . $amendment->id,
+                'description' => $amendment->reason,
+                'debit' => $amount > 0 ? $amount : 0,
+                'credit' => $amount < 0 ? abs($amount) : 0,
+            ]);
+        }
+
+        /*
+    |--------------------------------------------------------------------------
     | SORT
     |--------------------------------------------------------------------------
     */
@@ -302,6 +331,13 @@ class CustomerController extends Controller
 
         $paymentSubLedgers = SubLedger::where('ledger_id', 1)->get();
 
+        $currencyOptions = [
+            'USD' => 'US Dollar',
+            'SAR' => 'Saudi Riyal',
+            'AED' => 'UAE Dirham',
+            'EUR' => 'Euro',
+        ];
+
 
         return view('customers.statement', compact(
             'customer',
@@ -313,7 +349,8 @@ class CustomerController extends Controller
             'fromDate',
             'toDate',
             'all',
-            'paymentSubLedgers'
+            'paymentSubLedgers',
+            'currencyOptions'
         ));
     }
 
@@ -551,5 +588,356 @@ class CustomerController extends Controller
                 ->withInput()
                 ->with('error', 'Unable to update the payment.');
         }
+    }
+
+    public function currencyStatement(Request $request, $id, $currency)
+    {
+        $currencyOptions = [
+            'USD' => 'US Dollar',
+            'SAR' => 'Saudi Riyal',
+            'AED' => 'UAE Dirham',
+            'EUR' => 'Euro',
+        ];
+
+        abort_unless(array_key_exists($currency, $currencyOptions), 404);
+
+        $customer = Customer::where('id', $id)
+            ->where('branch_id', auth()->user()->branch_id)
+            ->firstOrFail();
+
+        $all = $request->boolean('all');
+
+        $fromDate = $request->input(
+            'from_date',
+            now()->subDays(6)->format('Y-m-d')
+        );
+
+        $toDate = $request->input(
+            'to_date',
+            now()->format('Y-m-d')
+        );
+
+        $ledger = collect();
+        $openingBalance = 0;
+
+        /*
+    |--------------------------------------------------------------------------
+    | CURRENCY OPENING BALANCE
+    |--------------------------------------------------------------------------
+    */
+
+        $openingRecord = CustomerCurrencyOpeningBalance::where('customer_id', $customer->id)
+            ->where('branch_id', $customer->branch_id)
+            ->where('currency', $currency)
+            ->first();
+
+        if ($openingRecord) {
+
+            $ledger->push([
+                'date' => $openingRecord->opening_date,
+                'module' => 'Opening Balance',
+                'type' => 'Opening Balance',
+                'reference' => 'OPN-' . $openingRecord->id,
+                'description' => $openingRecord->note ?? 'Currency Opening Balance',
+                'debit' => (float) $openingRecord->amount,
+                'credit' => 0,
+            ]);
+        }
+
+        /*
+    |--------------------------------------------------------------------------
+    | SALES INVOICES
+    |--------------------------------------------------------------------------
+    */
+
+        $sales = Sale::where('customer_id', $customer->id)
+            // ->where('branch_id', $customer->branch_id)
+            ->where('status', '!=', 'cancelled')
+            ->where('currency', $currency)
+            ->get();
+
+        foreach ($sales as $sale) {
+
+            $ledger->push([
+                'date' => $sale->sale_date,
+                'module' => 'Sale',
+                'type' => 'Invoice',
+                'reference' => 'INV-' . $sale->id,
+                'description' => 'Sales Invoice',
+                'debit' => (float) $sale->total_foreign,
+                'credit' => 0,
+            ]);
+        }
+
+        /*
+    |--------------------------------------------------------------------------
+    | CURRENCY PAYMENTS
+    |--------------------------------------------------------------------------
+    */
+
+        $payments = CustomerCurrencyPayment::where('customer_id', $customer->id)
+            ->where('branch_id', $customer->branch_id)
+            ->where('currency', $currency)
+            ->get();
+
+        foreach ($payments as $payment) {
+
+            $ledger->push([
+                'date' => $payment->payment_date,
+                'module' => 'Payment',
+                'type' => 'Payment',
+                'payment_id' => $payment->id,
+                'reference' => $payment->reference ?: 'PAY-' . $payment->id,
+                'description' => $payment->note ?? 'Currency Payment',
+                'debit' => 0,
+                'credit' => (float) $payment->amount,
+            ]);
+        }
+
+        /*
+    |--------------------------------------------------------------------------
+    | SORT
+    |--------------------------------------------------------------------------
+    */
+
+        $ledger = $ledger
+            ->sortBy(function ($row) {
+                return [
+                    $row['date'],
+                    $row['type'],
+                    $row['reference'] ?? '',
+                ];
+            })
+            ->values();
+
+        /*
+    |--------------------------------------------------------------------------
+    | FILTER + OPENING BALANCE
+    |--------------------------------------------------------------------------
+    */
+
+        if (!$all) {
+
+            $filtered = collect();
+
+            foreach ($ledger as $row) {
+
+                if ($row['date'] < $fromDate) {
+
+                    $openingBalance +=
+                        $row['debit'] - $row['credit'];
+                } elseif (
+                    $row['date'] >= $fromDate &&
+                    $row['date'] <= $toDate
+                ) {
+
+                    $filtered->push($row);
+                }
+            }
+
+            $ledger = $filtered;
+        }
+
+        /*
+    |--------------------------------------------------------------------------
+    | RUNNING BALANCE
+    |--------------------------------------------------------------------------
+    */
+
+        $running = $openingBalance;
+
+        $ledger = $ledger->map(function ($row) use (&$running) {
+
+            $running += $row['debit'] - $row['credit'];
+
+            $row['balance'] = $running;
+
+            return $row;
+        });
+
+        /*
+    |--------------------------------------------------------------------------
+    | TOTALS
+    |--------------------------------------------------------------------------
+    */
+
+        $periodSales = $ledger
+            ->where('type', 'Invoice')
+            ->sum('debit');
+
+        $periodPaid = $ledger
+            ->where('type', 'Payment')
+            ->sum('credit');
+
+        $balance = $openingBalance + $periodSales - $periodPaid;
+
+        if ($all) {
+            $balance = $ledger->last()['balance'] ?? 0;
+        }
+
+        /*
+    |--------------------------------------------------------------------------
+    | PAYMENT AND OPENING HISTORY
+    |--------------------------------------------------------------------------
+    */
+
+        $currencyPayments = CustomerCurrencyPayment::where('customer_id', $customer->id)
+            ->where('branch_id', $customer->branch_id)
+            ->where('currency', $currency)
+            ->latest('payment_date')
+            ->get();
+
+        return view('customers.currency-statement', compact(
+            'customer',
+            'currency',
+            'currencyOptions',
+            'ledger',
+            'openingBalance',
+            'periodSales',
+            'periodPaid',
+            'balance',
+            'fromDate',
+            'toDate',
+            'all',
+            'openingRecord',
+            'currencyPayments'
+        ));
+    }
+
+    public function storeCurrencyOpeningBalance(Request $request, $id, $currency)
+    {
+        $currencyOptions = ['USD', 'SAR', 'AED', 'EUR'];
+
+        abort_unless(in_array($currency, $currencyOptions), 404);
+
+        $request->validate([
+            'opening_date' => 'required|date',
+            'amount' => 'required|numeric|min:0',
+            'note' => 'nullable|string|max:255',
+        ]);
+
+        $customer = Customer::where('id', $id)
+            ->where('branch_id', auth()->user()->branch_id)
+            ->firstOrFail();
+
+        CustomerCurrencyOpeningBalance::updateOrCreate(
+            [
+                'customer_id' => $customer->id,
+                'currency' => $currency,
+            ],
+            [
+                'branch_id' => $customer->branch_id,
+                'opening_date' => $request->opening_date,
+                'amount' => $request->amount,
+                'note' => $request->note,
+            ]
+        );
+
+        return redirect()
+            ->route('customers.currency-statement', [
+                $customer->id,
+                $currency,
+            ])
+            ->with('success', 'Currency opening balance saved successfully.');
+    }
+
+    public function storeCurrencyPayment(Request $request, $id, $currency)
+    {
+        $currencyOptions = ['USD', 'SAR', 'AED', 'EUR'];
+
+        abort_unless(in_array($currency, $currencyOptions), 404);
+
+        $request->validate([
+            'payment_date' => 'required|date',
+            'amount' => 'required|numeric|gt:0',
+            'reference' => 'nullable|string|max:255',
+            'note' => 'nullable|string',
+        ]);
+
+        $customer = Customer::where('id', $id)
+            ->where('branch_id', auth()->user()->branch_id)
+            ->firstOrFail();
+
+        CustomerCurrencyPayment::create([
+            'customer_id' => $customer->id,
+            'branch_id' => $customer->branch_id,
+            'currency' => $currency,
+            'payment_date' => $request->payment_date,
+            'amount' => $request->amount,
+            'reference' => $request->reference,
+            'note' => $request->note,
+            'created_by' => auth()->id(),
+        ]);
+
+        return redirect()
+            ->route('customers.currency-statement', [
+                $customer->id,
+                $currency,
+            ])
+            ->with('success', 'Currency payment saved successfully.');
+    }
+
+    public function updateCurrencyPayment(Request $request, $id, $currency, $paymentId)
+    {
+        $currencyOptions = ['USD', 'SAR', 'AED', 'EUR'];
+
+        abort_unless(in_array($currency, $currencyOptions), 404);
+
+        $request->validate([
+            'payment_date' => 'required|date',
+            'amount' => 'required|numeric|gt:0',
+            'reference' => 'nullable|string|max:255',
+            'note' => 'nullable|string',
+        ]);
+
+        $customer = Customer::where('id', $id)
+            ->where('branch_id', auth()->user()->branch_id)
+            ->firstOrFail();
+
+        $payment = CustomerCurrencyPayment::where('id', $paymentId)
+            ->where('customer_id', $customer->id)
+            ->where('branch_id', $customer->branch_id)
+            ->where('currency', $currency)
+            ->firstOrFail();
+
+        $payment->update([
+            'payment_date' => $request->payment_date,
+            'amount' => $request->amount,
+            'reference' => $request->reference,
+            'note' => $request->note,
+        ]);
+
+        return redirect()
+            ->route('customers.currency-statement', [
+                $customer->id,
+                $currency,
+            ])
+            ->with('success', 'Currency payment updated successfully.');
+    }
+
+    public function deleteCurrencyPayment($id, $currency, $paymentId)
+    {
+        $currencyOptions = ['USD', 'SAR', 'AED', 'EUR'];
+
+        abort_unless(in_array($currency, $currencyOptions), 404);
+
+        $customer = Customer::where('id', $id)
+            ->where('branch_id', auth()->user()->branch_id)
+            ->firstOrFail();
+
+        $payment = CustomerCurrencyPayment::where('id', $paymentId)
+            ->where('customer_id', $customer->id)
+            ->where('branch_id', $customer->branch_id)
+            ->where('currency', $currency)
+            ->firstOrFail();
+
+        $payment->delete();
+
+        return redirect()
+            ->route('customers.currency-statement', [
+                $customer->id,
+                $currency,
+            ])
+            ->with('success', 'Currency payment deleted successfully.');
     }
 }

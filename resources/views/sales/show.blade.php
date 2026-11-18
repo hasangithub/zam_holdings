@@ -8,15 +8,15 @@
 
     {{-- ALERTS --}}
     @if(session('success'))
-        <div class="alert alert-success">
-            {{ session('success') }}
-        </div>
+    <div class="alert alert-success">
+        {{ session('success') }}
+    </div>
     @endif
 
     @if(session('error'))
-        <div class="alert alert-danger">
-            {{ session('error') }}
-        </div>
+    <div class="alert alert-danger">
+        {{ session('error') }}
+    </div>
     @endif
 
 
@@ -29,6 +29,13 @@
             <a href="{{ route('sales.invoice', $sale->id) }}" class="btn btn-dark">
                 Print Invoice
             </a>
+
+            <button type="button"
+                class="btn btn-warning btn-sm"
+                data-toggle="modal"
+                data-target="#salesAmendmentModal">
+                <i class="fas fa-edit"></i> Add Amendment
+            </button>
         </div>
 
     </div>
@@ -162,6 +169,98 @@
 
     </div>
 
+</div>
+
+{{-- SALES AMENDMENT MODAL --}}
+<div class="modal fade" id="salesAmendmentModal" tabindex="-1" role="dialog">
+    <div class="modal-dialog" role="document">
+        <form method="POST"
+              action="{{ route('customers.amendments.store', $sale->id) }}">
+            @csrf
+
+            <div class="modal-content">
+
+                <div class="modal-header bg-warning">
+                    <h5 class="modal-title">
+                        <i class="fas fa-edit"></i> Sales Amendment
+                    </h5>
+
+                    <button type="button" class="close" data-dismiss="modal">
+                        <span>&times;</span>
+                    </button>
+                </div>
+
+                <div class="modal-body">
+
+                    <div class="form-group">
+                        <label>Customer</label>
+                        <input type="text"
+                               class="form-control"
+                               value="{{ $sale->customer->name }}"
+                               readonly>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Amendment Date</label>
+                        <input type="date"
+                               name="amendment_date"
+                               class="form-control"
+                               value="{{ old('amendment_date', now()->format('Y-m-d')) }}"
+                               required>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Amendment Amount</label>
+                        <input type="number"
+                               name="amount"
+                               class="form-control"
+                               step="0.01"
+                               placeholder="Enter positive or negative amount"
+                               required>
+                        <small class="text-muted">
+                            Positive amount increases customer outstanding.
+                            Negative amount decreases customer outstanding.
+                        </small>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Reason</label>
+                        <input type="text"
+                               name="reason"
+                               class="form-control"
+                               maxlength="255"
+                               required>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Notes</label>
+                        <textarea name="notes"
+                                  class="form-control"
+                                  rows="3"></textarea>
+                    </div>
+
+                    <div class="alert alert-warning mb-0">
+                        This amendment will update the customer statement
+                        and create the corresponding accounting journal.
+                    </div>
+
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button"
+                            class="btn btn-secondary"
+                            data-dismiss="modal">
+                        Close
+                    </button>
+
+                    <button type="submit" class="btn btn-warning">
+                        Save Amendment
+                    </button>
+                </div>
+
+            </div>
+        </form>
+    </div>
 </div>
 
 @endsection

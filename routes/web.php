@@ -59,9 +59,9 @@ Route::middleware(['auth'])->group(function () {
 
     Route::resource('employees', EmployeeController::class)->except(['show']);
     Route::put(
-    '/employees/{employee}/salary-advances/{salaryAdvance}/payments/{payment}',
-    [SalaryAdvanceController::class, 'updateReturn']
-)->name('employees.salary-advances.payments.update');
+        '/employees/{employee}/salary-advances/{salaryAdvance}/payments/{payment}',
+        [SalaryAdvanceController::class, 'updateReturn']
+    )->name('employees.salary-advances.payments.update');
     Route::resource(
         'invoice-company-profiles',
         InvoiceCompanyProfileController::class
@@ -138,9 +138,42 @@ Route::middleware(['auth'])->group(function () {
     Route::get('customers/customer-summary-export', [ReportController::class, 'customerSummaryExport'])->name('reports.customer-summary-export');
     Route::resource('customers', CustomerController::class);
     Route::put(
-    '/customers/{customerId}/payments/{paymentId}',
-    [CustomerController::class, 'updatePayment']
-)->name('customers.payments.update');
+        '/customers/{customerId}/payments/{paymentId}',
+        [CustomerController::class, 'updatePayment']
+    )->name('customers.payments.update');
+
+    Route::post(
+        '/customers/{id}/amendments',
+        [SaleController::class, 'storeAmendment']
+    )->name('customers.amendments.store');
+
+    // Customer Currency Statement
+    Route::get(
+        '/customers/{id}/currency-statement/{currency}',
+        [CustomerController::class, 'currencyStatement']
+    )->name('customers.currency-statement');
+
+    // Currency Opening Balance
+    Route::post(
+        '/customers/{id}/currency-statement/{currency}/opening-balance',
+        [CustomerController::class, 'storeCurrencyOpeningBalance']
+    )->name('customers.currency-opening-balance.store');
+
+    // Currency Payment
+    Route::post(
+        '/customers/{id}/currency-statement/{currency}/payments',
+        [CustomerController::class, 'storeCurrencyPayment']
+    )->name('customers.currency-payments.store');
+
+    Route::put(
+        '/customers/{id}/currency-statement/{currency}/payments/{paymentId}',
+        [CustomerController::class, 'updateCurrencyPayment']
+    )->name('customers.currency-payments.update');
+
+    Route::delete(
+        '/customers/{id}/currency-statement/{currency}/payments/{paymentId}',
+        [CustomerController::class, 'deleteCurrencyPayment']
+    )->name('customers.currency-payments.delete');
 
     Route::resource('fixed-assets', FixedAssetController::class);
     Route::post('/fixed-assets/{id}/opening-balance', [
@@ -179,9 +212,9 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/suppliers/{id}/asset-payment', [SupplierController::class, 'storeAssetPayment'])->name('suppliers.asset.payment.store');
     Route::post('/suppliers/{supplier}/opening-balance', [SupplierController::class, 'storeOpeningBalance'])->name('suppliers.opening-balance');
     Route::put(
-    '/suppliers/{supplierId}/payments/{paymentId}',
-    [SupplierController::class, 'updatePayment']
-)->name('suppliers.payment.update');
+        '/suppliers/{supplierId}/payments/{paymentId}',
+        [SupplierController::class, 'updatePayment']
+    )->name('suppliers.payment.update');
     Route::post('/customers/{customer}/opening-balance', [CustomerController::class, 'storeOpeningBalance'])->name('customers.opening-balance');
 
     Route::get('/salaryadvances/employees', [EmployeeController::class, 'salaryAdvanceIndex'])
@@ -293,16 +326,16 @@ Route::middleware(['auth'])->group(function () {
         'storeOpeningBalance',
     ])->name('freight-expenses.opening-balance');
 
-    Route::get('/freight-expenses/{id}/statement-service',[FreightController::class, 'statementService'])->name('freight-services.statement');
+    Route::get('/freight-expenses/{id}/statement-service', [FreightController::class, 'statementService'])->name('freight-services.statement');
 
     Route::resource('freight-services', FreightServiceController::class)->except(['show', 'destroy']);
     Route::resource('freights', FreightController::class)->only(['index', 'create', 'store', 'show']);
     Route::post('freights/{id}/payment', [FreightController::class, 'payment'])->name('freights.payment');
     Route::post('freights/{id}/cancel', [FreightController::class, 'cancel'])->name('freights.cancel');
     Route::put(
-    '/freight-services/{serviceId}/payments/{paymentId}',
-    [FreightController::class, 'updateServicePayment']
-)->name('freight-services.payment.update');
+        '/freight-services/{serviceId}/payments/{paymentId}',
+        [FreightController::class, 'updateServicePayment']
+    )->name('freight-services.payment.update');
 });
 
 Route::middleware(['auth'])->prefix('accounting')->name('accounting.')->group(function () {

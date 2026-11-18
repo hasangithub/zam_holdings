@@ -15,6 +15,7 @@ use App\Models\JournalEntryDetail;
 use App\Models\JournalEntryReference;
 use App\Models\PurchaseItem;
 use App\Models\SaleItemFifo;
+use App\Models\SalesAmendment;
 use App\Models\SalesPayment;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
@@ -2242,5 +2243,183 @@ class SaleController extends Controller
         return $pdf->stream(
             'Export-Invoice-' . $sale->id . '.pdf'
         );
+    }
+
+    public function storeAmendment(Request $request, $saleId)
+    {
+        $sale = Sale::with('customer')
+            ->findOrFail($saleId);
+
+        if ((int) $sale->branch_id !== (int) auth()->user()->branch_id) {
+            abort(403, 'You are not allowed to update this sale.');
+        }
+
+
+        /*
+    |--------------------------------------------------------------------------
+    | Validate
+    |--------------------------------------------------------------------------
+    */
+
+        $validated = $request->validate([
+
+            'amendment_date' => [
+                'required',
+                'date',
+            ],
+
+            'amount' => [
+                'required',
+                'numeric',
+                'not_in:0',
+            ],
+
+            'reason' => [
+                'required',
+                'string',
+                'max:255',
+            ],
+
+            'notes' => [
+                'nullable',
+                'string',
+            ],
+
+        ]);
+
+        $amount = (float) $request->amount;
+
+        $absoluteAmount = abs($amount);
+
+        if ($absoluteAmount <= 0) {
+            return back()
+                ->withErrors([
+                    'amount' => 'Amendment amount cannot be zero.'
+                ])
+                ->withInput();
+        }
+
+        $amendment = SalesAmendment::create([
+
+            'sale_id' => $sale->id,
+            'customer_id' => $sale->customer_id,
+            'amendment_date' => $validated['amendment_date'],
+            'amount' => $validated['amount'],
+            'reason' => $validated['reason'],
+            'notes' => $validated['notes'] ?? null,
+            'status' => 'approved',
+            'created_by' => auth()->id(),
+        ]);
+
+        if ($amount > 0) {
+
+            /*
+    |--------------------------------------------------------------------------
+    | POSITIVE AMENDMENT
+    |--------------------------------------------------------------------------
+    |
+    | Supplier payable increases
+    |
+    | Debit  Purchase Adjustment
+    | Credit Supplier Payable
+    |
+    */
+
+            $journal = Accounting::postJournal([
+
+                'branch_id' => auth()->user()->branch_id,
+
+                'date' => $amendment->amendment_date,
+
+                'description' =>
+                'Customer Amendment +' .
+                    number_format($absoluteAmount, 2) .
+                    ' - Customer #' . $sale->customer->id,
+
+                'entries' => [
+
+                    [
+                        'ledger_id' => 7,
+                        'sub_ledger_id' => 1,
+                        'debit' => $absoluteAmount,
+                        'credit' => 0,
+                    ],
+
+                    [
+                        'ledger_id' => 8,
+                        'sub_ledger_id' => $sale->customer->liability_sub_ledger_id,
+                        'debit' => 0,
+                        'credit' => $absoluteAmount,
+                    ],
+
+                ],
+            ]);
+        } else {
+
+            /*
+    |--------------------------------------------------------------------------
+    | NEGATIVE AMENDMENT
+    |--------------------------------------------------------------------------
+    |
+    | Supplier payable decreases
+    |
+    | Debit  Supplier Payable
+    | Credit Purchase Adjustment
+    |
+    */
+
+            $journal = Accounting::postJournal([
+
+                'branch_id' => auth()->user()->branch_id,
+                'date' => $amendment->amendment_date,
+                'description' =>
+                'Customer Amendment -' .
+                    number_format($absoluteAmount, 2) .
+                    ' - Customer #' . $sale->customer->id,
+
+                'entries' => [
+
+                    [
+                        'ledger_id' => 8,
+
+                        'sub_ledger_id' =>
+                        $sale->customer->liability_sub_ledger_id,
+
+                        'debit' => $absoluteAmount,
+
+                        'credit' => 0,
+                    ],
+
+                    [
+                        'ledger_id' => 7,
+
+                        'sub_ledger_id' => 1,
+
+                        'debit' => 0,
+
+                        'credit' => $absoluteAmount,
+                    ],
+
+                ],
+            ]);
+        }
+
+        JournalEntryReference::create([
+            'journal_entry_id' => $journal->id,
+
+            'model_type' => SalesAmendment::class,
+
+            'model_id' => $amendment->id,
+
+            'action' => 'created',
+        ]);
+
+
+        return redirect()
+            ->back()
+            ->with(
+                'success',
+                'Sale amendment added successfully.'
+            );
     }
 }
