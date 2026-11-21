@@ -34,6 +34,7 @@ use App\Http\Controllers\CashbookController;
 use App\Http\Controllers\SalaryAdvanceController;
 use App\Http\Controllers\GeneralLedgerController;
 use App\Http\Controllers\BranchController;
+use App\Http\Controllers\ConsignorController;
 use App\Http\Controllers\EmployeeController;
 use App\Http\Controllers\InvoiceCompanyProfileController;
 use App\Http\Controllers\PaymentEntryController;
@@ -320,6 +321,12 @@ Route::middleware(['auth'])->group(function () {
         FreightController::class,
         'statement',
     ])->name('freight-expenses.statement');
+
+    Route::resource('consignors', ConsignorController::class)
+    ->except(['show']);
+
+    Route::post('/freights/bulk-payment', [FreightController::class, 'bulkPayment'])
+    ->name('freights.bulk-payment');
 
     Route::post('/freight-expenses/{id}/opening-balance', [
         FreightController::class,

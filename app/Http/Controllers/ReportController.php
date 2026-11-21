@@ -123,11 +123,10 @@ class ReportController extends Controller
         return $pdf->download('Item-Profit-Analysis.pdf');
     }
 
+
     public function invoiceProfitAnalysis(Request $request)
     {
-        // =========================
-        // Invoice list (Select2)
-        // =========================
+        // Invoice list
         $sales = Sale::with('customer')
             ->latest()
             ->get();
@@ -138,15 +137,11 @@ class ReportController extends Controller
 
         if ($request->filled('sale_id')) {
 
-            // =========================
-            // LOAD INVOICE
-            // =========================
+            // Load invoice
             $sale = Sale::with('customer')
                 ->findOrFail($request->sale_id);
 
-            // =========================
-            // LOAD INVOICE AGGREGATED ITEMS
-            // =========================
+            // Load invoice aggregated items
             $invoiceItems = DB::table('sale_items')
                 ->join('items', 'sale_items.item_id', '=', 'items.id')
                 ->where('sale_items.sale_id', $sale->id)
@@ -154,7 +149,7 @@ class ReportController extends Controller
                     'sale_items.item_id',
                     'items.name',
                     DB::raw('SUM(sale_items.qty) as qty'),
-                    DB::raw('ROUND(SUM(sale_items.qty * sale_items.base_price) / SUM(sale_items.qty),2) as avg_cost')
+                    DB::raw('ROUND(SUM(sale_items.qty * sale_items.base_price) / NULLIF(SUM(sale_items.qty), 0), 2) as avg_cost')
                 )
                 ->groupBy(
                     'sale_items.item_id',
@@ -163,78 +158,87 @@ class ReportController extends Controller
                 ->orderBy('items.name')
                 ->get();
 
-            // =========================
-            // LOAD SAVED REPORT (IF ANY)
-            // =========================
+            // Load saved report
             $report = InvoiceProfitReport::with('items')
                 ->where('sale_id', $sale->id)
                 ->first();
 
-            // =========================
-            // OPTIMIZE REPORT LOOKUP
-            // =========================
             $reportItems = $report
                 ? $report->items->keyBy('item_id')
                 : collect();
 
-            // =========================
-            // MERGE INVOICE + REPORT
-            // =========================
+            // Merge invoice + saved report
             $items = $invoiceItems->map(function ($invItem) use ($reportItems) {
 
                 $rep = $reportItems[$invItem->item_id] ?? null;
 
-                return (object)[
+                return (object) [
                     'item_id' => $invItem->item_id,
                     'name' => $invItem->name,
 
-                    // invoice data (source of truth)
+                    // Original invoice quantity
                     'qty' => $invItem->qty,
+
+                    // Editable analysis quantity
+                    // If no saved quantity, use invoice quantity
+                    'analysis_qty' => $rep->qty ?? $invItem->qty,
+
                     'avg_cost' => $invItem->avg_cost,
 
-                    // user editable report data
                     'sale_price_usd' => $rep->sale_price_usd ?? 0,
                     'market_price' => $rep->market_price ?? 0,
                 ];
             });
         }
 
-        // =========================
-        // RETURN VIEW
-        // =========================
         return view(
             'reports.invoice-profit-analysis',
             compact('sales', 'sale', 'items', 'report')
         );
     }
 
+
+
     public function invoiceProfitAnalysisStore(Request $request)
     {
+        $request->validate([
+            'sale_id' => 'required|exists:sales,id',
+            'exchange_rate' => 'required|numeric|gt:0',
+            'fp_perkg' => 'required|numeric|min:0',
+
+            'items' => 'required|array|min:1',
+            'items.*.item_id' => 'required|exists:items,id',
+            'items.*.qty' => 'required|numeric|gt:0',
+            'items.*.sale_price_usd' => 'required|numeric|min:0',
+            'items.*.market_price' => 'required|numeric|min:0',
+        ]);
+
         DB::beginTransaction();
 
         try {
 
-            // 1. Save header
+            // Save report header
             $report = InvoiceProfitReport::updateOrCreate(
                 ['sale_id' => $request->sale_id],
                 [
                     'exchange_rate' => $request->exchange_rate,
                     'fp_perkg' => $request->fp_perkg,
-                    'created_by' => auth()->id()
+                    'created_by' => auth()->id(),
                 ]
             );
 
-            // 2. Remove old items
+            // Remove previous report items
             InvoiceProfitReportItem::where('report_id', $report->id)->delete();
 
-            // 3. Insert new items
+            // Insert updated report items
             foreach ($request->items as $item) {
 
                 InvoiceProfitReportItem::create([
                     'report_id' => $report->id,
                     'item_id' => $item['item_id'],
+                    'qty' => $item['qty'],
                     'sale_price_usd' => $item['sale_price_usd'],
-                    'market_price' => $item['market_price']
+                    'market_price' => $item['market_price'],
                 ]);
             }
 
@@ -242,7 +246,7 @@ class ReportController extends Controller
 
             return response()->json([
                 'status' => true,
-                'message' => 'Report saved successfully'
+                'message' => 'Report saved successfully',
             ]);
         } catch (\Exception $e) {
 
@@ -250,10 +254,11 @@ class ReportController extends Controller
 
             return response()->json([
                 'status' => false,
-                'message' => $e->getMessage()
+                'message' => $e->getMessage(),
             ], 500);
         }
     }
+
 
     public function indexBranchComparison()
     {

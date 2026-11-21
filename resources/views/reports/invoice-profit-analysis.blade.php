@@ -72,7 +72,7 @@
 
                                 {{ $saleOption->invoice_id }}
                                 -
-                                {{ $saleOption->customer->name }}
+                                {{ $saleOption->internal_invoice_id }}
 
                             </option>
 
@@ -191,7 +191,8 @@
                         <tr class="bg-light">
 
                             <th width="220">Item</th>
-                            <th width="220">Qty</th>
+                            <th width="120">Invoice Qty</th>
+                            <th width="140">Analysis Qty</th>
                             <th width="220">Sales Price ($)</th>
                             <th width="220">Market Price</th>
                             <th width="220">Avg Cost</th>
@@ -243,16 +244,24 @@
 
                             </td>
 
+                            {{-- Original Invoice Qty --}}
                             <td>
-
                                 <input
                                     type="number"
-                                    class="form-control form-control-sm qty"
-
-                                    value="{{ number_format($row->qty,2,'.','') }}"
-
+                                    step="0.001"
+                                    class="form-control form-control-sm invoice_qty"
+                                    value="{{ number_format($row->qty, 3, '.', '') }}"
                                     readonly>
+                            </td>
 
+                            {{-- Editable Analysis Qty --}}
+                            <td>
+                                <input
+                                    type="number"
+                                    step="0.001"
+                                    min="0.001"
+                                    class="form-control form-control-sm analysis_qty"
+                                    value="{{ number_format($row->analysis_qty, 3, '.', '') }}">
                             </td>
 
                             <td>
@@ -337,7 +346,7 @@
 
                         <tr class="bg-light font-weight-bold">
 
-                            <td colspan="7" class="text-right">
+                            <td colspan="8" class="text-right">
 
                                 GRAND TOTAL
 
@@ -407,7 +416,7 @@
 
     $(document).on(
         'keyup change',
-        '#exchange_rate,#fp_perkg,.sale_price,.market_price',
+        '#exchange_rate,#fp_perkg,.analysis_qty,.sale_price,.market_price',
         function() {
 
             calculate();
@@ -436,7 +445,7 @@
 
 
             let qty = parseFloat(
-                row.find(".qty").val()
+                row.find(".analysis_qty").val()
             ) || 0;
 
 
@@ -659,6 +668,7 @@
 
             items.push({
                 item_id: $(this).find(".item_id").val(),
+                qty: $(this).find(".analysis_qty").val(),
                 sale_price_usd: $(this).find(".sale_price").val() || 0,
                 market_price: $(this).find(".market_price").val() || 0
             });

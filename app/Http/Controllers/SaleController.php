@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Accounting\Accounting;
 use App\Models\BranchItemStock;
+use App\Models\Consignor;
 use App\Models\Sale;
 use App\Models\SaleItem;
 use App\Models\Customer;
@@ -37,7 +38,7 @@ class SaleController extends Controller
     public function indexExport()
     {
         $sales = Sale::where('currency', 'USD')->where('branch_id', auth()->user()->branch_id)
-            ->with('freightService')
+            ->with('consignor')
             ->orderByDesc('id')
             ->get();
         return view('sales.index_export', compact('sales'));
@@ -76,6 +77,10 @@ class SaleController extends Controller
             ->where('customer_type', 'export')
             ->orderBy('name')
             ->get();
+        $consignors = Consignor::where(
+            'branch_id',
+            auth()->user()->branch_id
+        )->orderBy('name')->get();
 
         $stocks = DB::table('branch_item_stocks')
             ->join('items', 'items.id', '=', 'branch_item_stocks.item_id')
@@ -92,7 +97,8 @@ class SaleController extends Controller
 
         return view('sales.export_create', compact(
             'customers',
-            'stocks'
+            'stocks',
+            'consignors'
         ));
     }
 
@@ -103,6 +109,7 @@ class SaleController extends Controller
             'sale_date' => ['required', 'date'],
             'status' => ['required', 'in:draft,completed'],
             'items' => ['required', 'array', 'min:1'],
+            'internal_invoice_id' => ['nullable', 'string', 'max:255'],
             'items.*.item_id' => [
                 'required',
                 'integer',
@@ -132,6 +139,7 @@ class SaleController extends Controller
                 'sale_date' => $validated['sale_date'],
                 'total' => 0,
                 'status' => $validated['status'],
+                'internal_invoice_id' => $validated['internal_invoice_id'],
                 'invoice_id' => $this->generateInvoiceId($customer->customer_code),
             ]);
 
@@ -264,6 +272,7 @@ class SaleController extends Controller
             'exchange_rate'              => 'required|numeric|gt:0',
             'sale_date'                  => 'required|date',
             'status'                     => 'required|in:draft,completed',
+            'internal_invoice_id'        => 'nullable|string|max:255',
 
             'items'                      => 'required|array|min:1',
             'items.*.item_id'            => 'required|integer|distinct|exists:items,id',
@@ -298,7 +307,7 @@ class SaleController extends Controller
                     'total'              => 0,
                     'total_foreign'      => 0,
                     'status'             => $status,
-
+                    'internal_invoice_id' => $request->internal_invoice_id,
                     'invoice_id'         => $this->generateInvoiceId(
                         $customer->customer_code
                     ),
@@ -311,6 +320,7 @@ class SaleController extends Controller
                     'mode_of_payment'    => $request->mode_of_payment,
                     'mode_of_shipping'   => $request->mode_of_shipping,
                     'flight_no'          => $request->flight_no,
+                    'consignor_id'       => $request->consignor_id,
                 ]);
 
                 $totalUsd = 0;

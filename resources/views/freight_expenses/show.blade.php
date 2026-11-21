@@ -44,7 +44,7 @@
 
             <div class="col-md-2">
                 <small class="text-muted">Consignor</small>
-                <div>{{ $freight->sale->consignor?? '-' }}</div>
+                <div>{{ $freight->sale->consignor->name?? '-' }}</div>
             </div>
 
             <div class="col-md-2">

@@ -146,249 +146,150 @@
 
 
                         {{-- WIZARD STEP 1: COMMON DETAILS --}}
+
                         <div id="wizardStep1">
+
                             <div class="d-flex justify-content-between align-items-center mb-3">
-                                <h5 class="mb-0"><span class="badge badge-primary">Step 1</span> Export Sale Details</h5>
+                                <h5 class="mb-0">
+                                    <span class="badge badge-primary">Step 1</span>
+                                    Export Sale Details
+                                </h5>
                                 <small class="text-muted">Common information</small>
                             </div>
 
-                            {{-- SALE DATE --}}
-                            <div class="row mb-2">
-                                <div class="col-md-6">
+                            <div class="row">
+
+                                <div class="col-md-4 form-group">
                                     <label for="sale_date">Sale Date</label>
                                     <input type="date" id="sale_date" name="sale_date"
                                         class="form-control form-control-sm"
                                         value="{{ old('sale_date', now()->toDateString()) }}" required>
                                 </div>
-                                <div class="col-md-3">
-                                    <div class="form-group">
-                                        <label for="status">Sale Status</label>
 
-                                        <select name="status" id="status" class="form-control" required>
-                                            <option value="draft" {{ old('status') === 'draft' ? 'selected' : '' }}>
-                                                Save as Draft
-                                            </option>
-                                            <option value="completed" {{ old('status', 'completed') === 'completed' ? 'selected' : '' }}>
-                                                Confirm Sale
-                                            </option>
-                                        </select>
-                                        @error('status')
-                                        <span class="text-danger">{{ $message }}</span>
-                                        @enderror
-                                    </div>
+                                <div class="col-md-4 form-group">
+                                    <label for="status">Sale Status</label>
+                                    <select name="status" id="status" class="form-control form-control-sm" required>
+                                        <option value="draft" {{ old('status') === 'draft' ? 'selected' : '' }}>
+                                            Save as Draft
+                                        </option>
+                                        <option value="completed" {{ old('status', 'completed') === 'completed' ? 'selected' : '' }}>
+                                            Confirm Sale
+                                        </option>
+                                    </select>
+                                    @error('status')
+                                    <span class="text-danger">{{ $message }}</span>
+                                    @enderror
                                 </div>
 
-                            </div>
-
-                            {{-- CUSTOMER + EXCHANGE --}}
-
-                            <div class="row">
-
-
-
-                                <div class="col-md-6">
-
+                                <div class="col-md-4 form-group">
                                     <label>Customer</label>
-
                                     <select name="customer_id" class="form-control form-control-sm" required>
-
                                         <option value="">Select Customer</option>
-
                                         @foreach($customers as $c)
-
-                                        <option value="{{ $c->id }}">{{ $c->name }}</option>
-
+                                        <option value="{{ $c->id }}" {{ old('customer_id') == $c->id ? 'selected' : '' }}>
+                                            {{ $c->name }}
+                                        </option>
                                         @endforeach
-
                                     </select>
-
                                 </div>
 
-
-
-                                <div class="col-md-6">
-
+                                <div class="col-md-4 form-group">
                                     <label>Exchange Rate</label>
-
-                                    <input type="number"
-
-                                        step="0.0001"
-
-                                        name="exchange_rate"
-
+                                    <input type="number" step="0.0001" name="exchange_rate"
                                         class="form-control form-control-sm"
-
-                                        required>
-
+                                        value="{{ old('exchange_rate') }}" required>
                                 </div>
 
+                                <div class="col-md-4 form-group">
+                                    <label>Internal Invoice ID</label>
+                                    <input type="text" name="internal_invoice_id"
+                                        class="form-control form-control-sm"
+                                        value="{{ old('internal_invoice_id') }}"
+                                        placeholder="Enter internal invoice ID">
+                                </div>
 
-
-                            </div>
-
-
-
-                            <div class="row">
-
-
-
-                                <div class="col-md-6">
-
+                                <div class="col-md-4 form-group">
                                     <label for="airway_no">Airway Bill No</label>
-
-                                    <input
-
-                                        type="text"
-
-                                        name="airway_no"
-
-                                        id="airway_no"
-
+                                    <input type="text" name="airway_no" id="airway_no"
                                         class="form-control form-control-sm"
-
                                         value="{{ old('airway_no') }}">
-
                                 </div>
 
-
-
-
-
-                                <div class="col-md-6">
-
-                                    <label>Flight No </label>
-
-                                    <input type="text" name="flight_no" class="form-control form-control-sm">
-
-                                </div>
-
-
-
-                            </div>
-
-
-
-                            <div class="row">
-
-
-
-                                <div class="col-md-6">
-
-                                    <label>Port of Loading</label>
-
-                                    <select name="port_of_loading" class="form-control form-control-sm">
-
-                                        <option value="">Select</option>
-
-
-
-                                        @foreach(\App\Models\Sale::PORTOFLOADING as $id => $name)
-
-                                        <option value="{{ $id }}"
-
-                                            {{ old('port_of_loading', $sale->port_of_loading ?? '') == $id ? 'selected' : '' }}>
-
-                                            {{ $name }}
-
-                                        </option>
-
-                                        @endforeach
-
-                                    </select>
-
-                                </div>
-
-
-
-                                <div class="col-md-6">
-
-                                    <label>Country of Orgin</label>
-
-                                    <input type="text"
-
-                                        name="country_of_origin"
-
+                                <div class="col-md-4 form-group">
+                                    <label>Flight No</label>
+                                    <input type="text" name="flight_no"
                                         class="form-control form-control-sm"
-
-                                        required>
-
+                                        value="{{ old('flight_no') }}">
                                 </div>
 
+                                <div class="col-md-4 form-group">
+                                    <label>Port of Loading</label>
+                                    <select name="port_of_loading" class="form-control form-control-sm">
+                                        <option value="">Select</option>
+                                        @foreach(\App\Models\Sale::PORTOFLOADING as $id => $name)
+                                        <option value="{{ $id }}"
+                                            {{ old('port_of_loading', $sale->port_of_loading ?? '') == $id ? 'selected' : '' }}>
+                                            {{ $name }}
+                                        </option>
+                                        @endforeach
+                                    </select>
+                                </div>
 
+                                <div class="col-md-4 form-group">
+                                    <label>Country of Origin</label>
+                                    <input type="text" name="country_of_origin"
+                                        class="form-control form-control-sm"
+                                        value="{{ old('country_of_origin') }}" required>
+                                </div>
 
-                            </div>
-
-
-
-                            <div class="row">
-
-
-
-                                <div class="col-md-6">
-
+                                <div class="col-md-4 form-group">
                                     <label>Mode of Payment</label>
-
                                     <select name="mode_of_payment" class="form-control form-control-sm">
-
                                         <option value="">Select</option>
-
-
-
                                         @foreach(\App\Models\Sale::MODEOFPAYMENTS as $id => $name)
-
                                         <option value="{{ $id }}"
-
                                             {{ old('mode_of_payment', $sale->mode_of_payment ?? '') == $id ? 'selected' : '' }}>
-
                                             {{ $name }}
-
                                         </option>
-
                                         @endforeach
-
                                     </select>
-
                                 </div>
 
-
-
-                                <div class="col-md-6">
-
-                                    <label>Mod of Shipping</label>
-
+                                <div class="col-md-4 form-group">
+                                    <label>Mode of Shipping</label>
                                     <select name="mode_of_shipping" class="form-control form-control-sm">
-
                                         <option value="">Select</option>
-
-
-
                                         @foreach(\App\Models\Sale::MODEOFSHIPPING as $id => $name)
-
                                         <option value="{{ $id }}"
-
                                             {{ old('mode_of_shipping', $sale->mode_of_shipping ?? '') == $id ? 'selected' : '' }}>
-
                                             {{ $name }}
-
                                         </option>
+                                        @endforeach
+                                    </select>
+                                </div>
 
+                                <div class="col-md-4 form-group">
+                                    <label>Consignor</label>
+
+                                    <select name="consignor_id"
+                                        id="consignor_id"
+                                        class="form-control form-control-sm">
+
+                                        <option value="">Select Consignor</option>
+
+                                        @foreach($consignors as $consignor)
+                                        <option value="{{ $consignor->id }}"
+                                            {{ old('consignor_id', $sale->consignor_id ?? '') == $consignor->id ? 'selected' : '' }}>
+                                            {{ $consignor->name }}
+                                        </option>
                                         @endforeach
 
                                     </select>
-
                                 </div>
-
-
-
                             </div>
 
-
-
                             <hr>
 
-
-
-                            <hr>
                             <div class="form-group mb-3">
                                 <label for="wizardItemPicker">Select Items</label>
                                 <select id="wizardItemPicker" class="form-control form-control-sm" multiple>
@@ -397,32 +298,27 @@
                                         data-name="{{ $s->item_name }}"
                                         data-stock="{{ $s->total_qty }}"
                                         data-cost="{{ $s->average_cost }}">
-                                        {{ $s->item_name }} | Average Cost: {{ number_format($s->average_cost, 2) }} | Stock: {{ $s->total_qty }}
+                                        {{ $s->item_name }} |
+                                        Average Cost: {{ number_format($s->average_cost, 2) }} |
+                                        Stock: {{ $s->total_qty }}
                                     </option>
                                     @endforeach
                                 </select>
-                                <small class="form-text text-muted">Selected items remain inside this field. Search and select each item once.</small>
-                            </div>
-
-                            <div class="row">
-                                <div class="col-md-6 form-group">
-                                    <label for="default_qty">Default Quantity</label>
-                                    <input type="number" id="default_qty" class="form-control form-control-sm"
-                                        min="0.001" step="0.001" value="1">
-                                    <small class="form-text text-muted">Prefills the quantity for each selected item.</small>
-                                </div>
-                                <div class="col-md-6 form-group">
-                                    <label for="default_usd_price">Default Sale Price (USD)</label>
-                                    <input type="number" id="default_usd_price" class="form-control form-control-sm"
-                                        min="0" step="0.01" placeholder="Enter USD price">
-                                    <small class="form-text text-muted">Prefills the USD sale price for each selected item.</small>
-                                </div>
+                                <small class="form-text text-muted">
+                                    Search and select items. Selected items remain inside this field.
+                                </small>
                             </div>
 
                             <div class="text-right mt-3 mb-2">
-                                <button type="button" class="btn btn-primary btn-sm" id="nextStep">Next: Select Items <i class="fas fa-arrow-right ml-1"></i></button>
+                                <button type="button" class="btn btn-primary btn-sm" id="nextStep">
+                                    Next: Select Items
+                                    <i class="fas fa-arrow-right ml-1"></i>
+                                </button>
                             </div>
-                        </div> {{-- /wizardStep1 --}}
+
+                        </div>
+
+                        {{-- /wizardStep1 --}}
 
                         {{-- WIZARD STEP 2: ITEMS --}}
                         <div id="wizardStep2" style="display:none;">
@@ -566,25 +462,53 @@
         itemSelect.on('item_add', syncSelectedItems);
         itemSelect.on('item_remove', syncSelectedItems);
 
+
         function makeItemRow(item) {
             const tr = document.createElement('tr');
             tr.dataset.itemId = item.id;
+
             tr.innerHTML = `
-            <td>
-                <input type="hidden" name="items[${rowIndex}][item_id]" value="${item.id}">
-                <strong>${escapeHtml(item.name)}</strong>
-                <small class="d-block text-muted">Average Cost: ${Number(item.cost).toFixed(2)} | Stock: ${Number(item.stock).toFixed(3)}</small>
-            </td>
-            <td><input type="number" name="items[${rowIndex}][qty]" class="form-control form-control-sm qty-input" min="0.001" step="0.001" max="${item.stock}" value="${getDefaultQty(item.stock)}" required></td>
-            <td><input type="number" name="items[${rowIndex}][sale_price_foreign]" class="form-control form-control-sm price-input" min="0" step="0.01" value="${escapeHtml(document.getElementById('default_usd_price').value)}" required placeholder="USD"></td>
-            <td class="text-center"><button type="button" class="btn btn-danger btn-sm removeRow">X</button></td>`;
+        <td>
+            <input type="hidden" name="items[${rowIndex}][item_id]" value="${item.id}">
+            <strong>${escapeHtml(item.name)}</strong>
+            <small class="d-block text-muted">
+                Average Cost: ${Number(item.cost).toFixed(2)}
+                | Stock: ${Number(item.stock).toFixed(3)}
+            </small>
+        </td>
+
+        <td>
+            <input type="number"
+                name="items[${rowIndex}][qty]"
+                class="form-control form-control-sm qty-input"
+                min="0.001"
+                step="0.001"
+                max="${item.stock}"
+                value=""
+                required
+                placeholder="Enter quantity">
+        </td>
+
+        <td>
+            <input type="number"
+                name="items[${rowIndex}][sale_price_foreign]"
+                class="form-control form-control-sm price-input"
+                min="0"
+                step="0.01"
+                value=""
+                required
+                placeholder="Enter USD price">
+        </td>
+
+        <td class="text-center">
+            <button type="button" class="btn btn-danger btn-sm removeRow">
+                <i class="fas fa-times"></i>
+            </button>
+        </td>
+    `;
+
             rowIndex++;
             return tr;
-        }
-
-        function getDefaultQty(stock) {
-            const entered = Number(document.getElementById('default_qty').value || 1);
-            return Math.min(entered > 0 ? entered : 1, Number(stock || 0));
         }
 
         function escapeHtml(value) {
@@ -624,12 +548,7 @@
                 itemSelect.focus();
                 return false;
             }
-            const defaultQty = Number(document.getElementById('default_qty').value || 0);
-            if (defaultQty <= 0) {
-                alert('Please enter a default quantity greater than zero.');
-                document.getElementById('default_qty').focus();
-                return false;
-            }
+
             return true;
         }
 

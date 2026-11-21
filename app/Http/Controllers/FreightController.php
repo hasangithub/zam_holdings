@@ -15,6 +15,7 @@ use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
+use Illuminate\Support\Facades\Validator;
 
 class FreightController extends Controller
 {
@@ -35,9 +36,15 @@ class FreightController extends Controller
             ->latest()
             ->get();
 
+        $cashbooks = SubLedger::where('ledger_id', 1)
+            ->where('branch_id', auth()->user()->branch_id)
+            ->orderBy('name')
+            ->get();
+
         return view('freight_expenses.index', compact(
             'freights',
-            'services'
+            'services',
+            'cashbooks'
         ));
     }
 
@@ -968,5 +975,167 @@ class FreightController extends Controller
                 ->withInput()
                 ->with('error', 'Unable to update the freight payment.');
         }
+    }
+
+
+
+    public function bulkPayment(Request $request)
+    {
+        $request->validate([
+            'freight_ids' => 'required|string',
+            'payment_date' => 'required|date',
+            'sub_ledger_id' => 'required|exists:sub_ledgers,id',
+            'note' => 'nullable|string',
+        ]);
+
+        $freightIds = json_decode($request->freight_ids, true);
+
+        if (
+            !is_array($freightIds) ||
+            empty($freightIds) ||
+            count($freightIds) !== count(array_unique($freightIds))
+        ) {
+            throw ValidationException::withMessages([
+                'freight_ids' => 'Invalid or duplicate freight selections.',
+            ]);
+        }
+
+        $validator = Validator::make(
+            ['freight_ids' => $freightIds],
+            [
+                'freight_ids' => 'required|array|min:1',
+                'freight_ids.*' => 'required|integer|distinct',
+            ]
+        );
+
+        $validator->validate();
+
+        $branchId = auth()->user()->branch_id;
+
+        // Validate selected cashbook
+        $cashbook = SubLedger::where('id', $request->sub_ledger_id)
+            ->where('ledger_id', 1)
+            ->where('branch_id', $branchId)
+            ->first();
+
+        if (!$cashbook) {
+            throw ValidationException::withMessages([
+                'sub_ledger_id' => 'Invalid cashbook selected.',
+            ]);
+        }
+
+        $result = DB::transaction(function () use (
+            $request,
+            $freightIds,
+            $branchId
+        ) {
+
+            $paidCount = 0;
+            $skippedCount = 0;
+            $totalPayment = 0;
+
+            foreach ($freightIds as $freightId) {
+
+                $freight = Freight::with('service')
+                    ->where('branch_id', $branchId)
+                    ->lockForUpdate()
+                    ->findOrFail($freightId);
+
+                if ($freight->status !== 'active') {
+                    throw ValidationException::withMessages([
+                        'freight_ids' =>
+                        "Freight invoice {$freight->invoice_id} is cancelled.",
+                    ]);
+                }
+
+                if (!$freight->service) {
+                    throw ValidationException::withMessages([
+                        'freight_ids' =>
+                        "Freight service missing for invoice {$freight->invoice_id}.",
+                    ]);
+                }
+
+                // Existing payment calculation
+                $invoiceAmount = (float) $freight->amount_lkr;
+                $alreadyPaid = (float) $freight->total_paid;
+
+                // Calculate actual outstanding amount
+                $amount = round($invoiceAmount - $alreadyPaid, 2);
+
+                // Already fully paid
+                if ($amount <= 0) {
+                    $skippedCount++;
+
+                    continue;
+                }
+
+                // Create freight payment
+                $freightPayment = FreightPayment::create([
+                    'freight_id' => $freight->id,
+                    'payment_date' => $request->payment_date,
+                    'amount' => $amount,
+                    'note' => $request->note ?? 'Full bulk freight payment',
+                ]);
+
+                // Update freight balances
+                $freight->update([
+                    'total_paid' => $alreadyPaid + $amount,
+                    'balance_amount' => 0,
+                ]);
+
+                // Create journal entry
+                $journal = Accounting::postJournal([
+                    'branch_id' => $branchId,
+                    'date' => $request->payment_date,
+                    'description' =>
+                    'Freight Full Payment: '
+                        . $freight->service->name
+                        . ' - Invoice: '
+                        . $freight->invoice_id,
+
+                    'entries' => [
+                        [
+                            'ledger_id' => 1,
+                            'sub_ledger_id' => $request->sub_ledger_id,
+                            'debit' => 0,
+                            'credit' => $amount,
+                        ],
+                        [
+                            'ledger_id' => 18,
+                            'sub_ledger_id' =>
+                            $freight->service->liability_sub_ledger_id,
+                            'debit' => $amount,
+                            'credit' => 0,
+                        ],
+                    ],
+                ]);
+
+                // Link journal to freight payment
+                JournalEntryReference::create([
+                    'journal_entry_id' => $journal->id,
+                    'model_type' => FreightPayment::class,
+                    'model_id' => $freightPayment->id,
+                    'action' => 'created',
+                ]);
+
+                $paidCount++;
+                $totalPayment += $amount;
+            }
+
+            return [
+                'paid_count' => $paidCount,
+                'skipped_count' => $skippedCount,
+                'total_payment' => $totalPayment,
+            ];
+        });
+
+        return back()->with(
+            'success',
+            "Bulk payment completed. "
+                . "Paid invoices: {$result['paid_count']}. "
+                . "Already paid/skipped: {$result['skipped_count']}. "
+                . "Total payment: LKR "
+                . number_format($result['total_payment'], 2)
+        );
     }
 }

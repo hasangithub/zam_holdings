@@ -9,6 +9,7 @@ class InvoiceProfitReportItem extends Model
     protected $fillable = [
         'report_id',
         'item_id',
+        'qty',
         'sale_price_usd',
         'market_price'
     ];

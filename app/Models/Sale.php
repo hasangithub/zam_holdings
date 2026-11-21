@@ -12,8 +12,9 @@ class Sale extends Model
     protected $fillable = [
         'branch_id',
         'invoice_id',
+        'internal_invoice_id',
         'airway_no',
-        'consignor',
+        'consignor_id',
         'consignee_name',
         'consignee_address',
         'port_of_loading',
@@ -29,14 +30,6 @@ class Sale extends Model
         'exchange_rate',
         'total_foreign',
         'status'
-    ];
-
-    public const CONSIGNORS = [
-        1 => 'Zam Holdings',
-        2 => 'ABC Exports',
-        3 => 'Fresh Foods Lanka',
-        4 => 'Global Traders',
-        5 => 'Hamas',
     ];
 
     public const MODEOFPAYMENTS = [
@@ -67,11 +60,6 @@ class Sale extends Model
         return $this->hasMany(SalesPayment::class);
     }
 
-    public function freightService()
-    {
-        return $this->belongsTo(FreightService::class, 'consignor', 'id');
-    }
-
     public function freights()
     {
         return $this->hasMany(Freight::class);
@@ -80,5 +68,10 @@ class Sale extends Model
     public function profitLoss()
     {
         return $this->hasOne(SalesProfitLoss::class);
+    }
+
+    public function consignor()
+    {
+        return $this->belongsTo(Consignor::class, 'consignor_id', 'id');
     }
 }

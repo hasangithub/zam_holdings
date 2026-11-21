@@ -100,63 +100,80 @@
                 </div>
 
                 {{-- STEP 1: CUSTOMER, SALE DATE AND ITEMS --}}
+
+                {{-- STEP 1: CUSTOMER, SALE DATE AND ITEMS --}}
                 <div id="wizardStep1" class="sale-wizard-step active">
 
-                    <div class="form-group">
-                        <label for="customer_id">
-                            Customer <span class="text-danger">*</span>
-                        </label>
+                    <div class="row">
 
-                        <select name="customer_id"
-                            id="customer_id"
-                            class="form-control"
-                            required>
-                            <option value="">Select Customer</option>
+                        <div class="col-md-4 form-group mb-2">
+                            <label for="customer_id">
+                                Customer <span class="text-danger">*</span>
+                            </label>
 
-                            @foreach($customers as $c)
-                            <option value="{{ $c->id }}"
-                                {{ (string) old('customer_id') === (string) $c->id ? 'selected' : '' }}>
-                                {{ $c->name }}
-                            </option>
-                            @endforeach
-                        </select>
-                    </div>
+                            <select name="customer_id"
+                                id="customer_id"
+                                class="form-control form-control-sm"
+                                required>
+                                <option value="">Select Customer</option>
 
-                    {{-- SALE DATE --}}
-                    <div class="form-group">
-                        <label for="sale_date">
-                            Sale Date <span class="text-danger">*</span>
-                        </label>
+                                @foreach($customers as $c)
+                                <option value="{{ $c->id }}"
+                                    {{ (string) old('customer_id') === (string) $c->id ? 'selected' : '' }}>
+                                    {{ $c->name }}
+                                </option>
+                                @endforeach
+                            </select>
+                        </div>
 
-                        <input type="date"
-                            name="sale_date"
-                            id="sale_date"
-                            class="form-control"
-                            value="{{ old('sale_date', now()->toDateString()) }}"
-                            required>
-                    </div>
+                        <div class="col-md-4 form-group mb-2">
+                            <label for="sale_date">
+                                Sale Date <span class="text-danger">*</span>
+                            </label>
 
-                    <div class="col-md-3">
-                        <div class="form-group">
+                            <input type="date"
+                                name="sale_date"
+                                id="sale_date"
+                                class="form-control form-control-sm"
+                                value="{{ old('sale_date', now()->toDateString()) }}"
+                                required>
+                        </div>
+
+                        <div class="col-md-4 form-group mb-2">
                             <label for="status">Sale Status</label>
 
-                            <select name="status" id="status" class="form-control" required>
+                            <select name="status" id="status"
+                                class="form-control form-control-sm" required>
                                 <option value="draft" {{ old('status') === 'draft' ? 'selected' : '' }}>
                                     Save as Draft
                                 </option>
+
                                 <option value="completed" {{ old('status', 'completed') === 'completed' ? 'selected' : '' }}>
                                     Confirm Sale
                                 </option>
                             </select>
+
                             @error('status')
                             <span class="text-danger">{{ $message }}</span>
                             @enderror
                         </div>
+
+                        <div class="col-md-4 form-group mb-2">
+                            <label for="internal_invoice_id">Internal Invoice ID</label>
+
+                            <input type="text"
+                                name="internal_invoice_id"
+                                id="internal_invoice_id"
+                                class="form-control form-control-sm"
+                                value="{{ old('internal_invoice_id') }}"
+                                placeholder="Enter internal invoice ID">
+                        </div>
+
                     </div>
 
                     <hr>
 
-                    <div class="form-group">
+                    <div class="form-group mb-3">
                         <label for="itemPicker">
                             Select Items <span class="text-danger">*</span>
                         </label>
@@ -165,15 +182,18 @@
                             class="form-control"
                             multiple
                             placeholder="Search and select items...">
+
                             @foreach($stocks as $s)
                             <option
                                 value="{{ $s->item_id }}"
                                 data-item-name="{{ $s->item_name }}"
                                 data-cost="{{ $s->average_cost }}"
                                 data-stock="{{ $s->total_qty }}">
+
                                 {{ $s->item_name }}
                                 | Average Cost: {{ number_format($s->average_cost, 2) }}
                                 | Stock: {{ number_format($s->total_qty, 3) }}
+
                             </option>
                             @endforeach
                         </select>
@@ -184,19 +204,18 @@
                         </small>
                     </div>
 
-                   
-                    <div class="d-flex justify-content-between align-items-center mt-4">
-                        <a href="{{ route('sales.index') }}" class="btn btn-secondary">
-                            <i class="fas fa-arrow-left mr-1"></i>
-                            Cancel
+                    <div class="d-flex justify-content-between align-items-center mt-3">
+                        <a href="{{ route('sales.index') }}" class="btn btn-secondary btn-sm">
+                            <i class="fas fa-arrow-left mr-1"></i> Cancel
                         </a>
 
-                        <button type="button" class="btn btn-primary" id="nextStep">
-                            Next
-                            <i class="fas fa-arrow-right ml-1"></i>
+                        <button type="button" class="btn btn-primary btn-sm" id="nextStep">
+                            Next <i class="fas fa-arrow-right ml-1"></i>
                         </button>
                     </div>
+
                 </div>
+
 
                 {{-- STEP 2: SELECTED ITEMS --}}
                 <div id="wizardStep2" class="sale-wizard-step">
@@ -494,7 +513,7 @@
                     return;
                 }
 
-            
+
                 if (itemTomSelect.items.length === 0) {
                     alert('Please select at least one item.');
                     itemTomSelect.focus();
