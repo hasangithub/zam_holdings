@@ -394,6 +394,16 @@ Route::middleware(['auth'])->group(function () {
         [FreightController::class, 'deleteCurrencyPayment']
     )->name('freight-expenses.currency-payments.delete');
 
+    Route::get('/freights/{id}/edit-data', [
+    FreightController::class,
+    'editData'
+])->name('freights.edit-data');
+
+Route::put('/freight-services/{serviceId}/invoices/{freightId}', [
+    FreightController::class,
+    'updateInvoice'
+])->name('freight-services.invoice.update');
+
 
     Route::get('/freight-expenses/{id}/statement-service', [FreightController::class, 'statementService'])->name('freight-services.statement');
 

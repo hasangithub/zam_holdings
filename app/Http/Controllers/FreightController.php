@@ -129,7 +129,7 @@ class FreightController extends Controller
             ]);
 
             if ($request->invoice_type === 'invoice') {
-                Accounting::postJournal([
+                $journal = Accounting::postJournal([
                     'branch_id' => $branchId,
                     'date' => $request->date,
 
@@ -150,6 +150,13 @@ class FreightController extends Controller
                             'credit' => $amountLkr,
                         ],
                     ]
+                ]);
+
+                JournalEntryReference::create([
+                    'journal_entry_id' => $journal->id,
+                    'model_type'       => Freight::class,
+                    'model_id'         => $freight->id,
+                    'action'           => 'created',
                 ]);
             } else {
                 $journal = Accounting::postJournal([
@@ -174,6 +181,13 @@ class FreightController extends Controller
                             'credit' => $amountLkr,
                         ],
                     ],
+                ]);
+
+                JournalEntryReference::create([
+                    'journal_entry_id' => $journal->id,
+                    'model_type'       => Freight::class,
+                    'model_id'         => $freight->id,
+                    'action'           => 'created',
                 ]);
             }
         });
@@ -1367,7 +1381,7 @@ class FreightController extends Controller
     }
 
     public function storeCurrencyPayment(Request $request, $id, $currency)
-    {   
+    {
         $currencyOptions = ['USD', 'SAR', 'AED', 'EUR'];
         $branchId = auth()->user()->branch_id;
 
@@ -1394,7 +1408,7 @@ class FreightController extends Controller
         ]);
 
         return redirect()
-            ->route('freight-expenses.currency-statement', [$freightService->id,$currency])
+            ->route('freight-expenses.currency-statement', [$freightService->id, $currency])
             ->with('success', 'Currency payment saved successfully.');
     }
 
@@ -1456,5 +1470,131 @@ class FreightController extends Controller
                 $currency,
             ])
             ->with('success', 'Currency payment deleted successfully.');
+    }
+
+    public function editData($id)
+    {
+        $freight = Freight::where('branch_id', auth()->user()->branch_id)
+            ->where('is_opening_balance', 0)
+            ->findOrFail($id);
+
+        return response()->json([
+            'date' => $freight->date,
+            'exchange_rate' => $freight->exchange_rate,
+            'amount_usd' => $freight->amount_usd,
+        ]);
+    }
+
+    public function updateInvoice(Request $request, $serviceId, $freightId)
+    {
+        $data = $request->validate([
+            'date' => 'required|date',
+            'exchange_rate' => 'required|numeric|gt:0',
+            'amount_usd' => 'required|numeric|gt:0',
+        ]);
+
+        $branchId = auth()->user()->branch_id;
+
+        DB::transaction(function () use ($data, $branchId, $serviceId, $freightId) {
+
+            $freight = Freight::where('branch_id', $branchId)
+                ->lockForUpdate()
+                ->findOrFail($freightId);
+
+            if ($freight->freight_service_id != $serviceId) {
+                abort(403, 'Invalid freight service.');
+            }
+
+            if ($freight->is_opening_balance) {
+                throw ValidationException::withMessages([
+                    'amount_usd' => 'Opening balance records cannot be edited as invoice records.',
+                ]);
+            }
+
+            $amountLkr = (float) $data['amount_usd']
+                * (float) $data['exchange_rate'];
+
+            // Do not allow invoice amount below payments already made
+            if ($amountLkr < (float) $freight->total_paid) {
+                throw ValidationException::withMessages([
+                    'amount_usd' => 'Invoice amount cannot be less than the payments already made.',
+                ]);
+            }
+
+            // Find the existing journal reference
+            $reference = JournalEntryReference::where(
+                'model_type',
+                Freight::class
+            )
+                ->where('model_id', $freight->id)
+                ->first();
+
+            if (!$reference) {
+                throw new \Exception(
+                    'Freight invoice journal reference not found. Please link the existing journal first.'
+                );
+            }
+
+            $journal = JournalEntry::where('branch_id', $branchId)
+                ->lockForUpdate()
+                ->findOrFail($reference->journal_entry_id);
+
+            $service = FreightService::where('id', $serviceId)
+                ->firstOrFail();
+
+            $liabilitySubLedgerId = $service->liability_sub_ledger_id;
+
+            // Existing debit: Freight Expense (Ledger 15)
+            $debitEntry = JournalEntryDetail::where('journal_entry_id', $journal->id)
+                ->where('ledger_id', 15)
+                ->where('debit', '>', 0)
+                ->first();
+
+            // Existing credit: Freight Service Liability (Ledger 18)
+            $creditEntry = JournalEntryDetail::where('journal_entry_id', $journal->id)
+                ->where('ledger_id', 18)
+                ->first();
+
+            if (!$debitEntry || !$creditEntry) {
+                throw new \Exception(
+                    'Freight invoice journal entries are incomplete.'
+                );
+            }
+
+            // Update existing freight invoice
+            $freight->update([
+                'date' => $data['date'],
+                'exchange_rate' => $data['exchange_rate'],
+                'amount_usd' => $data['amount_usd'],
+                'amount_lkr' => $amountLkr,
+                'balance_amount' => $amountLkr - (float) $freight->total_paid,
+            ]);
+
+            // Update existing journal header
+            $journal->update([
+                'journal_date' => $data['date'],
+                'description' => 'Freight Expense - Freight #'
+                    . $freight->id
+                    . ' - Invoice #'
+                    . $freight->invoice_id,
+            ]);
+
+            // Update existing debit
+            $debitEntry->update([
+                'debit' => $amountLkr,
+                'credit' => 0,
+            ]);
+
+            // Update existing liability credit
+            $creditEntry->update([
+                'sub_ledger_id' => $liabilitySubLedgerId,
+                'debit' => 0,
+                'credit' => $amountLkr,
+            ]);
+        });
+
+        return redirect()
+            ->route('freight-services.statement', $serviceId)
+            ->with('success', 'Freight invoice updated successfully.');
     }
 }

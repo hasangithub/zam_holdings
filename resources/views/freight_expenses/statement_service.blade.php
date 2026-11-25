@@ -330,11 +330,23 @@
 
                             <td class="text-center">
 
-                                @if($row['type'] === 'Payment' && !empty($row['payment_id']))
+                                @if($row['type'] === 'Invoice')
 
-                                <button type="button" class="btn btn-xs btn-primary edit-freight-payment"
-                                    data-id="{{ $row['payment_id'] }}" data-amount="{{ $row['credit'] }}"
-                                    data-date="{{ $row['date'] }}" title="Edit Payment">
+                                <button type="button"
+                                    class="btn btn-xs btn-warning edit-freight-invoice"
+                                    data-id="{{ $row['id'] }}"
+                                    title="Edit Freight Invoice">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+
+                                @elseif($row['type'] === 'Payment' && !empty($row['payment_id']))
+
+                                <button type="button"
+                                    class="btn btn-xs btn-primary edit-freight-payment"
+                                    data-id="{{ $row['payment_id'] }}"
+                                    data-amount="{{ $row['credit'] }}"
+                                    data-date="{{ $row['date'] }}"
+                                    title="Edit Payment">
 
                                     <i class="fas fa-edit"></i>
 
@@ -579,44 +591,177 @@
     </div>
 </div>
 
+{{-- EDIT FREIGHT INVOICE MODAL --}}
+<div class="modal fade" id="editFreightInvoiceModal" tabindex="-1">
+
+    <div class="modal-dialog modal-dialog-centered">
+
+        <form method="POST" id="editFreightInvoiceForm">
+
+            @csrf
+            @method('PUT')
+
+            <div class="modal-content">
+
+                <div class="modal-header bg-warning">
+                    <h5 class="modal-title">Edit Freight Invoice</h5>
+
+                    <button type="button" class="close" data-dismiss="modal">
+                        <span>&times;</span>
+                    </button>
+                </div>
+
+                <div class="modal-body">
+
+                    <div class="form-group">
+                        <label>Freight Date</label>
+
+                        <input type="date"
+                            name="date"
+                            id="edit_freight_date"
+                            class="form-control"
+                            required>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Exchange Rate</label>
+
+                        <input type="number"
+                            name="exchange_rate"
+                            id="edit_freight_exchange_rate"
+                            class="form-control"
+                            min="0.000001"
+                            step="0.000001"
+                            required>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Amount (USD)</label>
+
+                        <input type="number"
+                            name="amount_usd"
+                            id="edit_freight_amount_usd"
+                            class="form-control"
+                            min="0.01"
+                            step="0.01"
+                            required>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Amount (LKR)</label>
+
+                        <input type="text"
+                            id="edit_freight_amount_lkr"
+                            class="form-control"
+                            readonly>
+                    </div>
+
+                    <small class="text-muted">
+                        The existing invoice number and sale reference will be retained.
+                    </small>
+
+                </div>
+
+                <div class="modal-footer">
+
+                    <button type="button"
+                        class="btn btn-secondary"
+                        data-dismiss="modal">
+                        Cancel
+                    </button>
+
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save"></i> Update Invoice
+                    </button>
+
+                </div>
+
+            </div>
+
+        </form>
+
+    </div>
+
+</div>
+
 @endsection
 
 @push('scripts')
 <script>
     $(document).ready(function() {
 
-        $('.edit-freight-payment').on('click', function() {
+            // EDIT FREIGHT INVOICE
+            $('.edit-freight-invoice').on('click', function() {
 
-            let paymentId = $(this).data('id');
-            let amount = $(this).data('amount');
-            let date = $(this).data('date');
+                let freightId = $(this).data('id');
 
-            let url =
-                "{{ route('freight-services.payment.update', ['serviceId' => $service -> id, 'paymentId' => '__PAYMENT_ID__'])}}";
+                let url = "{{ route('freight-services.invoice.update', ['serviceId' => $service -> id, 'freightId' => '__FREIGHT_ID__'])}}";
 
-            url = url.replace('__PAYMENT_ID__', paymentId);
+    url = url.replace('__FREIGHT_ID__', freightId);
 
-            $('#editFreightPaymentForm').attr('action', url);
+    $('#editFreightInvoiceForm').attr('action', url);
 
-            $('#edit_payment_amount').val(amount);
-            $('#edit_payment_date').val(date);
+    // Load existing invoice details
+    $.get("{{ url('/freights') }}/" + freightId + "/edit-data", function(response) {
 
-            $('#editFreightPaymentModal').modal('show');
-        });
+    $('#edit_freight_date').val(response.date);
+    $('#edit_freight_exchange_rate').val(response.exchange_rate);
+    $('#edit_freight_amount_usd').val(response.amount_usd);
 
-        document.getElementById('openCurrencyStatement').addEventListener('click', function() {
+    calculateFreightLkr();
 
-            let currency = document.getElementById('currencyStatementSelect').value;
+    $('#editFreightInvoiceModal').modal('show');
 
-            if (!currency) {
-                toastr.warning('Please select a currency.');
-                return;
-            }
+    }).fail(function() {
+    toastr.error('Unable to load freight invoice details.');
+    });
 
-            let url = "{{ url('/freight-expenses/'.$service->id.'/currency-statement') }}/" + currency;
+    });
 
-            window.location.href = url;
-        });
+    function calculateFreightLkr() {
+
+        let usd = parseFloat($('#edit_freight_amount_usd').val()) || 0;
+        let rate = parseFloat($('#edit_freight_exchange_rate').val()) || 0;
+
+        $('#edit_freight_amount_lkr').val((usd * rate).toFixed(2));
+    }
+
+    $('#edit_freight_amount_usd, #edit_freight_exchange_rate').on('input', function() {
+        calculateFreightLkr();
+    });
+
+    $('.edit-freight-payment').on('click', function() {
+
+        let paymentId = $(this).data('id');
+        let amount = $(this).data('amount');
+        let date = $(this).data('date');
+
+        let url =
+            "{{ route('freight-services.payment.update', ['serviceId' => $service -> id, 'paymentId' => '__PAYMENT_ID__'])}}";
+
+        url = url.replace('__PAYMENT_ID__', paymentId);
+
+        $('#editFreightPaymentForm').attr('action', url);
+
+        $('#edit_payment_amount').val(amount);
+        $('#edit_payment_date').val(date);
+
+        $('#editFreightPaymentModal').modal('show');
+    });
+
+    document.getElementById('openCurrencyStatement').addEventListener('click', function() {
+
+    let currency = document.getElementById('currencyStatementSelect').value;
+
+    if (!currency) {
+        toastr.warning('Please select a currency.');
+        return;
+    }
+
+    let url = "{{ url('/freight-expenses/'.$service->id.'/currency-statement') }}/" + currency;
+
+    window.location.href = url;
+    });
 
     });
 </script>
