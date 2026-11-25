@@ -22,8 +22,14 @@
         </div>
 
         <div>
-            <a href="{{ route('freight-services.index') }}"
-                class="btn btn-secondary">
+            <button type="button" class="btn btn-primary" data-toggle="modal" data-target="#payModal">
+                <i class="fas fa-plus"></i> Freight Payment
+            </button>
+
+            <button type="button" class="btn btn-primary" data-toggle="modal" data-target="#openingBalanceModal">
+                <i class="fas fa-balance-scale"></i> Opening Balance
+            </button>
+            <a href="{{ route('freight-services.index') }}" class="btn btn-secondary">
                 <i class="fas fa-arrow-left"></i> Back
             </a>
         </div>
@@ -48,32 +54,46 @@
 
         <div class="card-body py-2">
 
-            <form method="GET"
-                action="{{ route('freight-services.statement', $service->id) }}">
+            <div class="row">
+                <div class="col-md-4">
+                    <label>View Statement in Another Currency</label>
+
+                    <select id="currencyStatementSelect" class="form-control">
+                        <option value="">Select Currency</option>
+
+                        @foreach($currencyOptions as $code => $name)
+                        <option value="{{ $code }}">
+                            {{ $code }} - {{ $name }}
+                        </option>
+                        @endforeach
+                    </select>
+                </div>
+
+                <div class="col-md-2">
+                    <button type="button" id="openCurrencyStatement" class="btn btn-info btn-block">
+                        <i class="fas fa-external-link-alt"></i>
+                        Open Statement
+                    </button>
+                </div>
+            </div>
+            <form method="GET" action="{{ route('freight-services.statement', $service->id) }}">
 
                 <div class="form-row align-items-end">
 
                     <div class="col-md-3">
                         <label class="mb-1">From Date</label>
 
-                        <input type="date"
-                            name="from_date"
-                            class="form-control"
-                            value="{{ $fromDate }}">
+                        <input type="date" name="from_date" class="form-control" value="{{ $fromDate }}">
                     </div>
 
                     <div class="col-md-3">
                         <label class="mb-1">To Date</label>
 
-                        <input type="date"
-                            name="to_date"
-                            class="form-control"
-                            value="{{ $toDate }}">
+                        <input type="date" name="to_date" class="form-control" value="{{ $toDate }}">
                     </div>
 
                     <div class="col-md-2">
-                        <button type="submit"
-                            class="btn btn-primary btn-block">
+                        <button type="submit" class="btn btn-primary btn-block">
                             <i class="fas fa-filter"></i> Filter
                         </button>
                     </div>
@@ -89,8 +109,7 @@
                         <a href="{{ route('freight-services.statement', [
                             'id' => $service->id,
                             'all' => 1
-                        ]) }}"
-                            class="btn btn-info btn-block">
+                        ]) }}" class="btn btn-info btn-block">
                             All
                         </a>
                     </div>
@@ -127,7 +146,6 @@
         <div class="col-md-4">
             <div class="card shadow-sm border-0">
                 <div class="card-body">
-
                     <h6 class="text-muted">
                         {{ $all ? 'Total Freight' : 'Period Freight' }}
                     </h6>
@@ -314,12 +332,9 @@
 
                                 @if($row['type'] === 'Payment' && !empty($row['payment_id']))
 
-                                <button type="button"
-                                    class="btn btn-xs btn-primary edit-freight-payment"
-                                    data-id="{{ $row['payment_id'] }}"
-                                    data-amount="{{ $row['credit'] }}"
-                                    data-date="{{ $row['date'] }}"
-                                    title="Edit Payment">
+                                <button type="button" class="btn btn-xs btn-primary edit-freight-payment"
+                                    data-id="{{ $row['payment_id'] }}" data-amount="{{ $row['credit'] }}"
+                                    data-date="{{ $row['date'] }}" title="Edit Payment">
 
                                     <i class="fas fa-edit"></i>
 
@@ -334,8 +349,7 @@
                         @empty
 
                         <tr>
-                            <td colspan="8"
-                                class="text-center text-muted py-4">
+                            <td colspan="8" class="text-center text-muted py-4">
                                 No transactions found.
                             </td>
                         </tr>
@@ -387,9 +401,7 @@
 
     <div class="modal-dialog modal-dialog-centered">
 
-        <form method="POST"
-            id="editFreightPaymentForm"
-            action="">
+        <form method="POST" id="editFreightPaymentForm" action="">
 
             @csrf
             @method('PUT')
@@ -399,9 +411,7 @@
                 <div class="modal-header">
                     <h5 class="modal-title">Edit Freight Payment</h5>
 
-                    <button type="button"
-                        class="close"
-                        data-dismiss="modal">
+                    <button type="button" class="close" data-dismiss="modal">
                         <span>&times;</span>
                     </button>
                 </div>
@@ -411,37 +421,25 @@
                     <div class="form-group">
                         <label>Payment Date</label>
 
-                        <input type="date"
-                            name="payment_date"
-                            id="edit_payment_date"
-                            class="form-control"
-                            required>
+                        <input type="date" name="payment_date" id="edit_payment_date" class="form-control" required>
                     </div>
 
                     <div class="form-group">
                         <label>Amount (LKR)</label>
 
-                        <input type="number"
-                            name="amount"
-                            id="edit_payment_amount"
-                            class="form-control"
-                            step="0.01"
-                            min="0.01"
-                            required>
+                        <input type="number" name="amount" id="edit_payment_amount" class="form-control" step="0.01"
+                            min="0.01" required>
                     </div>
 
                 </div>
 
                 <div class="modal-footer">
 
-                    <button type="button"
-                        class="btn btn-secondary"
-                        data-dismiss="modal">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">
                         Cancel
                     </button>
 
-                    <button type="submit"
-                        class="btn btn-primary">
+                    <button type="submit" class="btn btn-primary">
                         <i class="fas fa-save"></i> Update Payment
                     </button>
 
@@ -455,33 +453,171 @@
 
 </div>
 
+{{-- FREIGHT PAYMENT MODAL --}}
+<div class="modal fade" id="payModal" tabindex="-1" role="dialog" aria-labelledby="payModalLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <form method="POST" action="{{ route('freights.payment', $service->id) }}">
+                @csrf
+
+                <div class="modal-header">
+                    <h5 class="modal-title" id="payModalLabel">
+                        Add Freight Payment
+                    </h5>
+                    <button type="button" class="close" data-dismiss="modal">
+                        <span>&times;</span>
+                    </button>
+                </div>
+
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label>Freight Payment</label>
+                        <select name="freight_id" class="form-control" required>
+                            <option value="">Select Freights</option>
+                            @foreach($freights as $freight)
+                            <option value="{{ $freight->id }}">
+                                {{ $freight->invoice_id }}
+                            </option>
+                            @endforeach
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Amount</label>
+                        <input type="number" name="amount" class="form-control" min="0.01" max="" step="0.01" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Payment Date</label>
+                        <input type="date" name="payment_date" class="form-control" value="{{ date('Y-m-d') }}"
+                            required>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Payment Account</label>
+                        <select name="sub_ledger_id" class="form-control" required>
+                            <option value="">Select Cash / Bank Account</option>
+                            @foreach($paymentSubLedgers as $subLedger)
+                            <option value="{{ $subLedger->id }}">
+                                {{ $subLedger->name }}
+                            </option>
+                            @endforeach
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Note</label>
+                        <textarea name="note" class="form-control" rows="3"></textarea>
+                    </div>
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                    <button type="submit" class="btn btn-primary">
+                        Save Payment
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+{{-- OPENING BALANCE MODAL --}}
+<div class="modal fade" id="openingBalanceModal" tabindex="-1" role="dialog" aria-labelledby="openingBalanceModalLabel"
+    aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <form method="POST" action="{{ route('freight-expenses.opening-balance', $service->id) }}">
+                @csrf
+
+                <div class="modal-header">
+                    <h5 class="modal-title" id="openingBalanceModalLabel">
+                        Freight Opening Balance
+                    </h5>
+                    <button type="button" class="close" data-dismiss="modal">
+                        <span>&times;</span>
+                    </button>
+                </div>
+
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label>Freights</label>
+                        <select name="freight_id" class="form-control" required>
+                            <option value="">Select Freights</option>
+                            @foreach($freights as $freight)
+                            <option value="{{ $freight->id }}">
+                                {{ $freight->invoice_id }}
+                            </option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Opening Balance Amount</label>
+                        <input type="number" name="opening_amount" class="form-control" min="0.01" step="0.01" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Opening Balance Date</label>
+                        <input type="date" name="opening_date" class="form-control" value="{{ date('Y-m-d') }}"
+                            required>
+                    </div>
+
+                    <small class="text-muted">
+                        Saving this will create an opening balance journal
+                        linked to this freight record.
+                    </small>
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">
+                        Save Opening Balance
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
 @endsection
 
 @push('scripts')
 <script>
-$(document).ready(function () {
+    $(document).ready(function() {
 
-    $('.edit-freight-payment').on('click', function () {
+        $('.edit-freight-payment').on('click', function() {
 
-        let paymentId = $(this).data('id');
-        let amount = $(this).data('amount');
-        let date = $(this).data('date');
+            let paymentId = $(this).data('id');
+            let amount = $(this).data('amount');
+            let date = $(this).data('date');
 
-        let url = "{{ route('freight-services.payment.update', [
-            'serviceId' => $service->id,
-            'paymentId' => '__PAYMENT_ID__'
-        ]) }}";
+            let url =
+                "{{ route('freight-services.payment.update', ['serviceId' => $service -> id, 'paymentId' => '__PAYMENT_ID__'])}}";
 
-        url = url.replace('__PAYMENT_ID__', paymentId);
+            url = url.replace('__PAYMENT_ID__', paymentId);
 
-        $('#editFreightPaymentForm').attr('action', url);
+            $('#editFreightPaymentForm').attr('action', url);
 
-        $('#edit_payment_amount').val(amount);
-        $('#edit_payment_date').val(date);
+            $('#edit_payment_amount').val(amount);
+            $('#edit_payment_date').val(date);
 
-        $('#editFreightPaymentModal').modal('show');
+            $('#editFreightPaymentModal').modal('show');
+        });
+
+        document.getElementById('openCurrencyStatement').addEventListener('click', function() {
+
+            let currency = document.getElementById('currencyStatementSelect').value;
+
+            if (!currency) {
+                toastr.warning('Please select a currency.');
+                return;
+            }
+
+            let url = "{{ url('/freight-expenses/'.$service->id.'/currency-statement') }}/" + currency;
+
+            window.location.href = url;
+        });
+
     });
-
-});
 </script>
 @endpush

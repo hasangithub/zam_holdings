@@ -38,7 +38,7 @@ use App\Http\Controllers\ConsignorController;
 use App\Http\Controllers\EmployeeController;
 use App\Http\Controllers\InvoiceCompanyProfileController;
 use App\Http\Controllers\PaymentEntryController;
-
+use App\Http\Controllers\CostController;
 // Route::get('/', function () {
 //     return view('welcome');
 // });
@@ -235,6 +235,35 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/export', [PosController::class, 'export'])->name('pos.export');
     });
 
+
+
+
+    Route::prefix('costs')->name('costs.')->controller(CostController::class)->group(function () {
+
+        Route::get('/', 'index')->name('index');
+        Route::get('/cost-category', 'indexCostCategory')->name('index.costcategory');
+        Route::get('/create', 'create')->name('create');
+        Route::post('/', 'store')->name('store');
+
+        Route::get('/sub-categories/{categoryId}', 'getSubCategories')
+            ->name('sub-categories');
+
+        Route::get('/sub-categories/{id}/statement', 'statementSubCategory')
+            ->name('sub-categories.statement');
+
+        Route::post('/categories', 'storeCategory')
+            ->name('categories.store');
+
+        Route::post('/sub-categories', 'storeSubCategory')
+            ->name('sub-categories.store');
+
+        Route::get('/{id}', 'show')->name('show');
+
+        Route::post('/{id}/payments', 'storePayment')
+            ->name('payments.store');
+    });
+
+
     Route::resource('shipment-plans', ShipmentPlanController::class);
     Route::get('/shipment-plans/{id}/pdf', [ShipmentPlanController::class, 'pdf'])
         ->name('shipment-plans.pdf');
@@ -323,15 +352,38 @@ Route::middleware(['auth'])->group(function () {
     ])->name('freight-expenses.statement');
 
     Route::resource('consignors', ConsignorController::class)
-    ->except(['show']);
+        ->except(['show']);
 
     Route::post('/freights/bulk-payment', [FreightController::class, 'bulkPayment'])
-    ->name('freights.bulk-payment');
+        ->name('freights.bulk-payment');
 
     Route::post('/freight-expenses/{id}/opening-balance', [
         FreightController::class,
         'storeOpeningBalance',
     ])->name('freight-expenses.opening-balance');
+
+    // freight Currency Statement
+    Route::get(
+        '/freight-expenses/{id}/currency-statement/{currency}',
+        [FreightController::class, 'currencyStatement']
+    )->name('freight-expenses.currency-statement');
+
+    // Currency Payment
+    Route::post(
+        '/freight-expenses/{id}/currency-statement/{currency}/payments',
+        [FreightController::class, 'storeCurrencyPayment']
+    )->name('freight-expenses.currency-payments.store');
+
+    Route::put(
+        '/freight-expenses/{id}/currency-statement/{currency}/payments/{paymentId}',
+        [FreightController::class, 'updateCurrencyPayment']
+    )->name('freight-expenses.currency-payments.update');
+
+    Route::delete(
+        '/freight-expenses/{id}/currency-statement/{currency}/payments/{paymentId}',
+        [FreightController::class, 'deleteCurrencyPayment']
+    )->name('freight-expenses.currency-payments.delete');
+
 
     Route::get('/freight-expenses/{id}/statement-service', [FreightController::class, 'statementService'])->name('freight-services.statement');
 

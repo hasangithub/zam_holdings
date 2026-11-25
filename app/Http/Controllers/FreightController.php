@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Accounting\Accounting;
 use App\Models\Freight;
+use App\Models\FreightCurrencyPayment;
 use App\Models\FreightPayment;
 use App\Models\FreightService;
 use App\Models\JournalEntry;
@@ -211,7 +212,7 @@ class FreightController extends Controller
 
             $freight = Freight::lockForUpdate()
                 ->where('branch_id', auth()->user()->branch_id)
-                ->findOrFail($id);
+                ->findOrFail($request->freight_id);
 
             if ($freight->status !== 'active') {
                 throw ValidationException::withMessages([
@@ -243,7 +244,7 @@ class FreightController extends Controller
             $journal = Accounting::postJournal([
                 'branch_id' => auth()->user()->branch_id,
                 'date' => $request->payment_date,
-                'description' => 'Freight Payment: ' . $freight->service->name . ' for Sale ID: ' . $freight->sale_id,
+                'description' => 'Freight Payment: ' . $freight->service->name . ' for Freight ID: ' . $freight->id,
 
                 'entries' => [
                     [
@@ -554,7 +555,7 @@ class FreightController extends Controller
             $freight = Freight::with('service')
                 ->where('branch_id', $branchId)
                 ->lockForUpdate()
-                ->findOrFail($id);
+                ->findOrFail($request->freight_id);
 
             if ($freight->opening_journal_entry_id) {
                 throw ValidationException::withMessages([
@@ -611,7 +612,7 @@ class FreightController extends Controller
         });
 
         return redirect()
-            ->route('freight-expenses.statement', $id)
+            ->route('freight-expenses.statement_service', $id)
             ->with('success', 'Opening balance recorded successfully.');
     }
 
@@ -620,6 +621,13 @@ class FreightController extends Controller
         $branchId = auth()->user()->branch_id;
 
         $service = FreightService::findOrFail($id);
+
+        $currencyOptions = [
+            'USD' => 'US Dollar',
+            'SAR' => 'Saudi Riyal',
+            'AED' => 'UAE Dirham',
+            'EUR' => 'Euro',
+        ];
 
         $all = $request->boolean('all');
 
@@ -848,7 +856,8 @@ class FreightController extends Controller
             'periodPurchase',
             'periodPaid',
             'balance',
-            'paymentSubLedgers'
+            'paymentSubLedgers',
+            'currencyOptions'
         ));
     }
 
@@ -1137,5 +1146,315 @@ class FreightController extends Controller
                 . "Total payment: LKR "
                 . number_format($result['total_payment'], 2)
         );
+    }
+
+    public function currencyStatement(Request $request, $id, $currency)
+    {
+        $currencyOptions = [
+            'USD' => 'US Dollar',
+            'SAR' => 'Saudi Riyal',
+            'AED' => 'UAE Dirham',
+            'EUR' => 'Euro',
+        ];
+
+        abort_unless(array_key_exists($currency, $currencyOptions), 404);
+
+        $branchId = auth()->user()->branch_id;
+
+        $freightService = FreightService::where('id', $id)->firstOrFail();
+
+        $freights = Freight::with('sale')
+            ->where('branch_id', $branchId)
+            ->where('freight_service_id', $freightService->id)
+            ->get();
+
+        $all = $request->boolean('all');
+
+        $fromDate = $request->input(
+            'from_date',
+            now()->subDays(6)->format('Y-m-d')
+        );
+
+        $toDate = $request->input(
+            'to_date',
+            now()->format('Y-m-d')
+        );
+
+        $ledger = collect();
+        $openingBalance = 0;
+
+        /*
+    |--------------------------------------------------------------------------
+    | CURRENCY OPENING BALANCE
+    |--------------------------------------------------------------------------
+    */
+
+        $openingRecord = [];
+
+        if ($openingRecord) {
+
+            $ledger->push([
+                'date' => $openingRecord->opening_date,
+                'module' => 'Opening Balance',
+                'type' => 'Opening Balance',
+                'reference' => 'OPN-' . $openingRecord->id,
+                'description' => $openingRecord->note ?? 'Currency Opening Balance',
+                'debit' => (float) $openingRecord->amount,
+                'credit' => 0,
+            ]);
+        }
+
+        /*
+    |--------------------------------------------------------------------------
+    | SALES INVOICES
+    |--------------------------------------------------------------------------
+    */
+
+        $sales = Freight::where('freight_service_id', $freightService->id)
+            // ->where('branch_id', $freight->branch_id)
+            ->where('status', '!=', 'cancelled')
+            ->get();
+
+        foreach ($sales as $sale) {
+
+            $ledger->push([
+                'date' => $sale->date,
+                'module' => 'Sale',
+                'type' => 'Invoice',
+                'reference' => 'INV-' . $sale->id,
+                'description' => 'Freight Invoice',
+                'debit' => (float) $sale->amount_usd,
+                'credit' => 0,
+            ]);
+        }
+
+        /*
+    |--------------------------------------------------------------------------
+    | CURRENCY PAYMENTS
+    |--------------------------------------------------------------------------
+    */
+
+        $payments = FreightCurrencyPayment::where('freight_id', $sale->id)
+            ->where('branch_id', $sale->branch_id)
+            ->where('currency', $currency)
+            ->get();
+
+
+
+        foreach ($payments as $payment) {
+
+            $ledger->push([
+                'date' => $payment->payment_date,
+                'module' => 'Payment',
+                'type' => 'Payment',
+                'payment_id' => $payment->id,
+                'reference' => $payment->reference ?: 'PAY-' . $payment->id,
+                'description' => $payment->note ?? 'Currency Payment',
+                'debit' => 0,
+                'credit' => (float) $payment->amount,
+            ]);
+        }
+
+        /*
+    |--------------------------------------------------------------------------
+    | SORT
+    |--------------------------------------------------------------------------
+    */
+
+        $ledger = $ledger
+            ->sortBy(function ($row) {
+                return [
+                    $row['date'],
+                    $row['type'],
+                    $row['reference'] ?? '',
+                ];
+            })
+            ->values();
+
+        /*
+    |--------------------------------------------------------------------------
+    | FILTER + OPENING BALANCE
+    |--------------------------------------------------------------------------
+    */
+
+        if (!$all) {
+
+            $filtered = collect();
+
+            foreach ($ledger as $row) {
+
+                if ($row['date'] < $fromDate) {
+
+                    $openingBalance +=
+                        $row['debit'] - $row['credit'];
+                } elseif (
+                    $row['date'] >= $fromDate &&
+                    $row['date'] <= $toDate
+                ) {
+
+                    $filtered->push($row);
+                }
+            }
+
+            $ledger = $filtered;
+        }
+
+        /*
+    |--------------------------------------------------------------------------
+    | RUNNING BALANCE
+    |--------------------------------------------------------------------------
+    */
+
+        $running = $openingBalance;
+
+        $ledger = $ledger->map(function ($row) use (&$running) {
+
+            $running += $row['debit'] - $row['credit'];
+
+            $row['balance'] = $running;
+
+            return $row;
+        });
+
+        /*
+    |--------------------------------------------------------------------------
+    | TOTALS
+    |--------------------------------------------------------------------------
+    */
+
+        $periodSales = $ledger
+            ->where('type', 'Invoice')
+            ->sum('debit');
+
+        $periodPaid = $ledger
+            ->where('type', 'Payment')
+            ->sum('credit');
+
+        $balance = $openingBalance + $periodSales - $periodPaid;
+
+        if ($all) {
+            $balance = $ledger->last()['balance'] ?? 0;
+        }
+
+        /*
+    |--------------------------------------------------------------------------
+    | PAYMENT AND OPENING HISTORY
+    |--------------------------------------------------------------------------
+    */
+
+        $currencyPayments = FreightCurrencyPayment::where('freight_id', $sale->id)
+            ->where('branch_id', $sale->branch_id)
+            ->where('currency', $currency)
+            ->latest('payment_date')
+            ->get();
+
+        return view('freight_expenses.currency-statement', compact(
+            'freightService',
+            'freights',
+            'currency',
+            'currencyOptions',
+            'ledger',
+            'openingBalance',
+            'periodSales',
+            'periodPaid',
+            'balance',
+            'fromDate',
+            'toDate',
+            'all',
+            'openingRecord',
+            'currencyPayments'
+        ));
+    }
+
+    public function storeCurrencyPayment(Request $request, $id, $currency)
+    {   
+        $currencyOptions = ['USD', 'SAR', 'AED', 'EUR'];
+        $branchId = auth()->user()->branch_id;
+
+        abort_unless(in_array($currency, $currencyOptions), 404);
+
+        $request->validate([
+            'payment_date' => 'required|date',
+            'amount' => 'required|numeric|gt:0',
+            'reference' => 'nullable|string|max:255',
+            'note' => 'nullable|string',
+        ]);
+
+        $freightService = FreightService::where('id', $id)->firstOrFail();
+
+        FreightCurrencyPayment::create([
+            'freight_id' => $request->freight_id,
+            'branch_id' => $branchId,
+            'currency' => $currency,
+            'payment_date' => $request->payment_date,
+            'amount' => $request->amount,
+            'reference' => $request->reference,
+            'note' => $request->note,
+            'created_by' => auth()->id(),
+        ]);
+
+        return redirect()
+            ->route('freight-expenses.currency-statement', [$freightService->id,$currency])
+            ->with('success', 'Currency payment saved successfully.');
+    }
+
+    public function updateCurrencyPayment(Request $request, $id, $currency, $paymentId)
+    {
+        $currencyOptions = ['USD', 'SAR', 'AED', 'EUR'];
+        $branchId = auth()->user()->branch_id;
+
+        abort_unless(in_array($currency, $currencyOptions), 404);
+
+        $request->validate([
+            'payment_date' => 'required|date',
+            'amount' => 'required|numeric|gt:0',
+            'reference' => 'nullable|string|max:255',
+            'note' => 'nullable|string',
+        ]);
+
+        $freightService = FreightService::where('id', $id)->firstOrFail();
+
+        $payment = FreightCurrencyPayment::where('id', $paymentId)
+            ->where('branch_id', $branchId)
+            ->where('currency', $currency)
+            ->firstOrFail();
+
+        $payment->update([
+            'payment_date' => $request->payment_date,
+            'amount' => $request->amount,
+            'reference' => $request->reference,
+            'note' => $request->note,
+        ]);
+
+        return redirect()
+            ->route('freight-expenses.currency-statement', [
+                $freightService->id,
+                $currency,
+            ])
+            ->with('success', 'Currency payment updated successfully.');
+    }
+
+    public function deleteCurrencyPayment($id, $currency, $paymentId)
+    {
+        $currencyOptions = ['USD', 'SAR', 'AED', 'EUR'];
+
+        abort_unless(in_array($currency, $currencyOptions), 404);
+
+        $freightService = FreightService::where('id', $id)
+            ->firstOrFail();
+
+        $payment = FreightCurrencyPayment::where('id', $paymentId)
+            ->where('freight_service_id', $freightService->id)
+            ->where('currency', $currency)
+            ->firstOrFail();
+
+        $payment->delete();
+
+        return redirect()
+            ->route('customers.currency-statement', [
+                $freightService->id,
+                $currency,
+            ])
+            ->with('success', 'Currency payment deleted successfully.');
     }
 }

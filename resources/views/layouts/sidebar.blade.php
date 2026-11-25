@@ -930,6 +930,22 @@
                     </ul>
                 </li>
 
+                <li class="nav-item">
+                    <a href="{{ route('costs.index') }}"
+                        class="nav-link {{ request()->routeIs('costs.*') ? 'active' : '' }}">
+                        <i class="nav-icon fas fa-money-bill-wave"></i>
+                        <p>Cost Management</p>
+                    </a>
+                </li>
+
+                 <li class="nav-item">
+                    <a href="{{ route('costs.index.costcategory') }}"
+                        class="nav-link {{ request()->routeIs('costs.*') ? 'active' : '' }}">
+                        <i class="nav-icon fas fa-money-bill-wave"></i>
+                        <p>Cost Category</p>
+                    </a>
+                </li>
+
             </ul>
 
         </nav>
