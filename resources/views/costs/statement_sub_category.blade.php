@@ -1,4 +1,3 @@
-
 @extends('layouts.app')
 
 @section('title', 'Cost Subcategory Statement')
@@ -24,6 +23,26 @@
         </div>
 
         <div>
+            @if(!$subCategory->opening_journal_entry_id)
+
+            <button type="button"
+                class="btn btn-warning"
+                data-toggle="modal"
+                data-target="#openingBalanceModal">
+
+                <i class="fas fa-balance-scale"></i>
+                Add Opening Balance
+
+            </button>
+
+            @else
+
+            <span class="badge badge-success p-2">
+                Opening Balance Added
+            </span>
+
+            @endif
+
             <button type="button" class="btn btn-primary"
                 data-toggle="modal" data-target="#payModal">
                 <i class="fas fa-plus"></i> Add Payment
@@ -88,15 +107,15 @@
 
     {{-- OPENING BALANCE --}}
     @if(!$all)
-        <div class="card shadow-sm border-0 mb-3">
-            <div class="card-body py-2 d-flex justify-content-between">
-                <strong>Opening Balance</strong>
+    <div class="card shadow-sm border-0 mb-3">
+        <div class="card-body py-2 d-flex justify-content-between">
+            <strong>Opening Balance</strong>
 
-                <strong class="{{ $openingBalance > 0 ? 'text-danger' : 'text-success' }}">
-                    {{ number_format($openingBalance, 2) }}
-                </strong>
-            </div>
+            <strong class="{{ $openingBalance > 0 ? 'text-danger' : 'text-success' }}">
+                {{ number_format($openingBalance, 2) }}
+            </strong>
         </div>
+    </div>
     @endif
 
     {{-- SUMMARY --}}
@@ -176,13 +195,13 @@
                 <strong>Cost Transaction Statement</strong>
 
                 @if(!$all)
-                    <span class="text-muted small">
-                        {{ \Carbon\Carbon::parse($fromDate)->format('d M Y') }}
-                        -
-                        {{ \Carbon\Carbon::parse($toDate)->format('d M Y') }}
-                    </span>
+                <span class="text-muted small">
+                    {{ \Carbon\Carbon::parse($fromDate)->format('d M Y') }}
+                    -
+                    {{ \Carbon\Carbon::parse($toDate)->format('d M Y') }}
+                </span>
                 @else
-                    <span class="badge badge-info">All Transactions</span>
+                <span class="badge badge-info">All Transactions</span>
                 @endif
             </div>
         </div>
@@ -208,89 +227,89 @@
                     <tbody>
 
                         @if(!$all)
-                            <tr class="bg-light font-weight-bold">
-                                <td>
-                                    {{ \Carbon\Carbon::parse($fromDate)->format('d M Y') }}
-                                </td>
+                        <tr class="bg-light font-weight-bold">
+                            <td>
+                                {{ \Carbon\Carbon::parse($fromDate)->format('d M Y') }}
+                            </td>
 
-                                <td colspan="6">Opening Balance</td>
+                            <td colspan="6">Opening Balance</td>
 
-                                <td class="text-right">
-                                    {{ number_format($openingBalance, 2) }}
-                                </td>
-                            </tr>
+                            <td class="text-right">
+                                {{ number_format($openingBalance, 2) }}
+                            </td>
+                        </tr>
                         @endif
 
                         @forelse($ledger as $row)
 
-                            <tr>
-                                <td>
-                                    {{ \Carbon\Carbon::parse($row['date'])->format('d M Y') }}
-                                </td>
+                        <tr>
+                            <td>
+                                {{ \Carbon\Carbon::parse($row['date'])->format('d M Y') }}
+                            </td>
 
-                                <td>{{ $row['module'] }}</td>
+                            <td>{{ $row['module'] }}</td>
 
-                                <td>{{ $row['reference'] }}</td>
+                            <td>{{ $row['reference'] }}</td>
 
-                                <td>
-                                    @if($row['type'] === 'Cost')
-                                        <span class="badge badge-danger">Cost</span>
-                                    @elseif($row['type'] === 'Payment')
-                                        <span class="badge badge-success">Payment</span>
-                                    @endif
-                                </td>
+                            <td>
+                                @if($row['type'] === 'Cost')
+                                <span class="badge badge-danger">Cost</span>
+                                @elseif($row['type'] === 'Payment')
+                                <span class="badge badge-success">Payment</span>
+                                @endif
+                            </td>
 
-                                <td>{{ $row['description'] }}</td>
+                            <td>{{ $row['description'] }}</td>
 
-                                <td class="text-right text-danger">
-                                    {{ $row['debit'] > 0
+                            <td class="text-right text-danger">
+                                {{ $row['debit'] > 0
                                         ? number_format($row['debit'], 2)
                                         : '-' }}
-                                </td>
+                            </td>
 
-                                <td class="text-right text-success">
-                                    {{ $row['credit'] > 0
+                            <td class="text-right text-success">
+                                {{ $row['credit'] > 0
                                         ? number_format($row['credit'], 2)
                                         : '-' }}
-                                </td>
+                            </td>
 
-                                <td class="text-right font-weight-bold">
-                                    {{ number_format($row['balance'], 2) }}
-                                </td>
-                            </tr>
+                            <td class="text-right font-weight-bold">
+                                {{ number_format($row['balance'], 2) }}
+                            </td>
+                        </tr>
 
                         @empty
 
-                            <tr>
-                                <td colspan="8" class="text-center text-muted py-4">
-                                    No transactions found.
-                                </td>
-                            </tr>
+                        <tr>
+                            <td colspan="8" class="text-center text-muted py-4">
+                                No transactions found.
+                            </td>
+                        </tr>
 
                         @endforelse
 
                     </tbody>
 
                     @if($ledger->count())
-                        <tfoot class="font-weight-bold bg-light">
-                            <tr>
-                                <td colspan="5" class="text-right">
-                                    Total
-                                </td>
+                    <tfoot class="font-weight-bold bg-light">
+                        <tr>
+                            <td colspan="5" class="text-right">
+                                Total
+                            </td>
 
-                                <td class="text-right text-danger">
-                                    {{ number_format($periodCost, 2) }}
-                                </td>
+                            <td class="text-right text-danger">
+                                {{ number_format($periodCost, 2) }}
+                            </td>
 
-                                <td class="text-right text-success">
-                                    {{ number_format($periodPaid, 2) }}
-                                </td>
+                            <td class="text-right text-success">
+                                {{ number_format($periodPaid, 2) }}
+                            </td>
 
-                                <td class="text-right">
-                                    {{ number_format($balance, 2) }}
-                                </td>
-                            </tr>
-                        </tfoot>
+                            <td class="text-right">
+                                {{ number_format($balance, 2) }}
+                            </td>
+                        </tr>
+                    </tfoot>
                     @endif
 
                 </table>
@@ -327,14 +346,14 @@
                             <option value="">Select Cost</option>
 
                             @foreach($costs as $cost)
-                                @if($cost->balance > 0)
-                                    <option value="{{ $cost->id }}"
-                                        data-balance="{{ $cost->balance }}">
-                                        Cost #{{ $cost->id }}
-                                        - {{ \Carbon\Carbon::parse($cost->cost_date)->format('d M Y') }}
-                                        - Balance: {{ number_format($cost->balance, 2) }}
-                                    </option>
-                                @endif
+                            @if($cost->balance > 0)
+                            <option value="{{ $cost->id }}"
+                                data-balance="{{ $cost->balance }}">
+                                Cost #{{ $cost->id }}
+                                - {{ \Carbon\Carbon::parse($cost->cost_date)->format('d M Y') }}
+                                - Balance: {{ number_format($cost->balance, 2) }}
+                            </option>
+                            @endif
                             @endforeach
                         </select>
 
@@ -362,9 +381,9 @@
                             <option value="">Select Cash / Bank Account</option>
 
                             @foreach($paymentSubLedgers as $subLedger)
-                                <option value="{{ $subLedger->id }}">
-                                    {{ $subLedger->name }}
-                                </option>
+                            <option value="{{ $subLedger->id }}">
+                                {{ $subLedger->name }}
+                            </option>
                             @endforeach
                         </select>
                     </div>
@@ -393,15 +412,123 @@
     </div>
 </div>
 
+{{-- OPENING BALANCE MODAL --}}
+<div class="modal fade" id="openingBalanceModal" tabindex="-1" role="dialog">
+
+    <div class="modal-dialog" role="document">
+
+        <div class="modal-content">
+
+            <form method="POST"
+                action="{{ route('costs.sub-categories.opening-balance', $subCategory->id) }}">
+
+                @csrf
+
+                <div class="modal-header bg-warning">
+
+                    <h5 class="modal-title">
+                        <i class="fas fa-balance-scale"></i>
+                        Add Opening Balance
+                    </h5>
+
+                    <button type="button" class="close" data-dismiss="modal">
+                        <span>&times;</span>
+                    </button>
+
+                </div>
+
+                <div class="modal-body">
+
+                    <div class="form-group">
+                        <label>Cost Category</label>
+
+                        <input type="text"
+                            class="form-control"
+                            value="{{ $subCategory->category->name }}"
+                            readonly>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Cost Subcategory</label>
+
+                        <input type="text"
+                            class="form-control"
+                            value="{{ $subCategory->name }}"
+                            readonly>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Opening Balance Date</label>
+
+                        <input type="date"
+                            name="date"
+                            class="form-control"
+                            value="{{ date('Y-m-d') }}"
+                            required>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Opening Balance Amount</label>
+
+                        <input type="number"
+                            name="amount"
+                            class="form-control"
+                            step="0.01"
+                            min="0.01"
+                            placeholder="Enter opening balance"
+                            required>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Description</label>
+
+                        <textarea name="description"
+                            class="form-control"
+                            rows="2"
+                            placeholder="Opening balance description"></textarea>
+                    </div>
+
+                    <div class="alert alert-info mb-0">
+                        <small>
+                            This will create an opening balance journal
+                            for this subcategory.
+                        </small>
+                    </div>
+
+                </div>
+
+                <div class="modal-footer">
+
+                    <button type="button"
+                        class="btn btn-secondary"
+                        data-dismiss="modal">
+                        Close
+                    </button>
+
+                    <button type="submit" class="btn btn-warning">
+                        <i class="fas fa-save"></i>
+                        Save Opening Balance
+                    </button>
+
+                </div>
+
+            </form>
+
+        </div>
+
+    </div>
+
+</div>
+
 @endsection
 
 @push('scripts')
 <script>
-    $(document).ready(function () {
+    $(document).ready(function() {
 
         let paymentUrl = "{{ route('costs.payments.store', '__COST_ID__') }}";
 
-        $('#payment_cost_id').on('change', function () {
+        $('#payment_cost_id').on('change', function() {
 
             let costId = $(this).val();
             let balance = parseFloat($(this).find(':selected').data('balance')) || 0;
@@ -424,7 +551,7 @@
             );
         });
 
-        $('#costPaymentForm').on('submit', function (e) {
+        $('#costPaymentForm').on('submit', function(e) {
 
             let selected = $('#payment_cost_id').val();
 

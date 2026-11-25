@@ -248,6 +248,11 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/sub-categories/{categoryId}', 'getSubCategories')
             ->name('sub-categories');
 
+        Route::post(
+            '/sub-categories/{id}/opening-balance',
+            'storeOpeningBalance'
+        )->name('sub-categories.opening-balance');
+
         Route::get('/sub-categories/{id}/statement', 'statementSubCategory')
             ->name('sub-categories.statement');
 

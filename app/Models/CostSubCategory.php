@@ -12,6 +12,7 @@ class CostSubCategory extends Model
         'name',
         'ledger_id',
         'accrued_expense_sub_ledger_id',
+        'opening_journal_entry_id',
         'is_active',
     ];
 
@@ -33,5 +34,13 @@ class CostSubCategory extends Model
     public function costs()
     {
         return $this->hasMany(Cost::class);
+    }
+
+    public function openingJournalEntry()
+    {
+        return $this->belongsTo(
+            JournalEntry::class,
+            'opening_journal_entry_id'
+        );
     }
 }

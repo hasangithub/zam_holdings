@@ -507,7 +507,7 @@ class CostController extends Controller
         $branchId = auth()->user()->branch_id;
 
         $subCategory = CostSubCategory::where('branch_id', $branchId)
-            ->with('category')
+            ->with(['category', 'openingJournalEntry'])
             ->findOrFail($id);
 
         $all = $request->boolean('all');
@@ -551,6 +551,52 @@ class CostController extends Controller
     */
 
         $completeLedger = collect();
+
+        /*
+|--------------------------------------------------------------------------
+| Opening Balance
+|--------------------------------------------------------------------------
+*/
+
+        if ($subCategory->openingJournalEntry) {
+
+            $openingJournal = $subCategory->openingJournalEntry;
+
+            $openingAmount = (float) \App\Models\JournalEntryDetail::where(
+                'journal_entry_id',
+                $openingJournal->id
+            )
+                ->where('ledger_id', $subCategory->ledger_id)
+                ->sum('debit');
+
+            if ($openingAmount > 0) {
+
+                $completeLedger->push([
+
+                    'date' => \Carbon\Carbon::parse(
+                        $openingJournal->journal_date
+                    )->toDateString(),
+
+                    'module' => 'Cost Management',
+
+                    'reference' => 'OPN-' . $openingJournal->id,
+
+                    'type' => 'Opening Balance',
+
+                    'description' => $openingJournal->description
+                        ?: 'Opening Balance - ' . $subCategory->name,
+
+                    'debit' => $openingAmount,
+
+                    'credit' => 0,
+
+                    'sequence' => 0,
+
+                    'id' => $openingJournal->id,
+
+                ]);
+            }
+        }
 
         // Cost entries
         foreach ($costs as $cost) {
@@ -732,5 +778,91 @@ class CostController extends Controller
             'balance',
             'paymentSubLedgers'
         ));
+    }
+
+    public function storeOpeningBalance(Request $request, $id)
+    {
+        $branchId = auth()->user()->branch_id;
+
+        $data = $request->validate([
+            'amount' => 'required|numeric|gt:0',
+            'date' => 'required|date',
+            'description' => 'nullable|string|max:255',
+        ]);
+
+        DB::transaction(function () use ($data, $id, $branchId) {
+
+            $subCategory = CostSubCategory::where('branch_id', $branchId)
+                ->lockForUpdate()
+                ->findOrFail($id);
+
+            if ($subCategory->opening_journal_entry_id) {
+                throw ValidationException::withMessages([
+                    'amount' => 'An opening balance has already been recorded for this subcategory.',
+                ]);
+            }
+
+            $amount = (float) $data['amount'];
+
+            /*
+        |--------------------------------------------------------------------------
+        | Opening Balance Journal
+        |--------------------------------------------------------------------------
+        */
+
+            $journal = AppAccounting::postJournal([
+                'branch_id' => $branchId,
+                'date' => $data['date'],
+                'description' => $data['description']
+                    ?: 'Opening Balance - ' . $subCategory->name,
+
+                'entries' => [
+
+                    // Debit: Subcategory expense ledger
+                    [
+                        'ledger_id' => $subCategory->ledger_id,
+                        'sub_ledger_id' => null,
+                        'debit' => $amount,
+                        'credit' => 0,
+                    ],
+
+                    // Credit: Accrued Expenses
+                    [
+                        'ledger_id' => 9,
+                        'sub_ledger_id' => $subCategory->accrued_expense_sub_ledger_id,
+                        'debit' => 0,
+                        'credit' => $amount,
+                    ],
+
+                ],
+            ]);
+
+            /*
+        |--------------------------------------------------------------------------
+        | Save Journal Reference
+        |--------------------------------------------------------------------------
+        */
+
+            JournalEntryReference::create([
+                'journal_entry_id' => $journal->id,
+                'model_type' => CostSubCategory::class,
+                'model_id' => $subCategory->id,
+                'action' => 'created',
+            ]);
+
+            /*
+        |--------------------------------------------------------------------------
+        | Save Opening Journal ID
+        |--------------------------------------------------------------------------
+        */
+
+            $subCategory->update([
+                'opening_journal_entry_id' => $journal->id,
+            ]);
+        });
+
+        return redirect()
+            ->route('costs.sub-categories.statement', $id)
+            ->with('success', 'Opening balance saved successfully.');
     }
 }
