@@ -1,5 +1,6 @@
 <?php
 
+use Illuminate\Support\Facades\DB;
 use App\Http\Controllers\ProfileController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\CategoryController;
@@ -664,4 +665,85 @@ Route::middleware(['auth'])->group(function () {
         ProfitLossController::class,
         'index'
     ])->name('reports.profit-loss');
+});
+
+
+Route::get('/test/clear-erp-data', function () {
+
+    // Allow only local and testing environments
+    abort_unless(app()->environment(['local', 'testing']), 403);
+
+    $tables = [
+        'branch_item_stocks',
+        'cashbook_transactions',
+        'consignors',
+        'costs',
+        'cost_categories',
+        'cost_payments',
+        'cost_sub_categories',
+        'customers',
+        'customer_currency_opening_balances',
+        'customer_currency_payments',
+        'employees',
+        'expenses',
+        'expense_categories',
+        'expense_details',
+        'expense_detail_fifos',
+        'fixed_assets',
+        'fixed_asset_payments',
+        'freights',
+        'freight_currency_payments',
+        'freight_payments',
+        'freight_records',
+        'freight_services',
+        'invoice_profit_reports',
+        'invoice_profit_report_items',
+        'journal_entries',
+        'journal_entry_details',
+        'journal_entry_references',
+        'landing_costs',
+        'packings',
+        'packing_items',
+        'packing_item_customers',
+        'purchases',
+        'purchase_amendments',
+        'purchase_inventories',
+        'purchase_inventory_items',
+        'purchase_inventory_payments',
+        'purchase_items',
+        'purchase_payments',
+        'salary_advances',
+        'salary_advance_payments',
+        'sales',
+        'sales_amendments',
+        'sales_payments',
+        'sales_profit_losses',
+        'sales_profit_loss_items',
+        'sale_items',
+        'sale_item_fifos',
+        'shipment_plans',
+        'shipment_plan_items',
+        'shipment_plan_item_customers',
+        'suppliers',
+    ];
+
+    DB::statement('SET FOREIGN_KEY_CHECKS = 0');
+
+    try {
+        foreach ($tables as $table) {
+
+            // Ensure table exists before truncating
+            if (DB::getSchemaBuilder()->hasTable($table)) {
+                DB::table($table)->truncate();
+            }
+        }
+    } finally {
+        DB::statement('SET FOREIGN_KEY_CHECKS = 1');
+    }
+
+    return response()->json([
+        'success' => true,
+        'message' => 'Selected ERP tables cleared successfully.',
+        'tables_cleared' => count($tables),
+    ]);
 });
