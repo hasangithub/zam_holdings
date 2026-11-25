@@ -253,6 +253,11 @@ Route::middleware(['auth'])->group(function () {
             'storeOpeningBalance'
         )->name('sub-categories.opening-balance');
 
+        Route::put('/{id}', 'updateCost')->name('update');
+
+        Route::put('/payments/{paymentId}', 'updatePayment')
+            ->name('payments.update');
+
         Route::get('/sub-categories/{id}/statement', 'statementSubCategory')
             ->name('sub-categories.statement');
 

@@ -137,32 +137,11 @@
                                 {{ old('payment_status') == 'paid' ? 'checked' : '' }}>
                             <label class="custom-control-label" for="status_paid">Fully Paid</label>
                         </div>
-
-                        <div class="custom-control custom-radio custom-control-inline">
-                            <input class="custom-control-input payment-status"
-                                type="radio" id="status_partial"
-                                name="payment_status" value="partial"
-                                {{ old('payment_status') == 'partial' ? 'checked' : '' }}>
-                            <label class="custom-control-label" for="status_partial">Partially Paid</label>
-                        </div>
                     </div>
                 </div>
 
                 <div id="paymentFields" style="display:none;">
                     <div class="row">
-
-                        <div class="col-md-4" id="paymentAmountField">
-                            <div class="form-group">
-                                <label>Payment Amount (LKR)</label>
-                                <input type="number" step="0.01" min="0.01"
-                                    name="payment_amount"
-                                    id="payment_amount"
-                                    class="form-control"
-                                    value="{{ old('payment_amount') }}">
-                                @error('payment_amount') <small class="text-danger">{{ $message }}</small> @enderror
-                            </div>
-                        </div>
-
                         <div class="col-md-4">
                             <div class="form-group">
                                 <label>Payment Date</label>
@@ -327,16 +306,9 @@
         function togglePaymentFields() {
             let status = $('input[name="payment_status"]:checked').val();
 
-            if (status === 'paid' || status === 'partial') {
+            if (status === 'paid') {
                 $('#paymentFields').show();
-                $('#payment_amount').prop('required', status === 'partial');
-
-                if (status === 'paid') {
-                    $('#paymentAmountField').hide();
-                    $('#payment_amount').val('');
-                } else {
-                    $('#paymentAmountField').show();
-                }
+                $('#payment_amount').val('');
             } else {
                 $('#paymentFields').hide();
                 $('#payment_amount').prop('required', false);

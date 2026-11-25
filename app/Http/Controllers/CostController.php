@@ -231,7 +231,7 @@ class CostController extends Controller
             'cost_sub_category_id' => 'required|exists:cost_sub_categories,id',
             'cost_date' => 'required|date',
             'amount' => 'required|numeric|gt:0',
-            'payment_status' => 'required|in:paid,unpaid,partial',
+            'payment_status' => 'required|in:paid,unpaid',
             'payment_amount' => 'nullable|numeric|min:0',
             'cashbook_sub_ledger_id' => 'nullable|exists:sub_ledgers,id',
             'note' => 'nullable|string|max:2000',
@@ -247,14 +247,6 @@ class CostController extends Controller
 
         if ($data['payment_status'] === 'paid') {
             $paymentAmount = $amount;
-        } elseif ($data['payment_status'] === 'partial') {
-            $paymentAmount = round((float) ($data['payment_amount'] ?? 0), 2);
-
-            if ($paymentAmount <= 0 || $paymentAmount >= $amount) {
-                throw ValidationException::withMessages([
-                    'payment_amount' => 'Partial payment must be greater than zero and less than the total cost.',
-                ]);
-            }
         }
 
         if ($data['payment_status'] === 'unpaid' && ($data['payment_amount'] ?? 0) > 0) {
@@ -768,6 +760,7 @@ class CostController extends Controller
         return view('costs.statement_sub_category', compact(
             'subCategory',
             'costs',
+            'payments',
             'ledger',
             'all',
             'fromDate',
@@ -864,5 +857,217 @@ class CostController extends Controller
         return redirect()
             ->route('costs.sub-categories.statement', $id)
             ->with('success', 'Opening balance saved successfully.');
+    }
+
+    public function updateCost(Request $request, $id)
+    {
+        $branchId = auth()->user()->branch_id;
+
+        $data = $request->validate([
+            'cost_date' => 'required|date',
+            'amount' => 'required|numeric|gt:0',
+            'note' => 'nullable|string',
+        ]);
+
+        $cost = Cost::where('branch_id', $branchId)
+            ->lockForUpdate()
+            ->findOrFail($id);
+
+        DB::transaction(function () use ($data, $cost, $branchId) {
+
+
+
+            $subCategory = CostSubCategory::where('branch_id', $branchId)
+                ->findOrFail($cost->cost_sub_category_id);
+
+            // Total payments already made
+            $paidAmount = CostPayment::where('cost_id', $cost->id)
+                ->where('branch_id', $branchId)
+                ->sum('amount');
+
+            // Cost cannot be less than payments already made
+            if ((float) $data['amount'] < (float) $paidAmount) {
+                throw ValidationException::withMessages([
+                    'amount' => 'Cost amount cannot be less than the payments already made: '
+                        . number_format($paidAmount, 2),
+                ]);
+            }
+
+            // Find original cost journal
+            $reference = JournalEntryReference::where(
+                'model_type',
+                Cost::class
+            )
+                ->where('model_id', $cost->id)
+                ->latest('id')
+                ->firstOrFail();
+
+            $journal = JournalEntry::where('branch_id', $branchId)
+                ->findOrFail($reference->journal_entry_id);
+
+            $amount = (float) $data['amount'];
+
+            // Update cost journal header
+            $journal->forceFill([
+                'journal_date' => $data['cost_date'],
+                'description' => $data['note']
+                    ?: 'Cost - ' . $subCategory->name,
+            ])->save();
+
+            // Update debit: Subcategory expense ledger
+            $debitUpdated = DB::table('journal_entry_details')
+                ->where('journal_entry_id', $journal->id)
+                ->where('ledger_id', $subCategory->ledger_id)
+                ->whereNull('sub_ledger_id')
+                ->update([
+                    'debit' => $amount,
+                    'credit' => 0,
+                ]);
+
+            // Update credit: Accrued expenses
+            $creditUpdated = DB::table('journal_entry_details')
+                ->where('journal_entry_id', $journal->id)
+                ->where('ledger_id', 9)
+                ->where('sub_ledger_id', $subCategory->accrued_expense_sub_ledger_id)
+                ->update([
+                    'debit' => 0,
+                    'credit' => $amount,
+                ]);
+
+            if (!$debitUpdated || !$creditUpdated) {
+                throw new \RuntimeException(
+                    'The original cost journal entries could not be found.'
+                );
+            }
+
+            // Update cost record
+            $cost->update([
+                'cost_date' => $data['cost_date'],
+                'amount' => $amount,
+                'note' => $data['note'] ?? null,
+            ]);
+        });
+
+        return redirect()
+            ->route('costs.sub-categories.statement', $cost->cost_sub_category_id)
+            ->with('success', 'Cost updated successfully.');
+    }
+
+    public function updatePayment(Request $request, $paymentId)
+    {
+        $branchId = auth()->user()->branch_id;
+
+        $data = $request->validate([
+            'payment_date' => 'required|date',
+            'amount' => 'required|numeric|gt:0',
+            'cashbook_sub_ledger_id' => 'required|exists:sub_ledgers,id',
+            'note' => 'nullable|string',
+        ]);
+
+        $payment = CostPayment::where('branch_id', $branchId)
+            ->with('cost')
+            ->findOrFail($paymentId);
+
+        $costId = $payment->cost_id;
+
+        DB::transaction(function () use (
+            $data,
+            $paymentId,
+            $branchId,
+            $costId
+        ) {
+
+            $cost = Cost::where('branch_id', $branchId)
+                ->lockForUpdate()
+                ->findOrFail($costId);
+
+            $payment = CostPayment::where('branch_id', $branchId)
+                ->lockForUpdate()
+                ->findOrFail($paymentId);
+
+            // Validate selected cashbook belongs to this branch and ledger 1
+            $cashbook = SubLedger::where('branch_id', $branchId)
+                ->where('ledger_id', 1)
+                ->findOrFail($data['cashbook_sub_ledger_id']);
+
+            // Calculate other payments, excluding the payment being edited
+            $otherPayments = CostPayment::where('branch_id', $branchId)
+                ->where('cost_id', $cost->id)
+                ->where('id', '!=', $payment->id)
+                ->sum('amount');
+
+            $availableBalance = (float) $cost->amount
+                - (float) $otherPayments;
+
+            if ((float) $data['amount'] > $availableBalance) {
+                throw ValidationException::withMessages([
+                    'amount' => 'Payment cannot exceed the available balance of '
+                        . number_format($availableBalance, 2),
+                ]);
+            }
+
+            $subCategory = CostSubCategory::where('branch_id', $branchId)
+                ->findOrFail($cost->cost_sub_category_id);
+
+            // Find original payment journal
+            $reference = JournalEntryReference::where(
+                'model_type',
+                CostPayment::class
+            )
+                ->where('model_id', $payment->id)
+                ->latest('id')
+                ->firstOrFail();
+
+            $journal = JournalEntry::where('branch_id', $branchId)
+                ->findOrFail($reference->journal_entry_id);
+
+            $amount = (float) $data['amount'];
+
+            // Update journal header
+            $journal->forceFill([
+                'journal_date' => $data['payment_date'],
+                'description' => $data['note']
+                    ?: 'Cost Payment - ' . $subCategory->name,
+            ])->save();
+
+            // Update debit: Accrued expenses
+            $debitUpdated = DB::table('journal_entry_details')
+                ->where('journal_entry_id', $journal->id)
+                ->where('ledger_id', 9)
+                ->where('sub_ledger_id', $subCategory->accrued_expense_sub_ledger_id)
+                ->update([
+                    'debit' => $amount,
+                    'credit' => 0,
+                ]);
+
+            // Update credit: Cash / Bank
+            $creditUpdated = DB::table('journal_entry_details')
+                ->where('journal_entry_id', $journal->id)
+                ->where('ledger_id', 1)
+                ->update([
+                    'ledger_id' => 1,
+                    'sub_ledger_id' => $cashbook->id,
+                    'debit' => 0,
+                    'credit' => $amount,
+                ]);
+
+            if (!$debitUpdated || !$creditUpdated) {
+                throw new \RuntimeException(
+                    'The original payment journal entries could not be found.'
+                );
+            }
+
+            // Update payment record
+            $payment->update([
+                'payment_date' => $data['payment_date'],
+                'amount' => $amount,
+                'cashbook_sub_ledger_id' => $cashbook->id,
+                'note' => $data['note'] ?? null,
+            ]);
+        });
+
+        return redirect()
+            ->route('costs.sub-categories.statement', $payment->cost->cost_sub_category_id)
+            ->with('success', 'Payment updated successfully.');
     }
 }
