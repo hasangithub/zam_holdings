@@ -33,7 +33,7 @@
                 @foreach($sales as $s)
                 <tr>
                     <td>
-                        {{ $s->invoice_id }}
+                        {{ $s->internal_invoice_id }}
                     </td>
 
                     <td>

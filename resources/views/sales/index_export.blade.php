@@ -32,7 +32,7 @@
                 @foreach($sales as $sale)
              
                 <tr>
-                    <td>{{ $sale->invoice_id }}</td>
+                    <td>{{ $sale->internal_invoice_id ?? '-' }}</td>
                     <td>{{ $sale->consignor?->name ?? 'No Consignor' }}</td>
                     <td>{{ $sale->customer->name ?? '' }}</td>
 

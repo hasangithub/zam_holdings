@@ -6,7 +6,7 @@
     <meta charset="UTF-8">
 
     <title>
-        Commercial Invoice {{ $sale->invoice_id }}
+        Commercial Invoice {{ $sale->internal_invoice_id ?? '-' }}
     </title>
 
 
