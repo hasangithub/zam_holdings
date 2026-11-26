@@ -12,6 +12,11 @@ class ChartOfAccountsSeeder extends Seeder
 {
     public function run(): void
     {
+        SubLedger::query()->delete();
+        Ledger::query()->delete();
+        AccountGroup::query()->delete();
+        AccountType::query()->delete();
+
         /*
         =========================
         ACCOUNT TYPES (ORDERED)

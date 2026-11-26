@@ -22,6 +22,10 @@ use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
+use App\Models\PortOfLoading;
+use App\Models\CountryOfOrigin;
+use App\Models\ModeOfPayment;
+use App\Models\ModeOfShipping;
 
 class SaleController extends Controller
 {
@@ -73,6 +77,22 @@ class SaleController extends Controller
     {
         $branchId = (int) auth()->user()->branch_id;
 
+        $portOfLoadings = PortOfLoading::where('is_active', true)
+            ->orderBy('name')
+            ->get();
+
+        $countriesOfOrigin = CountryOfOrigin::where('is_active', true)
+            ->orderBy('name')
+            ->get();
+
+        $modesOfPayment = ModeOfPayment::where('is_active', true)
+            ->orderBy('name')
+            ->get();
+
+        $modesOfShipping = ModeOfShipping::where('is_active', true)
+            ->orderBy('name')
+            ->get();
+
         $customers = Customer::where('branch_id', $branchId)
             ->where('customer_type', 'export')
             ->orderBy('name')
@@ -98,7 +118,11 @@ class SaleController extends Controller
         return view('sales.export_create', compact(
             'customers',
             'stocks',
-            'consignors'
+            'consignors',
+            'portOfLoadings',
+            'countriesOfOrigin',
+            'modesOfPayment',
+            'modesOfShipping',
         ));
     }
 
@@ -281,16 +305,36 @@ class SaleController extends Controller
 
             'airway_no'                  => 'nullable|string|max:255',
             'flight_no'                  => 'nullable|string|max:255',
-            'port_of_loading'            => 'nullable',
-            'country_of_origin'          => 'required|string|max:255',
-            'mode_of_payment'            => 'nullable',
-            'mode_of_shipping'           => 'nullable',
+            'port_of_loading' => 'nullable|string|max:255',
+            'country_of_origin' => 'nullable|string|max:255',
+            'mode_of_payment' => 'nullable|string|max:255',
+            'mode_of_shipping' => 'nullable|string|max:255',
         ]);
 
         try {
             $sale = DB::transaction(function () use ($request) {
 
                 $branchId = (int) auth()->user()->branch_id;
+
+                $portOfLoadingId = $this->resolveLookup(
+                    PortOfLoading::class,
+                    $request->port_of_loading
+                );
+
+                $countryOfOriginId = $this->resolveLookup(
+                    CountryOfOrigin::class,
+                    $request->country_of_origin
+                );
+
+                $modeOfPaymentId = $this->resolveLookup(
+                    ModeOfPayment::class,
+                    $request->mode_of_payment
+                );
+
+                $modeOfShippingId = $this->resolveLookup(
+                    ModeOfShipping::class,
+                    $request->mode_of_shipping
+                );
 
                 $customer = Customer::lockForUpdate()
                     ->findOrFail($request->customer_id);
@@ -315,10 +359,10 @@ class SaleController extends Controller
                     'airway_no'          => $request->airway_no,
                     'consignee_name'     => $customer->consignee_name,
                     'consignee_address'  => $customer->consignee_address,
-                    'port_of_loading'    => $request->port_of_loading,
-                    'country_of_origin'  => $request->country_of_origin,
-                    'mode_of_payment'    => $request->mode_of_payment,
-                    'mode_of_shipping'   => $request->mode_of_shipping,
+                    'port_of_loading'    => $portOfLoadingId,
+                    'country_of_origin'  => $countryOfOriginId,
+                    'mode_of_payment'    => $modeOfPaymentId,
+                    'mode_of_shipping'   => $modeOfShippingId,
                     'flight_no'          => $request->flight_no,
                     'consignor_id'       => $request->consignor_id,
                 ]);
@@ -2431,5 +2475,16 @@ class SaleController extends Controller
                 'success',
                 'Sale amendment added successfully.'
             );
+    }
+
+    private function resolveLookup($model, $value)
+    {
+        if (blank($value)) {
+            return null;
+        }
+
+        return $model::firstOrCreate([
+            'name' => trim($value),
+        ])->id;
     }
 }

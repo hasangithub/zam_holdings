@@ -222,47 +222,65 @@
                                         value="{{ old('flight_no') }}">
                                 </div>
 
+                                {{-- PORT OF LOADING --}}
                                 <div class="col-md-4 form-group">
                                     <label>Port of Loading</label>
-                                    <select name="port_of_loading" class="form-control form-control-sm">
-                                        <option value="">Select</option>
-                                        @foreach(\App\Models\Sale::PORTOFLOADING as $id => $name)
-                                        <option value="{{ $id }}"
-                                            {{ old('port_of_loading', $sale->port_of_loading ?? '') == $id ? 'selected' : '' }}>
-                                            {{ $name }}
+                                    <select name="port_of_loading"
+                                        class="form-control form-control-sm lookup-select">
+                                        <option value="">Select or Add New</option>
+
+                                        @foreach($portOfLoadings as $item)
+                                        <option value="{{ $item->name }}"
+                                            {{ old('port_of_loading') == $item->name ? 'selected' : '' }}>
+                                            {{ $item->name }}
                                         </option>
                                         @endforeach
                                     </select>
                                 </div>
 
+                                {{-- COUNTRY OF ORIGIN --}}
                                 <div class="col-md-4 form-group">
                                     <label>Country of Origin</label>
-                                    <input type="text" name="country_of_origin"
-                                        class="form-control form-control-sm"
-                                        value="{{ old('country_of_origin') }}" required>
-                                </div>
+                                    <select name="country_of_origin"
+                                        class="form-control form-control-sm lookup-select">
+                                        <option value="">Select or Add New</option>
 
-                                <div class="col-md-4 form-group">
-                                    <label>Mode of Payment</label>
-                                    <select name="mode_of_payment" class="form-control form-control-sm">
-                                        <option value="">Select</option>
-                                        @foreach(\App\Models\Sale::MODEOFPAYMENTS as $id => $name)
-                                        <option value="{{ $id }}"
-                                            {{ old('mode_of_payment', $sale->mode_of_payment ?? '') == $id ? 'selected' : '' }}>
-                                            {{ $name }}
+                                        @foreach($countriesOfOrigin as $item)
+                                        <option value="{{ $item->name }}"
+                                            {{ old('country_of_origin') == $item->name ? 'selected' : '' }}>
+                                            {{ $item->name }}
                                         </option>
                                         @endforeach
                                     </select>
                                 </div>
 
+                                {{-- MODE OF PAYMENT --}}
+                                <div class="col-md-4 form-group">
+                                    <label>Mode of Payment</label>
+                                    <select name="mode_of_payment"
+                                        class="form-control form-control-sm lookup-select">
+                                        <option value="">Select or Add New</option>
+
+                                        @foreach($modesOfPayment as $item)
+                                        <option value="{{ $item->name }}"
+                                            {{ old('mode_of_payment') == $item->name ? 'selected' : '' }}>
+                                            {{ $item->name }}
+                                        </option>
+                                        @endforeach
+                                    </select>
+                                </div>
+
+                                {{-- MODE OF SHIPPING --}}
                                 <div class="col-md-4 form-group">
                                     <label>Mode of Shipping</label>
-                                    <select name="mode_of_shipping" class="form-control form-control-sm">
-                                        <option value="">Select</option>
-                                        @foreach(\App\Models\Sale::MODEOFSHIPPING as $id => $name)
-                                        <option value="{{ $id }}"
-                                            {{ old('mode_of_shipping', $sale->mode_of_shipping ?? '') == $id ? 'selected' : '' }}>
-                                            {{ $name }}
+                                    <select name="mode_of_shipping"
+                                        class="form-control form-control-sm lookup-select">
+                                        <option value="">Select or Add New</option>
+
+                                        @foreach($modesOfShipping as $item)
+                                        <option value="{{ $item->name }}"
+                                            {{ old('mode_of_shipping') == $item->name ? 'selected' : '' }}>
+                                            {{ $item->name }}
                                         </option>
                                         @endforeach
                                     </select>
@@ -611,6 +629,22 @@
                 event.preventDefault();
                 alert('Please enter a valid quantity within stock and a sale price in USD for every item.');
             }
+        });
+
+        document.querySelectorAll('.lookup-select').forEach(function(element) {
+
+            new TomSelect(element, {
+                create: true,
+                createOnBlur: true,
+                persist: false,
+                maxOptions: 1000,
+                placeholder: 'Select or type a new value...',
+                dropdownParent: 'body',
+                createFilter: function(input) {
+                    return input.trim().length > 0;
+                }
+            });
+
         });
 
     });
