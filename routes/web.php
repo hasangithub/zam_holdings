@@ -40,6 +40,7 @@ use App\Http\Controllers\EmployeeController;
 use App\Http\Controllers\InvoiceCompanyProfileController;
 use App\Http\Controllers\PaymentEntryController;
 use App\Http\Controllers\CostController;
+use Illuminate\Support\Facades\Artisan;
 // Route::get('/', function () {
 //     return view('welcome');
 // });
@@ -396,14 +397,14 @@ Route::middleware(['auth'])->group(function () {
     )->name('freight-expenses.currency-payments.delete');
 
     Route::get('/freights/{id}/edit-data', [
-    FreightController::class,
-    'editData'
-])->name('freights.edit-data');
+        FreightController::class,
+        'editData'
+    ])->name('freights.edit-data');
 
-Route::put('/freight-services/{serviceId}/invoices/{freightId}', [
-    FreightController::class,
-    'updateInvoice'
-])->name('freight-services.invoice.update');
+    Route::put('/freight-services/{serviceId}/invoices/{freightId}', [
+        FreightController::class,
+        'updateInvoice'
+    ])->name('freight-services.invoice.update');
 
 
     Route::get('/freight-expenses/{id}/statement-service', [FreightController::class, 'statementService'])->name('freight-services.statement');
@@ -740,10 +741,15 @@ Route::get('/test/clear-erp-data', function () {
     } finally {
         DB::statement('SET FOREIGN_KEY_CHECKS = 1');
     }
+    // Recreate Chart of Accounts
+    Artisan::call('db:seed', [
+        '--class' => 'ChartOfAccountsSeeder',
+    ]);
 
     return response()->json([
         'success' => true,
-        'message' => 'Selected ERP tables cleared successfully.',
+        'message' => 'ERP tables cleared and Chart of Accounts recreated successfully.',
         'tables_cleared' => count($tables),
+        'seeder_output' => Artisan::output(),
     ]);
 });
