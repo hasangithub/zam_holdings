@@ -79,7 +79,7 @@
                                 @endif
                             </td>
 
-                            <td>{{ $freight->invoice_id }}</td>
+                            <td>{{ $freight->sale->internal_invoice_id }}</td>
                             <td>{{ \Carbon\Carbon::parse($freight->date)->format('Y-m-d') }}</td>
                             <td>{{ $freight->sale?->airway_no ?? '-' }}</td>
                             <td>{{ $freight->service?->name ?? '-' }}</td>
