@@ -48,7 +48,7 @@
 
                 <div class="row">
 
-                    <div class="col-md-4">
+                    <div class="col-md-3">
                         <div class="form-group">
                             <label>Sales Invoice</label>
 
@@ -61,7 +61,8 @@
                                 @foreach($sales as $sale)
                                     <option value="{{ $sale->id }}"
                                         data-airway="{{ $sale->airway_no }}"
-                                        data-consignor="{{ $sale->consignor }}"
+                                        data-consignor="{{ $sale->consignor->name }}"
+                                        data-weight="{{ $sale->items->sum('qty') }}"
                                         {{ old('sale_id') == $sale->id ? 'selected' : '' }}>
 
                                         {{ $sale->internal_invoice_id }}
@@ -73,7 +74,18 @@
                         </div>
                     </div>
 
-                    <div class="col-md-4">
+                     <div class="col-md-3">
+                        <div class="form-group">
+                            <label>Weight</label>
+
+                            <input type="text"
+                                   id="weight"
+                                   class="form-control"
+                                   readonly>
+                        </div>
+                    </div>
+
+                    <div class="col-md-3">
                         <div class="form-group">
                             <label>Airway Number</label>
 
@@ -84,7 +96,7 @@
                         </div>
                     </div>
 
-                    <div class="col-md-4">
+                    <div class="col-md-3">
                         <div class="form-group">
                             <label>Consignor</label>
 
@@ -278,6 +290,7 @@ $(document).ready(function () {
 
         $('#airway_number').val(option.data('airway') || '');
         $('#consignor').val(option.data('consignor') || '');
+        $('#weight').val(option.data('weight') || '');
 
     });
 

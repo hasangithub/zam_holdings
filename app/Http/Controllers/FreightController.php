@@ -51,7 +51,7 @@ class FreightController extends Controller
 
     public function create()
     {
-        $sales = Sale::where('branch_id', auth()->user()->branch_id)
+        $sales = Sale::with(['items'])->where('branch_id', auth()->user()->branch_id)
             ->where('currency', 'USD')
             ->whereDoesntHave('freights', function ($q) {
                 $q->where('status', 'active');
