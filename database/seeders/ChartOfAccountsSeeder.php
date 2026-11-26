@@ -7,15 +7,22 @@ use App\Models\AccountType;
 use App\Models\AccountGroup;
 use App\Models\Ledger;
 use App\Models\SubLedger;
+use Illuminate\Support\Facades\DB;
 
 class ChartOfAccountsSeeder extends Seeder
 {
     public function run(): void
     {
-        SubLedger::query()->delete();
-        Ledger::query()->delete();
-        AccountGroup::query()->delete();
-        AccountType::query()->delete();
+        DB::statement('SET FOREIGN_KEY_CHECKS = 0');
+
+        try {
+            SubLedger::truncate();
+            Ledger::truncate();
+            AccountGroup::truncate();
+            AccountType::truncate();
+        } finally {
+            DB::statement('SET FOREIGN_KEY_CHECKS = 1');
+        }
 
         /*
         =========================
