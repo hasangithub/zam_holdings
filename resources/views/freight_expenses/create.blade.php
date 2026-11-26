@@ -64,7 +64,7 @@
                                         data-consignor="{{ $sale->consignor }}"
                                         {{ old('sale_id') == $sale->id ? 'selected' : '' }}>
 
-                                        {{ $sale->invoice_id }}
+                                        {{ $sale->internal_invoice_id }}
 
                                     </option>
                                 @endforeach
