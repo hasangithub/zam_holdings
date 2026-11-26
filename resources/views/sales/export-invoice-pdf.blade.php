@@ -6,7 +6,7 @@
     <meta charset="UTF-8">
 
     <title>
-        Export Invoice {{ $sale->invoice_id }}
+        Commercial Invoice {{ $sale->invoice_id }}
     </title>
 
 

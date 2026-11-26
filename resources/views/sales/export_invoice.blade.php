@@ -261,7 +261,7 @@
                 style="width:30%; text-align:right; vertical-align:top;">
 
                 <div class="invoice-title">
-                    EXPORT INVOICE
+                    Commercial INVOICE
                 </div>
 
                 <div class="invoice-number">
