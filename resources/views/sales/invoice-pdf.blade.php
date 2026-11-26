@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
 
     <title>
-        Invoice {{ $sale->invoice_id }}
+        Invoice {{ $sale->internal_invoice_id ?? '-' }}
     </title>
 
     <style>
@@ -457,7 +457,7 @@
                 <td colspan="3" class="invoice-cell invoice-details-row">
                     <div class="invoice-details-line">
                         <div class="invoice-title"></div>
-                        <div class="invoice-number">Invoice#: <strong>{{ $sale->invoice_id }}</strong></div>
+                        <div class="invoice-number">Invoice#: <strong>{{ $sale->internal_invoice_id ?? '-' }}</strong></div>
                         <div class="invoice-number">Date: <strong>{{ date('d M Y', strtotime($sale->sale_date ?? $sale->created_at)) }}</strong></div>
                     </div>
                 </td>

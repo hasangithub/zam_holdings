@@ -278,7 +278,7 @@
                 <div class="invoice-meta">
 
                     <strong>Invoice No:</strong>
-                    {{ $sale->invoice_id }}
+                    {{ $sale->internal_invoice_id ?? '-' }}
 
                     <br>
 
