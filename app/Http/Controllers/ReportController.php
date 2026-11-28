@@ -388,7 +388,7 @@ class ReportController extends Controller
             $salesQty = (float) ($sales[$item->id] ?? 0);
 
             // Include only items with purchases AND sales
-            if ($purchaseQty <= 0 || $salesQty <= 0) {
+            if ($purchaseQty <= 0 && $salesQty <= 0) {
                 continue;
             }
 
