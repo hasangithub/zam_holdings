@@ -469,7 +469,7 @@
             ============================================
             */
 
-            let salesPriceLKR =
+            let salesAfterFP =
                 salesPriceUSD * exchangeRate;
 
 
@@ -483,8 +483,8 @@
             ============================================
             */
 
-            let salesAfterFP =
-                salesPriceLKR - fpPerKg;
+            let salesPriceLKR =
+                (salesPriceUSD * exchangeRate) - fpPerKg;
 
 
             /*

@@ -1033,10 +1033,10 @@ class ReportController extends Controller
             $marketPrice = (float) ($rep->market_price ?? 0);
 
             // Sales price in LKR
-            $salesPriceLkr = $salePriceUsd * $exchangeRate;
+            $salesAfterFp = $salePriceUsd * $exchangeRate;
 
             // Sales price after F & P
-            $salesAfterFp = $salesPriceLkr - $fpPerKg;
+            $salesPriceLkr = $salesAfterFp - $fpPerKg;
 
             // Purchase amount
             $purchaseAmount = $qty * $avgCost;
